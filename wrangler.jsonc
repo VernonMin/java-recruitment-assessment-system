@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "online-assessment-system",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-17",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "APP_NAME": "Java 招聘测评系统"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "online-assessment-system",
+      "database_id": "replace-with-your-d1-database-id"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PROCTORING_BUCKET",
+      "bucket_name": "online-assessment-system-proctoring"
+    }
+  ]
+}

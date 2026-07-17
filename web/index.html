@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Java 招聘测评系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">J</div>
+          <div>
+            <div class="brand-title">Java 招聘测评系统</div>
+            <div class="brand-subtitle">Cloudflare 版 MVP</div>
+          </div>
+        </div>
+        <nav class="menu">
+          <button data-view="login" class="menu-item active">登录</button>
+          <button data-view="candidate" class="menu-item">候选人首页</button>
+          <button data-view="assessment" class="menu-item">答题页</button>
+          <button data-view="submission" class="menu-item">提交详情</button>
+          <button data-view="review" class="menu-item">人工评估</button>
+        </nav>
+        <div class="sidebar-footer">
+          <div id="sessionBadge" class="session-badge">未登录</div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <h1 id="pageTitle">登录</h1>
+            <p id="pageDesc">先使用管理员或候选人账号登录系统。</p>
+          </div>
+          <div class="topbar-actions">
+            <button id="loadMeButton" class="ghost-button">刷新当前用户</button>
+          </div>
+        </header>
+
+        <section id="feedback" class="feedback hidden"></section>
+
+        <section id="loginView" class="view active">
+          <div class="panel narrow">
+            <h2>账号登录</h2>
+            <form id="loginForm" class="stack-form">
+              <label>
+                <span>账号</span>
+                <input name="account" value="admin" autocomplete="username" />
+              </label>
+              <label>
+                <span>密码</span>
+                <input name="password" type="password" value="Admin123456!" autocomplete="current-password" />
+              </label>
+              <button type="submit" class="primary-button">登录</button>
+            </form>
+            <p class="hint">默认种子账号：`admin / Admin123456!`</p>
+          </div>
+        </section>
+
+        <section id="candidateView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>候选人测评列表</h2>
+              <button id="loadCampaignsButton" class="ghost-button">刷新场次</button>
+            </div>
+            <div id="campaignList" class="card-grid"></div>
+          </div>
+        </section>
+
+        <section id="assessmentView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>答题页</h2>
+              <div class="inline-form">
+                <input id="campaignIdInput" placeholder="输入 campaignId" />
+                <button id="loadQuestionsButton" class="ghost-button">加载题目</button>
+              </div>
+            </div>
+            <div id="assessmentMeta" class="meta-strip"></div>
+            <form id="assessmentForm" class="question-list"></form>
+          </div>
+        </section>
+
+        <section id="submissionView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>提交详情</h2>
+              <div class="inline-form">
+                <input id="submissionIdInput" placeholder="输入 submissionId" />
+                <button id="loadSubmissionButton" class="ghost-button">查询提交</button>
+              </div>
+            </div>
+            <div id="submissionMeta" class="meta-strip"></div>
+            <div id="submissionAnswers" class="question-list"></div>
+          </div>
+        </section>
+
+        <section id="reviewView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>人工评估</h2>
+              <p class="hint">先在“提交详情”中加载记录，再切到本页评估主观题。</p>
+            </div>
+            <form id="evaluationForm" class="question-list"></form>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
