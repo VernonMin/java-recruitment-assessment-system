@@ -331,6 +331,25 @@ select {
   margin-top: 14px;
 }
 
+.checkbox-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.checkbox-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.checkbox-item input {
+  width: auto;
+  min-height: auto;
+  margin: 0;
+}
+
 .hint {
   font-size: 13px;
 }

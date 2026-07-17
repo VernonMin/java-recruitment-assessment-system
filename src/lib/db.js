@@ -54,7 +54,9 @@ export function findCampaignsForAdmin(env) {
   return env.DB.prepare(
     `select
       rc.id,
+      rc.assessment_id,
       rc.title,
+      rc.description,
       rc.target_role,
       rc.start_time,
       rc.end_time,
@@ -69,6 +71,20 @@ export function findCampaignsForAdmin(env) {
   ).all();
 }
 
+export function findAssessmentsForAdmin(env) {
+  return env.DB.prepare(
+    `select
+      id,
+      title,
+      description,
+      total_score,
+      target_level,
+      status
+    from assessments
+    order by created_at desc, title asc`
+  ).all();
+}
+
 /**
  * @param {import("../types").AppContext["Bindings"]} env
  * @param {string} campaignId
@@ -78,7 +94,12 @@ export function findCampaignById(env, campaignId) {
     `select
       rc.id,
       rc.assessment_id,
+      rc.description,
       rc.title,
+      rc.target_role,
+      rc.start_time,
+      rc.end_time,
+      rc.duration_minutes,
       rc.status
     from recruitment_campaigns rc
     where rc.id = ?`
@@ -209,6 +230,62 @@ export function insertUserRole(env, userRole) {
 
 /**
  * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} userId
+ */
+export function deleteUserRolesByUserId(env, userId) {
+  return env.DB.prepare(
+    "delete from user_roles where user_id = ?"
+  ).bind(userId).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   userId: string;
+ *   fullName: string;
+ *   email: string | null;
+ *   mobile: string | null;
+ *   status: string;
+ *   updatedAt: number;
+ * }} params
+ */
+export function updateUserProfile(env, params) {
+  return env.DB.prepare(
+    `update users
+    set full_name = ?, email = ?, mobile = ?, status = ?, updated_at = ?
+    where id = ?`
+  ).bind(
+    params.fullName,
+    params.email,
+    params.mobile,
+    params.status,
+    params.updatedAt,
+    params.userId
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   userId: string;
+ *   passwordHash: string;
+ *   updatedAt: number;
+ * }} params
+ */
+export function updateUserPassword(env, params) {
+  return env.DB.prepare(
+    `update users
+    set password_hash = ?, updated_at = ?
+    where id = ?`
+  ).bind(
+    params.passwordHash,
+    params.updatedAt,
+    params.userId
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
  * @param {{
  *   id: string;
  *   campaignId: string;
@@ -230,6 +307,88 @@ export function insertCampaignCandidate(env, assignment) {
     assignment.attemptLimit,
     assignment.invitationStatus,
     assignment.createdAt
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   id: string;
+ *   assessmentId: string;
+ *   title: string;
+ *   description: string | null;
+ *   targetRole: string | null;
+ *   startTime: number;
+ *   endTime: number;
+ *   durationMinutes: number | null;
+ *   status: string;
+ *   requireCamera: number;
+ *   requireFullscreen: number;
+ *   createdBy: string;
+ *   createdAt: number;
+ *   updatedAt: number;
+ * }} campaign
+ */
+export function insertCampaign(env, campaign) {
+  return env.DB.prepare(
+    `insert into recruitment_campaigns (
+      id, assessment_id, title, description, target_role, start_time, end_time,
+      duration_minutes, status, require_camera, require_fullscreen, created_by, created_at, updated_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    campaign.id,
+    campaign.assessmentId,
+    campaign.title,
+    campaign.description,
+    campaign.targetRole,
+    campaign.startTime,
+    campaign.endTime,
+    campaign.durationMinutes,
+    campaign.status,
+    campaign.requireCamera,
+    campaign.requireFullscreen,
+    campaign.createdBy,
+    campaign.createdAt,
+    campaign.updatedAt
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   campaignId: string;
+ *   assessmentId: string;
+ *   title: string;
+ *   description: string | null;
+ *   targetRole: string | null;
+ *   startTime: number;
+ *   endTime: number;
+ *   durationMinutes: number | null;
+ *   status: string;
+ *   requireCamera: number;
+ *   requireFullscreen: number;
+ *   updatedAt: number;
+ * }} campaign
+ */
+export function updateCampaign(env, campaign) {
+  return env.DB.prepare(
+    `update recruitment_campaigns
+    set assessment_id = ?, title = ?, description = ?, target_role = ?, start_time = ?, end_time = ?,
+      duration_minutes = ?, status = ?, require_camera = ?, require_fullscreen = ?, updated_at = ?
+    where id = ?`
+  ).bind(
+    campaign.assessmentId,
+    campaign.title,
+    campaign.description,
+    campaign.targetRole,
+    campaign.startTime,
+    campaign.endTime,
+    campaign.durationMinutes,
+    campaign.status,
+    campaign.requireCamera,
+    campaign.requireFullscreen,
+    campaign.updatedAt,
+    campaign.campaignId
   ).run();
 }
 

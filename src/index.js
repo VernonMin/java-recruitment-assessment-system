@@ -1,8 +1,10 @@
 import {
   countUserSubmissions,
   aggregateSubmissionScores,
+  deleteUserRolesByUserId,
   findCampaignById,
   findAssessmentQuestionSet,
+  findAssessmentsForAdmin,
   findCampaignAssignment,
   findCampaignsForAdmin,
   findCampaignQuestionsForCandidate,
@@ -14,6 +16,7 @@ import {
   findUserByAccount,
   findUsers,
   insertCampaignCandidate,
+  insertCampaign,
   insertQuestion,
   insertQuestionAnswer,
   insertQuestionOption,
@@ -24,6 +27,9 @@ import {
   insertSubmissionAnswer,
   insertUser,
   insertUserRole,
+  updateCampaign,
+  updateUserPassword,
+  updateUserProfile,
   updateSubmissionAnswerEvaluation,
   updateSubmissionSummary
 } from "./lib/db.js";
@@ -126,6 +132,13 @@ export default {
       return handleCreateUser(request, env, sessionUser, corsHeaders);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/admin/users/batch-create") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleBatchCreateUsers(request, env, sessionUser, corsHeaders);
+    }
+
     if (request.method === "GET" && url.pathname === "/api/admin/campaigns") {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
@@ -133,11 +146,56 @@ export default {
       return handleGetAdminCampaigns(env, sessionUser, corsHeaders);
     }
 
+    if (request.method === "GET" && url.pathname === "/api/admin/assessments") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleGetAssessments(env, sessionUser, corsHeaders);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/campaigns") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleCreateCampaign(request, env, sessionUser, corsHeaders);
+    }
+
     if (request.method === "POST" && url.pathname === "/api/admin/campaign-assignments") {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
       return handleAssignCampaign(request, env, sessionUser, corsHeaders);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/campaign-assignments/batch") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleBatchAssignCampaign(request, env, sessionUser, corsHeaders);
+    }
+
+    const adminCampaignMatch = url.pathname.match(/^\/api\/admin\/campaigns\/([^/]+)$/);
+    if (request.method === "PUT" && adminCampaignMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleUpdateCampaign(request, env, sessionUser, adminCampaignMatch[1], corsHeaders);
+    }
+
+    const adminUserMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
+    if (request.method === "PUT" && adminUserMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleUpdateUser(request, env, sessionUser, adminUserMatch[1], corsHeaders);
+    }
+
+    const adminResetPasswordMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/reset-password$/);
+    if (request.method === "POST" && adminResetPasswordMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleResetUserPassword(request, env, sessionUser, adminResetPasswordMatch[1], corsHeaders);
     }
 
     const campaignQuestionsMatch = url.pathname.match(/^\/api\/campaigns\/([^/]+)\/questions$/);
@@ -350,44 +408,74 @@ async function handleCreateUser(request, env, sessionUser, corsHeaders) {
     return json({ message: "账号已存在" }, 409, {}, corsHeaders);
   }
 
-  const role = await findRoleByCode(env, roleCode);
-  if (!role) {
-    return json({ message: "角色不存在" }, 400, {}, corsHeaders);
-  }
-
-  const now = Date.now();
-  const userId = crypto.randomUUID();
-  const passwordHash = await hashPassword(password);
-
-  await insertUser(env, {
-    id: userId,
+  const createdUser = await createUserRecord(env, {
     account,
-    passwordHash,
+    password,
     fullName,
+    roleCode,
     email,
-    mobile,
-    status: "active",
-    lastLoginAt: null,
-    createdAt: now,
-    updatedAt: now
-  });
-
-  await insertUserRole(env, {
-    id: crypto.randomUUID(),
-    userId,
-    roleId: role.id,
-    createdAt: now
+    mobile
   });
 
   return json({
     message: "用户创建成功",
     user: {
-      id: userId,
-      account,
-      fullName,
-      role: roleCode,
-      status: "active"
+      id: createdUser.id,
+      account: createdUser.account,
+      fullName: createdUser.fullName,
+      role: createdUser.role,
+      status: createdUser.status
     }
+  }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleBatchCreateUsers(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin"])) {
+    return json({ message: "无权批量创建用户" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const created = [];
+  for (const item of body.items) {
+    if (
+      !item ||
+      typeof item.account !== "string" ||
+      typeof item.password !== "string" ||
+      typeof item.fullName !== "string" ||
+      typeof item.role !== "string"
+    ) {
+      return json({ message: "批量创建数据格式不合法" }, 400, {}, corsHeaders);
+    }
+
+    const existingUser = await findUserByAccount(env, item.account.trim());
+    if (existingUser) {
+      return json({ message: `账号已存在: ${item.account}` }, 409, {}, corsHeaders);
+    }
+
+    const createdUser = await createUserRecord(env, {
+      account: item.account.trim(),
+      password: item.password,
+      fullName: item.fullName.trim(),
+      roleCode: item.role.trim(),
+      email: typeof item.email === "string" ? item.email.trim() : null,
+      mobile: typeof item.mobile === "string" ? item.mobile.trim() : null
+    });
+    created.push(createdUser);
+  }
+
+  return json({
+    message: `批量创建成功，共 ${created.length} 个账号`,
+    items: created
   }, 201, {}, corsHeaders);
 }
 
@@ -404,6 +492,195 @@ async function handleGetAdminCampaigns(env, sessionUser, corsHeaders) {
   const result = await findCampaignsForAdmin(env);
   return json({
     items: result.results ?? []
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleGetAssessments(env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter", "interviewer"])) {
+    return json({ message: "无权查看测评模板" }, 403, {}, corsHeaders);
+  }
+
+  const result = await findAssessmentsForAdmin(env);
+  return json({
+    items: result.results ?? []
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter"])) {
+    return json({ message: "无权创建招聘场次" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (
+    !body ||
+    typeof body.assessmentId !== "string" ||
+    typeof body.title !== "string" ||
+    typeof body.startTime !== "number" ||
+    typeof body.endTime !== "number"
+  ) {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const assessmentId = body.assessmentId.trim();
+  const title = body.title.trim();
+  const description = typeof body.description === "string" && body.description.trim() ? body.description.trim() : null;
+  const targetRole = typeof body.targetRole === "string" && body.targetRole.trim() ? body.targetRole.trim() : null;
+  const startTime = Number(body.startTime);
+  const endTime = Number(body.endTime);
+  const durationMinutes = body.durationMinutes == null ? null : Number(body.durationMinutes);
+  const status = typeof body.status === "string" ? body.status.trim() : "draft";
+  const requireCamera = body.requireCamera ? 1 : 0;
+  const requireFullscreen = body.requireFullscreen ? 1 : 0;
+
+  if (!assessmentId || !title) {
+    return json({ message: "模板和标题不能为空" }, 400, {}, corsHeaders);
+  }
+
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+    return json({ message: "开始和结束时间不合法" }, 400, {}, corsHeaders);
+  }
+
+  if (durationMinutes != null && (!Number.isFinite(durationMinutes) || durationMinutes <= 0)) {
+    return json({ message: "测评时长不合法" }, 400, {}, corsHeaders);
+  }
+
+  if (!CAMPAIGN_STATUSES.has(status)) {
+    return json({ message: "场次状态不支持" }, 400, {}, corsHeaders);
+  }
+
+  const assessments = await findAssessmentsForAdmin(env);
+  const assessment = (assessments.results ?? []).find((item) => item.id === assessmentId);
+  if (!assessment) {
+    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+  }
+
+  const now = Date.now();
+  const campaignId = `campaign_${crypto.randomUUID().replaceAll("-", "").slice(0, 18)}`;
+  await insertCampaign(env, {
+    id: campaignId,
+    assessmentId,
+    title,
+    description,
+    targetRole,
+    startTime,
+    endTime,
+    durationMinutes,
+    status,
+    requireCamera,
+    requireFullscreen,
+    createdBy: sessionUser.sub,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  return json({
+    message: "招聘场次创建成功",
+    campaign: {
+      id: campaignId,
+      title,
+      assessmentId,
+      status
+    }
+  }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} campaignId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter"])) {
+    return json({ message: "无权修改招聘场次" }, 403, {}, corsHeaders);
+  }
+
+  const currentCampaign = await findCampaignById(env, campaignId);
+  if (!currentCampaign) {
+    return json({ message: "招聘场次不存在" }, 404, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (
+    !body ||
+    typeof body.assessmentId !== "string" ||
+    typeof body.title !== "string" ||
+    typeof body.startTime !== "number" ||
+    typeof body.endTime !== "number"
+  ) {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const assessmentId = body.assessmentId.trim();
+  const title = body.title.trim();
+  const description = typeof body.description === "string" && body.description.trim() ? body.description.trim() : null;
+  const targetRole = typeof body.targetRole === "string" && body.targetRole.trim() ? body.targetRole.trim() : null;
+  const startTime = Number(body.startTime);
+  const endTime = Number(body.endTime);
+  const durationMinutes = body.durationMinutes == null ? null : Number(body.durationMinutes);
+  const status = typeof body.status === "string" ? body.status.trim() : "draft";
+  const requireCamera = body.requireCamera ? 1 : 0;
+  const requireFullscreen = body.requireFullscreen ? 1 : 0;
+
+  if (!assessmentId || !title) {
+    return json({ message: "模板和标题不能为空" }, 400, {}, corsHeaders);
+  }
+
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+    return json({ message: "开始和结束时间不合法" }, 400, {}, corsHeaders);
+  }
+
+  if (durationMinutes != null && (!Number.isFinite(durationMinutes) || durationMinutes <= 0)) {
+    return json({ message: "测评时长不合法" }, 400, {}, corsHeaders);
+  }
+
+  if (!CAMPAIGN_STATUSES.has(status)) {
+    return json({ message: "场次状态不支持" }, 400, {}, corsHeaders);
+  }
+
+  const assessments = await findAssessmentsForAdmin(env);
+  const assessment = (assessments.results ?? []).find((item) => item.id === assessmentId);
+  if (!assessment) {
+    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+  }
+
+  await updateCampaign(env, {
+    campaignId,
+    assessmentId,
+    title,
+    description,
+    targetRole,
+    startTime,
+    endTime,
+    durationMinutes,
+    status,
+    requireCamera,
+    requireFullscreen,
+    updatedAt: Date.now()
+  });
+
+  return json({
+    message: "招聘场次更新成功",
+    campaign: {
+      id: campaignId,
+      title,
+      assessmentId,
+      status,
+      previousStatus: currentCampaign.status
+    }
   }, 200, {}, corsHeaders);
 }
 
@@ -481,6 +758,156 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
       invitationStatus
     }
   }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleBatchAssignCampaign(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter"])) {
+    return json({ message: "无权批量分配招聘场次" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const created = [];
+  for (const item of body.items) {
+    const fakeRequest = new Request("https://local/api/admin/campaign-assignments", {
+      method: "POST",
+      body: JSON.stringify(item)
+    });
+    const response = await handleAssignCampaign(fakeRequest, env, sessionUser, corsHeaders);
+    if (response.status >= 400) {
+      return response;
+    }
+    const data = await response.json();
+    created.push(data.assignment);
+  }
+
+  return json({
+    message: `批量分配成功，共 ${created.length} 条`,
+    items: created
+  }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} userId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleUpdateUser(request, env, sessionUser, userId, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin"])) {
+    return json({ message: "无权编辑用户" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.fullName !== "string" || typeof body.role !== "string" || typeof body.status !== "string") {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const currentUsers = await findUsers(env);
+  const user = (currentUsers.results ?? []).find((item) => item.id === userId);
+  if (!user) {
+    return json({ message: "用户不存在" }, 404, {}, corsHeaders);
+  }
+
+  const fullName = body.fullName.trim();
+  const roleCode = body.role.trim();
+  const status = body.status.trim();
+  const email = typeof body.email === "string" && body.email.trim() ? body.email.trim() : null;
+  const mobile = typeof body.mobile === "string" && body.mobile.trim() ? body.mobile.trim() : null;
+
+  if (!fullName) {
+    return json({ message: "姓名不能为空" }, 400, {}, corsHeaders);
+  }
+
+  if (!ALLOWED_USER_ROLES.has(roleCode)) {
+    return json({ message: "角色不支持" }, 400, {}, corsHeaders);
+  }
+
+  if (!USER_STATUSES.has(status)) {
+    return json({ message: "用户状态不支持" }, 400, {}, corsHeaders);
+  }
+
+  const role = await findRoleByCode(env, roleCode);
+  if (!role) {
+    return json({ message: "角色不存在" }, 400, {}, corsHeaders);
+  }
+
+  await updateUserProfile(env, {
+    userId,
+    fullName,
+    email,
+    mobile,
+    status,
+    updatedAt: Date.now()
+  });
+
+  await deleteUserRolesByUserId(env, userId);
+  await insertUserRole(env, {
+    id: crypto.randomUUID(),
+    userId,
+    roleId: role.id,
+    createdAt: Date.now()
+  });
+
+  return json({
+    message: "用户更新成功",
+    user: {
+      id: userId,
+      account: user.account,
+      fullName,
+      role: roleCode,
+      status
+    }
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} userId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleResetUserPassword(request, env, sessionUser, userId, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin"])) {
+    return json({ message: "无权重置密码" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.password !== "string" || body.password.length < 8) {
+    return json({ message: "新密码至少 8 位" }, 400, {}, corsHeaders);
+  }
+
+  const currentUsers = await findUsers(env);
+  const user = (currentUsers.results ?? []).find((item) => item.id === userId);
+  if (!user) {
+    return json({ message: "用户不存在" }, 404, {}, corsHeaders);
+  }
+
+  const passwordHash = await hashPassword(body.password);
+  await updateUserPassword(env, {
+    userId,
+    passwordHash,
+    updatedAt: Date.now()
+  });
+
+  return json({
+    message: "密码重置成功",
+    user: {
+      id: userId,
+      account: user.account
+    }
+  }, 200, {}, corsHeaders);
 }
 
 /**
@@ -1253,6 +1680,58 @@ const QUESTION_TYPES = new Set([
 
 const ALLOWED_USER_ROLES = new Set(["candidate", "interviewer", "recruiter", "admin"]);
 const CAMPAIGN_INVITATION_STATUSES = new Set(["invited", "accepted", "completed", "expired"]);
+const CAMPAIGN_STATUSES = new Set(["draft", "published", "in_progress", "archived"]);
+const USER_STATUSES = new Set(["active", "disabled", "locked"]);
+
+/**
+ * @param {AppBindings} env
+ * @param {{
+ *   account: string;
+ *   password: string;
+ *   fullName: string;
+ *   roleCode: string;
+ *   email: string | null;
+ *   mobile: string | null;
+ * }} params
+ */
+async function createUserRecord(env, params) {
+  const role = await findRoleByCode(env, params.roleCode);
+  if (!role) {
+    throw new Error("角色不存在");
+  }
+
+  const now = Date.now();
+  const userId = crypto.randomUUID();
+  const passwordHash = await hashPassword(params.password);
+
+  await insertUser(env, {
+    id: userId,
+    account: params.account,
+    passwordHash,
+    fullName: params.fullName,
+    email: params.email,
+    mobile: params.mobile,
+    status: "active",
+    lastLoginAt: null,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  await insertUserRole(env, {
+    id: crypto.randomUUID(),
+    userId,
+    roleId: role.id,
+    createdAt: now
+  });
+
+  return {
+    id: userId,
+    account: params.account,
+    fullName: params.fullName,
+    role: params.roleCode,
+    status: "active"
+  };
+}
 
 const JAVA_RECRUITMENT_PRESET_QUESTIONS = [
   {

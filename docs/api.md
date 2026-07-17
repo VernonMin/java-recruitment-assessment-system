@@ -98,12 +98,71 @@
 }
 ```
 
+### `POST /api/admin/users/batch-create`
+
+用途：
+
+- 管理员按文本批量导入账号
+- 适合一次性导入候选人、面试官、招聘专员
+
+请求体示例：
+
+```json
+{
+  "items": [
+    {
+      "account": "candidate_lihua",
+      "fullName": "李华",
+      "password": "Candidate123!",
+      "role": "candidate",
+      "email": "lihua@example.com",
+      "mobile": "13800000001"
+    }
+  ]
+}
+```
+
+### `PUT /api/admin/users/:id`
+
+用途：
+
+- 管理员修改用户姓名、角色、邮箱、手机号、状态
+- 可用于禁用或锁定账号
+
+### `POST /api/admin/users/:id/reset-password`
+
+用途：
+
+- 管理员重置任意账号密码
+- 新密码长度至少 8 位
+
 ### `GET /api/admin/campaigns`
 
 用途：
 
 - 管理员或招聘专员查看招聘场次列表
 - 给候选人分配场次时作为下拉数据源
+
+### `GET /api/admin/assessments`
+
+用途：
+
+- 管理员、招聘专员、面试官查看测评模板列表
+- 给新增或修改招聘场次时作为模板下拉数据源
+
+### `POST /api/admin/campaigns`
+
+用途：
+
+- 管理员或招聘专员创建招聘场次
+- 配置时间窗口、时长、状态、摄像头和全屏要求
+
+### `PUT /api/admin/campaigns/:id`
+
+用途：
+
+- 管理员或招聘专员修改已有招聘场次
+- 可调整模板、时间、状态和监控要求
 
 ### `POST /api/admin/campaign-assignments`
 
@@ -121,6 +180,13 @@
   "invitationStatus": "invited"
 }
 ```
+
+### `POST /api/admin/campaign-assignments/batch`
+
+用途：
+
+- 管理员或招聘专员批量把多个候选人账号分配到同一场次
+- 适合批量邀请同一批候选人参加同一轮测评
 
 ### `GET /api/questions`
 
