@@ -25,6 +25,7 @@ document.getElementById("loadMeButton").addEventListener("click", loadCurrentUse
 document.getElementById("loginForm").addEventListener("submit", onLogin);
 document.getElementById("questionForm").addEventListener("submit", submitQuestion);
 document.getElementById("reloadQuestionBankButton").addEventListener("click", loadQuestions);
+document.getElementById("importPresetQuestionsButton").addEventListener("click", importPresetQuestions);
 document.getElementById("loadCampaignsButton").addEventListener("click", loadCampaigns);
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
 document.getElementById("loadSubmissionButton").addEventListener("click", loadSubmissionDetail);
@@ -169,6 +170,20 @@ async function submitQuestion(event) {
   event.currentTarget.elements.score.value = "10";
   event.currentTarget.elements.difficulty.value = "3";
   showFeedback("题目创建成功。");
+  await loadQuestions();
+}
+
+async function importPresetQuestions() {
+  const result = await api("/api/questions/import-presets", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  showFeedback(result.message);
   await loadQuestions();
 }
 

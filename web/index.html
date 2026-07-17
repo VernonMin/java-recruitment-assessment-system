@@ -64,7 +64,10 @@
           <div class="panel">
             <div class="panel-header">
               <h2>题库管理</h2>
-              <button id="reloadQuestionBankButton" class="ghost-button">刷新题库</button>
+              <div class="topbar-actions">
+                <button id="importPresetQuestionsButton" class="ghost-button">导入示例题目</button>
+                <button id="reloadQuestionBankButton" class="ghost-button">刷新题库</button>
+              </div>
             </div>
             <form id="questionForm" class="stack-form">
               <div class="form-columns">
@@ -115,6 +118,7 @@
               </label>
               <button type="submit" class="primary-button">创建题目</button>
             </form>
+            <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
           </div>
         </section>

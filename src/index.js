@@ -86,6 +86,13 @@ export default {
       return handleCreateQuestion(request, env, sessionUser, corsHeaders);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/questions/import-presets") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleImportPresetQuestions(env, sessionUser, corsHeaders);
+    }
+
     if (request.method === "GET" && url.pathname === "/api/campaigns") {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
@@ -246,62 +253,59 @@ async function handleCreateQuestion(request, env, sessionUser, corsHeaders) {
     return json({ message: "难度必须在 1 到 5 之间" }, 400, {}, corsHeaders);
   }
 
-  const questionId = crypto.randomUUID();
-  const normalizedOptions = normalizeQuestionOptions(body.options);
-  const normalizedAnswer = normalizeQuestionAnswer(type, body.answer);
-  const answerType = inferAnswerType(type);
-
-  if (requiresOptions(type) && normalizedOptions.length === 0) {
-    return json({ message: "当前题型至少需要一个选项" }, 400, {}, corsHeaders);
-  }
-
-  if (answerType !== "manual" && !normalizedAnswer) {
-    return json({ message: "当前题型必须提供标准答案" }, 400, {}, corsHeaders);
-  }
-
-  await insertQuestion(env, {
-    id: questionId,
+  const createdQuestion = await createQuestionRecord(env, sessionUser.sub, {
     type,
     stem,
-    analysis: typeof body.analysis === "string" && body.analysis.trim() ? body.analysis.trim() : null,
-    difficulty,
     score,
-    tags: Array.isArray(body.tags) ? JSON.stringify(body.tags.map((item) => String(item).trim()).filter(Boolean)) : null,
+    difficulty,
     status,
-    createdBy: sessionUser.sub,
-    createdAt: now,
-    updatedAt: now
-  });
-
-  for (const [index, option] of normalizedOptions.entries()) {
-    await insertQuestionOption(env, {
-      id: crypto.randomUUID(),
-      questionId,
-      optionKey: option.optionKey,
-      optionText: option.optionText,
-      sortOrder: index + 1
-    });
-  }
-
-  await insertQuestionAnswer(env, {
-    id: crypto.randomUUID(),
-    questionId,
-    answerType,
-    answerContent: normalizedAnswer,
-    caseSensitive: body.caseSensitive ? 1 : 0,
-    createdAt: now
+    options: body.options,
+    answer: body.answer,
+    analysis: typeof body.analysis === "string" ? body.analysis : "",
+    tags: Array.isArray(body.tags) ? body.tags : [],
+    caseSensitive: Boolean(body.caseSensitive)
   });
 
   return json({
     message: "题目创建成功",
     question: {
-      id: questionId,
-      type,
-      stem,
-      score,
-      difficulty,
-      status
+      id: createdQuestion.id,
+      type: createdQuestion.type,
+      stem: createdQuestion.stem,
+      score: createdQuestion.score,
+      difficulty: createdQuestion.difficulty,
+      status: createdQuestion.status
     }
+  }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleImportPresetQuestions(env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "admin"])) {
+    return json({ message: "无权导入题目" }, 403, {}, corsHeaders);
+  }
+
+  const imported = [];
+  for (const preset of JAVA_RECRUITMENT_PRESET_QUESTIONS) {
+    const createdQuestion = await createQuestionRecord(env, sessionUser.sub, preset);
+    imported.push({
+      id: createdQuestion.id,
+      type: createdQuestion.type,
+      stem: createdQuestion.stem,
+      score: createdQuestion.score,
+      difficulty: createdQuestion.difficulty,
+      status: createdQuestion.status
+    });
+  }
+
+  return json({
+    message: `已导入 ${imported.length} 道 Java 招聘示例题`,
+    importedCount: imported.length,
+    items: imported
   }, 201, {}, corsHeaders);
 }
 
@@ -978,11 +982,240 @@ const QUESTION_TYPES = new Set([
   "scenario_answer"
 ]);
 
+const JAVA_RECRUITMENT_PRESET_QUESTIONS = [
+  {
+    type: "single_choice",
+    stem: "在 Java 中，负责加载并执行字节码的核心运行时组件是什么？",
+    score: 10,
+    difficulty: 1,
+    status: "published",
+    options: [
+      { optionKey: "A", optionText: "JVM" },
+      { optionKey: "B", optionText: "JDBC" },
+      { optionKey: "C", optionText: "JRE 插件管理器" },
+      { optionKey: "D", optionText: "Java Compiler API" }
+    ],
+    answer: "A",
+    analysis: "考察候选人是否区分 JVM、JRE、JDK 等基础概念。",
+    tags: ["Java基础", "JVM", "来源:Oracle Java 文档"],
+    caseSensitive: false
+  },
+  {
+    type: "single_choice",
+    stem: "关于 HashMap，下列哪项说法是正确的？",
+    score: 12,
+    difficulty: 2,
+    status: "published",
+    options: [
+      { optionKey: "A", optionText: "不允许 null key，也不允许 null value" },
+      { optionKey: "B", optionText: "允许一个 null key，并允许 null value" },
+      { optionKey: "C", optionText: "允许多个 null key，但不允许 null value" },
+      { optionKey: "D", optionText: "线程安全，可直接用于高并发写入" }
+    ],
+    answer: "B",
+    analysis: "HashMap 允许 null key 和 null value，但不保证线程安全。",
+    tags: ["集合", "HashMap", "来源:Oracle Java API"],
+    caseSensitive: false
+  },
+  {
+    type: "multiple_choice",
+    stem: "关于 ArrayList 的并发与性能特征，下列哪些说法正确？",
+    score: 15,
+    difficulty: 3,
+    status: "published",
+    options: [
+      { optionKey: "A", optionText: "ArrayList 默认是线程安全的" },
+      { optionKey: "B", optionText: "ArrayList 的 add 操作通常是摊还常数时间" },
+      { optionKey: "C", optionText: "多个线程并发修改时需要额外同步" },
+      { optionKey: "D", optionText: "迭代期间发生结构性修改时可能抛出 ConcurrentModificationException" }
+    ],
+    answer: ["B", "C", "D"],
+    analysis: "这道题覆盖 ArrayList 的基本性能特征和线程安全边界。",
+    tags: ["集合", "并发", "ArrayList", "来源:Oracle Java API"],
+    caseSensitive: false
+  },
+  {
+    type: "single_choice",
+    stem: "ConcurrentHashMap 最准确的定位是什么？",
+    score: 12,
+    difficulty: 3,
+    status: "published",
+    options: [
+      { optionKey: "A", optionText: "只适合单线程读取的 Map" },
+      { optionKey: "B", optionText: "支持线程安全访问，并针对并发检索和更新进行了优化" },
+      { optionKey: "C", optionText: "用于替代所有数据库缓存方案" },
+      { optionKey: "D", optionText: "必须配合 synchronized 才能读取" }
+    ],
+    answer: "B",
+    analysis: "考察候选人是否知道 ConcurrentHashMap 的适用边界。",
+    tags: ["并发", "集合", "ConcurrentHashMap", "来源:Oracle Java API"],
+    caseSensitive: false
+  },
+  {
+    type: "true_false",
+    stem: "在 Java 中，CompletableFuture 同时实现了 Future 和 CompletionStage 接口。",
+    score: 10,
+    difficulty: 2,
+    status: "published",
+    options: [
+      { optionKey: "T", optionText: "正确" },
+      { optionKey: "F", optionText: "错误" }
+    ],
+    answer: "T",
+    analysis: "CompletableFuture 既可表示 Future，也可编排依赖阶段。",
+    tags: ["并发", "异步", "CompletableFuture", "来源:Oracle Java API"],
+    caseSensitive: false
+  },
+  {
+    type: "fill_blank",
+    stem: "在线程池 ThreadPoolExecutor 中，_______ 表示即使线程空闲也要保留的核心线程数量。",
+    score: 10,
+    difficulty: 2,
+    status: "published",
+    answer: "corePoolSize",
+    analysis: "用于区分核心线程数与最大线程数的职责。",
+    tags: ["并发", "线程池", "来源:Oracle Java API"],
+    caseSensitive: true
+  },
+  {
+    type: "single_choice",
+    stem: "当你重写一个 Java 对象的 equals 方法时，按照 Object 的通用约定，通常还应该同时重写哪个方法？",
+    score: 10,
+    difficulty: 2,
+    status: "published",
+    options: [
+      { optionKey: "A", optionText: "finalize" },
+      { optionKey: "B", optionText: "notifyAll" },
+      { optionKey: "C", optionText: "hashCode" },
+      { optionKey: "D", optionText: "clone" }
+    ],
+    answer: "C",
+    analysis: "如果 equals 相等而 hashCode 不一致，会破坏散列表行为。",
+    tags: ["Java基础", "对象模型", "来源:Oracle Java API"],
+    caseSensitive: false
+  },
+  {
+    type: "true_false",
+    stem: "Spring 声明式事务的默认回滚行为通常只会对未检查异常自动回滚。",
+    score: 12,
+    difficulty: 3,
+    status: "published",
+    options: [
+      { optionKey: "T", optionText: "正确" },
+      { optionKey: "F", optionText: "错误" }
+    ],
+    answer: "T",
+    analysis: "默认行为遵循对 unchecked exception 自动回滚的约定。",
+    tags: ["Spring", "事务", "来源:Spring Framework 官方文档"],
+    caseSensitive: false
+  },
+  {
+    type: "short_answer",
+    stem: "请说明在 Java 后端系统中，什么时候更适合使用 ConcurrentHashMap，而不是普通 HashMap 加手工同步？",
+    score: 20,
+    difficulty: 4,
+    status: "published",
+    analysis: "重点考察并发容器选型、读写比例、锁粒度与吞吐量理解。",
+    tags: ["并发", "系统设计", "ConcurrentHashMap"],
+    caseSensitive: false
+  },
+  {
+    type: "scenario_answer",
+    stem: "你在一个 Spring Boot Java 招聘系统中负责提交答卷接口。当前接口在保存提交记录、逐题答案、评估记录时没有事务保护。请分析可能出现的数据一致性问题，并给出你会采用的事务与幂等设计方案。",
+    score: 25,
+    difficulty: 5,
+    status: "published",
+    analysis: "重点考察事务边界、幂等键、重试、副作用隔离、提交态机设计。",
+    tags: ["Spring", "事务", "系统设计", "后端架构"],
+    caseSensitive: false
+  }
+];
+
 /**
  * @param {string} type
  */
 function requiresOptions(type) {
   return type === "single_choice" || type === "multiple_choice" || type === "true_false";
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {string} createdBy
+ * @param {{
+ *   type: string;
+ *   stem: string;
+ *   score: number;
+ *   difficulty: number;
+ *   status: string;
+ *   options?: unknown;
+ *   answer?: unknown;
+ *   analysis?: string;
+ *   tags?: unknown[];
+ *   caseSensitive?: boolean;
+ * }} payload
+ */
+async function createQuestionRecord(env, createdBy, payload) {
+  const type = payload.type.trim();
+  const stem = payload.stem.trim();
+  const score = Number(payload.score ?? 0);
+  const difficulty = Number(payload.difficulty ?? 3);
+  const status = typeof payload.status === "string" ? payload.status : "draft";
+  const now = Date.now();
+
+  const questionId = crypto.randomUUID();
+  const normalizedOptions = normalizeQuestionOptions(payload.options);
+  const normalizedAnswer = normalizeQuestionAnswer(type, payload.answer);
+  const answerType = inferAnswerType(type);
+
+  if (requiresOptions(type) && normalizedOptions.length === 0) {
+    throw new Error("当前题型至少需要一个选项");
+  }
+
+  if (answerType !== "manual" && !normalizedAnswer) {
+    throw new Error("当前题型必须提供标准答案");
+  }
+
+  await insertQuestion(env, {
+    id: questionId,
+    type,
+    stem,
+    analysis: typeof payload.analysis === "string" && payload.analysis.trim() ? payload.analysis.trim() : null,
+    difficulty,
+    score,
+    tags: Array.isArray(payload.tags) ? JSON.stringify(payload.tags.map((item) => String(item).trim()).filter(Boolean)) : null,
+    status,
+    createdBy,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  for (const [index, option] of normalizedOptions.entries()) {
+    await insertQuestionOption(env, {
+      id: crypto.randomUUID(),
+      questionId,
+      optionKey: option.optionKey,
+      optionText: option.optionText,
+      sortOrder: index + 1
+    });
+  }
+
+  await insertQuestionAnswer(env, {
+    id: crypto.randomUUID(),
+    questionId,
+    answerType,
+    answerContent: normalizedAnswer,
+    caseSensitive: payload.caseSensitive ? 1 : 0,
+    createdAt: now
+  });
+
+  return {
+    id: questionId,
+    type,
+    stem,
+    score,
+    difficulty,
+    status
+  };
 }
 
 /**
