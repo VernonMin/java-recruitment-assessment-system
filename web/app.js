@@ -20,7 +20,6 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 });
 
 document.getElementById("loadMeButton").addEventListener("click", loadCurrentUser);
-document.getElementById("saveApiBaseButton").addEventListener("click", saveApiBaseUrl);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
 document.getElementById("loadCampaignsButton").addEventListener("click", loadCampaigns);
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
@@ -29,7 +28,6 @@ document.getElementById("assessmentForm").addEventListener("submit", submitAsses
 document.getElementById("evaluationForm").addEventListener("submit", submitEvaluation);
 
 switchView("login");
-renderApiBaseUrl();
 loadCurrentUser();
 
 function switchView(view) {
@@ -336,20 +334,6 @@ function refreshSessionBadge() {
   badge.textContent = `${state.user.account} · ${roles}`;
 }
 
-function renderApiBaseUrl() {
-  const input = document.getElementById("apiBaseInput");
-  input.value = state.apiBaseUrl;
-}
-
-function saveApiBaseUrl() {
-  const input = document.getElementById("apiBaseInput");
-  const value = normalizeApiBaseUrl(input.value);
-  state.apiBaseUrl = value;
-  localStorage.setItem("oas_api_base_url", value);
-  renderApiBaseUrl();
-  showFeedback(`后端 API 地址已保存：${value || window.location.origin}`);
-}
-
 function showFeedback(message, isError = false) {
   const feedback = document.getElementById("feedback");
   feedback.textContent = message;
@@ -394,8 +378,7 @@ function escapeHtml(value) {
 }
 
 function loadApiBaseUrl() {
-  const stored = localStorage.getItem("oas_api_base_url");
-  return normalizeApiBaseUrl(stored || "");
+  return normalizeApiBaseUrl(window.APP_CONFIG?.apiBaseUrl || "");
 }
 
 function normalizeApiBaseUrl(value) {

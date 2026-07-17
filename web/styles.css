@@ -122,27 +122,6 @@ textarea {
   gap: 12px;
 }
 
-.api-config {
-  min-width: 420px;
-}
-
-.api-config label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.api-config-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.api-config-row input {
-  min-width: 320px;
-}
-
 .topbar h1 {
   margin: 0 0 8px;
   font-size: 34px;
@@ -344,16 +323,12 @@ textarea {
   .panel-header,
   .topbar,
   .inline-form,
-  .topbar-actions,
-  .api-config-row {
+  .topbar-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .inline-form input,
-  .api-config,
-  .api-config-row input {
+  .inline-form input {
     width: 100%;
-    min-width: 0;
   }
 }

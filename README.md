@@ -26,3 +26,8 @@
 - `migrations/`：D1 初始化 SQL
 - `web/`：静态前端页面骨架
 - `docs/`：中文文档
+
+## 前端配置
+
+- `web/config.js`：前端运行时配置
+- 当前默认后端地址已配置为正式 Worker 地址
