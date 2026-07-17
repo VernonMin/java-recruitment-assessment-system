@@ -13,7 +13,7 @@
     {
       "binding": "DB",
       "database_name": "online-assessment-system",
-      "database_id": "replace-with-your-d1-database-id"
+      "database_id": "e4a154b3-a417-486d-b7d2-3227e7434ca7"
     }
   ],
   "r2_buckets": [
