@@ -44,11 +44,97 @@ export function findOpenCampaignsByUser(env, userId) {
 
 export function findQuestions(env) {
   return env.DB.prepare(
-    `select id, type, stem, difficulty, score, status
+    `select id, type, stem, difficulty, score, status, created_by, created_at
     from questions
     order by created_at desc
     limit 50`
   ).all();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   id: string;
+ *   type: string;
+ *   stem: string;
+ *   analysis: string | null;
+ *   difficulty: number;
+ *   score: number;
+ *   tags: string | null;
+ *   status: string;
+ *   createdBy: string;
+ *   createdAt: number;
+ *   updatedAt: number;
+ * }} question
+ */
+export function insertQuestion(env, question) {
+  return env.DB.prepare(
+    `insert into questions (
+      id, type, stem, analysis, difficulty, score, tags, status, created_by, created_at, updated_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    question.id,
+    question.type,
+    question.stem,
+    question.analysis,
+    question.difficulty,
+    question.score,
+    question.tags,
+    question.status,
+    question.createdBy,
+    question.createdAt,
+    question.updatedAt
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   id: string;
+ *   questionId: string;
+ *   optionKey: string;
+ *   optionText: string;
+ *   sortOrder: number;
+ * }} option
+ */
+export function insertQuestionOption(env, option) {
+  return env.DB.prepare(
+    `insert into question_options (
+      id, question_id, option_key, option_text, sort_order
+    ) values (?, ?, ?, ?, ?)`
+  ).bind(
+    option.id,
+    option.questionId,
+    option.optionKey,
+    option.optionText,
+    option.sortOrder
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   id: string;
+ *   questionId: string;
+ *   answerType: string;
+ *   answerContent: string;
+ *   caseSensitive: number;
+ *   createdAt: number;
+ * }} answer
+ */
+export function insertQuestionAnswer(env, answer) {
+  return env.DB.prepare(
+    `insert into question_answers (
+      id, question_id, answer_type, answer_content, case_sensitive, created_at
+    ) values (?, ?, ?, ?, ?, ?)`
+  ).bind(
+    answer.id,
+    answer.questionId,
+    answer.answerType,
+    answer.answerContent,
+    answer.caseSensitive,
+    answer.createdAt
+  ).run();
 }
 
 /**

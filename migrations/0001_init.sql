@@ -247,7 +247,7 @@ insert into users (
 ) values (
   'user_admin',
   'admin',
-  'pbkdf2$100000$a9f8be99b29916296baea6aeb43829ae$1a58f36e7914e8cd5a999f69fa3405031218689041bf6d91b88ce3b3400cd526',
+  'pbkdf2$100000$a9f8be99b29916296baea6aeb43829ae$46d26f091a460748bf1650f50b5c949a1d47235120e167a98e8b15b6d5d27f8c',
   '系统管理员',
   'admin@example.com',
   null,

@@ -9,6 +9,9 @@ import {
   findSubmissionAnswersBySubmissionId,
   findSubmissionById,
   findUserByAccount,
+  insertQuestion,
+  insertQuestionAnswer,
+  insertQuestionOption,
   insertEvaluationRecord,
   insertProctoringEvent,
   insertSnapshotFile,
@@ -74,6 +77,13 @@ export default {
       }
       const result = await findQuestions(env);
       return json({ items: result.results ?? [] }, 200, {}, corsHeaders);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/questions") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleCreateQuestion(request, env, sessionUser, corsHeaders);
     }
 
     if (request.method === "GET" && url.pathname === "/api/campaigns") {
@@ -195,6 +205,104 @@ async function handleLogin(request, env, corsHeaders) {
     },
     corsHeaders
   );
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleCreateQuestion(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "admin"])) {
+    return json({ message: "无权创建题目" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.type !== "string" || typeof body.stem !== "string") {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const type = body.type.trim();
+  const stem = body.stem.trim();
+  const score = Number(body.score ?? 0);
+  const difficulty = Number(body.difficulty ?? 3);
+  const status = typeof body.status === "string" ? body.status : "draft";
+  const now = Date.now();
+
+  if (!stem) {
+    return json({ message: "题干不能为空" }, 400, {}, corsHeaders);
+  }
+
+  if (!QUESTION_TYPES.has(type)) {
+    return json({ message: "题型不支持" }, 400, {}, corsHeaders);
+  }
+
+  if (!Number.isFinite(score) || score < 0) {
+    return json({ message: "分值不合法" }, 400, {}, corsHeaders);
+  }
+
+  if (!Number.isFinite(difficulty) || difficulty < 1 || difficulty > 5) {
+    return json({ message: "难度必须在 1 到 5 之间" }, 400, {}, corsHeaders);
+  }
+
+  const questionId = crypto.randomUUID();
+  const normalizedOptions = normalizeQuestionOptions(body.options);
+  const normalizedAnswer = normalizeQuestionAnswer(type, body.answer);
+  const answerType = inferAnswerType(type);
+
+  if (requiresOptions(type) && normalizedOptions.length === 0) {
+    return json({ message: "当前题型至少需要一个选项" }, 400, {}, corsHeaders);
+  }
+
+  if (answerType !== "manual" && !normalizedAnswer) {
+    return json({ message: "当前题型必须提供标准答案" }, 400, {}, corsHeaders);
+  }
+
+  await insertQuestion(env, {
+    id: questionId,
+    type,
+    stem,
+    analysis: typeof body.analysis === "string" && body.analysis.trim() ? body.analysis.trim() : null,
+    difficulty,
+    score,
+    tags: Array.isArray(body.tags) ? JSON.stringify(body.tags.map((item) => String(item).trim()).filter(Boolean)) : null,
+    status,
+    createdBy: sessionUser.sub,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  for (const [index, option] of normalizedOptions.entries()) {
+    await insertQuestionOption(env, {
+      id: crypto.randomUUID(),
+      questionId,
+      optionKey: option.optionKey,
+      optionText: option.optionText,
+      sortOrder: index + 1
+    });
+  }
+
+  await insertQuestionAnswer(env, {
+    id: crypto.randomUUID(),
+    questionId,
+    answerType,
+    answerContent: normalizedAnswer,
+    caseSensitive: body.caseSensitive ? 1 : 0,
+    createdAt: now
+  });
+
+  return json({
+    message: "题目创建成功",
+    question: {
+      id: questionId,
+      type,
+      stem,
+      score,
+      difficulty,
+      status
+    }
+  }, 201, {}, corsHeaders);
 }
 
 /**
@@ -859,6 +967,79 @@ function inferRiskScore(eventType) {
     default:
       return 5;
   }
+}
+
+const QUESTION_TYPES = new Set([
+  "single_choice",
+  "multiple_choice",
+  "true_false",
+  "fill_blank",
+  "short_answer",
+  "scenario_answer"
+]);
+
+/**
+ * @param {string} type
+ */
+function requiresOptions(type) {
+  return type === "single_choice" || type === "multiple_choice" || type === "true_false";
+}
+
+/**
+ * @param {string} type
+ */
+function inferAnswerType(type) {
+  if (type === "multiple_choice") {
+    return "set_match";
+  }
+  if (type === "short_answer" || type === "scenario_answer") {
+    return "manual";
+  }
+  return "exact";
+}
+
+/**
+ * @param {unknown} options
+ */
+function normalizeQuestionOptions(options) {
+  if (!Array.isArray(options)) {
+    return [];
+  }
+
+  return options
+    .map((item) => ({
+      optionKey: typeof item?.optionKey === "string" ? item.optionKey.trim() : "",
+      optionText: typeof item?.optionText === "string" ? item.optionText.trim() : ""
+    }))
+    .filter((item) => item.optionKey && item.optionText);
+}
+
+/**
+ * @param {string} type
+ * @param {unknown} answer
+ */
+function normalizeQuestionAnswer(type, answer) {
+  if (type === "multiple_choice") {
+    if (Array.isArray(answer)) {
+      return JSON.stringify(answer.map((item) => String(item).trim()).filter(Boolean));
+    }
+    if (typeof answer === "string") {
+      return JSON.stringify(
+        answer.split(",").map((item) => item.trim()).filter(Boolean)
+      );
+    }
+    return "";
+  }
+
+  if (type === "short_answer" || type === "scenario_answer") {
+    return "";
+  }
+
+  if (typeof answer === "string") {
+    return answer.trim();
+  }
+
+  return "";
 }
 
 /**

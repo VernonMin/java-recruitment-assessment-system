@@ -18,6 +18,7 @@
         </div>
         <nav class="menu">
           <button data-view="login" class="menu-item active">登录</button>
+          <button data-view="questionBank" class="menu-item">题库管理</button>
           <button data-view="candidate" class="menu-item">候选人首页</button>
           <button data-view="assessment" class="menu-item">答题页</button>
           <button data-view="submission" class="menu-item">提交详情</button>
@@ -56,6 +57,65 @@
               <button type="submit" class="primary-button">登录</button>
             </form>
             <p class="hint">默认种子账号：`admin / Admin123456!`</p>
+          </div>
+        </section>
+
+        <section id="questionBankView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>题库管理</h2>
+              <button id="reloadQuestionBankButton" class="ghost-button">刷新题库</button>
+            </div>
+            <form id="questionForm" class="stack-form">
+              <div class="form-columns">
+                <label>
+                  <span>题型</span>
+                  <select name="type">
+                    <option value="single_choice">单选题</option>
+                    <option value="multiple_choice">多选题</option>
+                    <option value="true_false">判断题</option>
+                    <option value="fill_blank">填空题</option>
+                    <option value="short_answer">简答题</option>
+                    <option value="scenario_answer">场景分析题</option>
+                  </select>
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="draft">草稿</option>
+                    <option value="published">已发布</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>题干</span>
+                <textarea name="stem" placeholder="输入题干"></textarea>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>分值</span>
+                  <input name="score" type="number" value="10" min="0" />
+                </label>
+                <label>
+                  <span>难度</span>
+                  <input name="difficulty" type="number" value="3" min="1" max="5" />
+                </label>
+              </div>
+              <label>
+                <span>选项</span>
+                <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
+              </label>
+              <label>
+                <span>标准答案</span>
+                <input name="answer" placeholder="例如：B 或 A,B" />
+              </label>
+              <label>
+                <span>解析</span>
+                <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
+              </label>
+              <button type="submit" class="primary-button">创建题目</button>
+            </form>
+            <div id="questionBankList" class="question-list question-list-compact"></div>
           </div>
         </section>
 

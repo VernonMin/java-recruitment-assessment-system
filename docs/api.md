@@ -63,6 +63,47 @@
 - 获取题库列表
 - 当前返回最近 50 条题目
 
+### `POST /api/questions`
+
+用途：
+
+- 面试官或管理员创建题目
+- 同时写入题目定义、选项和标准答案
+
+请求体示例：
+
+```json
+{
+  "type": "single_choice",
+  "stem": "Java 中负责跨平台执行字节码的核心组件是什么？",
+  "score": 10,
+  "difficulty": 2,
+  "status": "published",
+  "options": [
+    { "optionKey": "A", "optionText": "JVM" },
+    { "optionKey": "B", "optionText": "JDBC" }
+  ],
+  "answer": "A",
+  "analysis": "考察候选人对 Java 运行时概念的掌握。"
+}
+```
+
+成功响应示例：
+
+```json
+{
+  "message": "题目创建成功",
+  "question": {
+    "id": "question-id",
+    "type": "single_choice",
+    "stem": "Java 中负责跨平台执行字节码的核心组件是什么？",
+    "score": 10,
+    "difficulty": 2,
+    "status": "published"
+  }
+}
+```
+
 ### `GET /api/campaigns`
 
 用途：
@@ -293,6 +334,7 @@
 - 暂未实现提交事务回滚保护
 - 暂未实现基于累计事件的最终风险等级回写
 - 暂未实现抓拍文件访问签名 URL
+- 暂未实现题目编辑与删除接口
 
 ## 文档维护规则
 

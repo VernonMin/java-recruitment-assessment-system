@@ -1,5 +1,6 @@
 const state = {
   user: null,
+  questions: [],
   campaigns: [],
   currentCampaign: null,
   currentQuestions: [],
@@ -9,6 +10,7 @@ const state = {
 
 const viewMeta = {
   login: ["登录", "先使用管理员或候选人账号登录系统。"],
+  questionBank: ["题库管理", "创建题目并查看当前题库中的最新内容。"],
   candidate: ["候选人首页", "查看当前候选人可参加的招聘测评场次。"],
   assessment: ["答题页", "加载题目、填写答案并直接提交。"],
   submission: ["提交详情", "查看某次提交的逐题作答与评分结果。"],
@@ -21,6 +23,8 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 
 document.getElementById("loadMeButton").addEventListener("click", loadCurrentUser);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
+document.getElementById("questionForm").addEventListener("submit", submitQuestion);
+document.getElementById("reloadQuestionBankButton").addEventListener("click", loadQuestions);
 document.getElementById("loadCampaignsButton").addEventListener("click", loadCampaigns);
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
 document.getElementById("loadSubmissionButton").addEventListener("click", loadSubmissionDetail);
@@ -62,7 +66,8 @@ async function onLogin(event) {
   state.user = result.data.user;
   refreshSessionBadge();
   showFeedback("登录成功，已写入会话 Cookie。");
-  switchView("candidate");
+  switchView("questionBank");
+  await loadQuestions();
   await loadCampaigns();
 }
 
@@ -108,6 +113,63 @@ async function loadCampaigns() {
       await loadCampaignQuestions();
     });
   });
+}
+
+async function loadQuestions() {
+  const result = await api("/api/questions");
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  state.questions = result.data.items;
+  const container = document.getElementById("questionBankList");
+  if (state.questions.length === 0) {
+    container.innerHTML = `<div class="question-card"><p>当前还没有题目。</p></div>`;
+    return;
+  }
+
+  container.innerHTML = state.questions.map((item) => `
+    <article class="question-card">
+      <h3>${escapeHtml(item.stem)}</h3>
+      <p>题型：${escapeHtml(item.type)}</p>
+      <p>分值：${escapeHtml(String(item.score))} 分</p>
+      <p>难度：${escapeHtml(String(item.difficulty))}</p>
+      <p>状态：${escapeHtml(item.status)}</p>
+    </article>
+  `).join("");
+}
+
+async function submitQuestion(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const type = String(formData.get("type") || "").trim();
+  const payload = {
+    type,
+    stem: String(formData.get("stem") || "").trim(),
+    score: Number(formData.get("score") || 0),
+    difficulty: Number(formData.get("difficulty") || 3),
+    status: String(formData.get("status") || "draft"),
+    options: parseOptionLines(String(formData.get("options") || "")),
+    answer: type === "multiple_choice"
+      ? String(formData.get("answer") || "").split(",").map((item) => item.trim()).filter(Boolean)
+      : String(formData.get("answer") || "").trim(),
+    analysis: String(formData.get("analysis") || "").trim()
+  };
+
+  const result = await api("/api/questions", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  event.currentTarget.reset();
+  event.currentTarget.elements.score.value = "10";
+  event.currentTarget.elements.difficulty.value = "3";
+  showFeedback("题目创建成功。");
+  await loadQuestions();
 }
 
 async function loadCampaignQuestions() {
@@ -357,6 +419,21 @@ function renderAnswerInput(question) {
       <input data-answer-id="${id}" placeholder="例如：B" />
     </label>
   `;
+}
+
+function parseOptionLines(value) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [optionKey, ...rest] = line.split("|");
+      return {
+        optionKey: (optionKey || "").trim(),
+        optionText: rest.join("|").trim()
+      };
+    })
+    .filter((item) => item.optionKey && item.optionText);
 }
 
 function renderMetaItems(items) {
