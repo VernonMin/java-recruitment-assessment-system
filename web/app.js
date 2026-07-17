@@ -3,7 +3,8 @@ const state = {
   campaigns: [],
   currentCampaign: null,
   currentQuestions: [],
-  currentSubmission: null
+  currentSubmission: null,
+  apiBaseUrl: loadApiBaseUrl()
 };
 
 const viewMeta = {
@@ -19,6 +20,7 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 });
 
 document.getElementById("loadMeButton").addEventListener("click", loadCurrentUser);
+document.getElementById("saveApiBaseButton").addEventListener("click", saveApiBaseUrl);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
 document.getElementById("loadCampaignsButton").addEventListener("click", loadCampaigns);
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
@@ -27,6 +29,7 @@ document.getElementById("assessmentForm").addEventListener("submit", submitAsses
 document.getElementById("evaluationForm").addEventListener("submit", submitEvaluation);
 
 switchView("login");
+renderApiBaseUrl();
 loadCurrentUser();
 
 function switchView(view) {
@@ -301,7 +304,8 @@ async function submitEvaluation(event) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
+  const url = toApiUrl(path);
+  const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json"
     },
@@ -330,6 +334,20 @@ function refreshSessionBadge() {
 
   const roles = Array.isArray(state.user.roles) ? state.user.roles.join(", ") : "-";
   badge.textContent = `${state.user.account} · ${roles}`;
+}
+
+function renderApiBaseUrl() {
+  const input = document.getElementById("apiBaseInput");
+  input.value = state.apiBaseUrl;
+}
+
+function saveApiBaseUrl() {
+  const input = document.getElementById("apiBaseInput");
+  const value = normalizeApiBaseUrl(input.value);
+  state.apiBaseUrl = value;
+  localStorage.setItem("oas_api_base_url", value);
+  renderApiBaseUrl();
+  showFeedback(`后端 API 地址已保存：${value || window.location.origin}`);
 }
 
 function showFeedback(message, isError = false) {
@@ -373,4 +391,18 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll("\"", "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function loadApiBaseUrl() {
+  const stored = localStorage.getItem("oas_api_base_url");
+  return normalizeApiBaseUrl(stored || "");
+}
+
+function normalizeApiBaseUrl(value) {
+  return String(value || "").trim().replace(/\/+$/g, "");
+}
+
+function toApiUrl(path) {
+  const base = state.apiBaseUrl || window.location.origin;
+  return `${base}${path}`;
 }
