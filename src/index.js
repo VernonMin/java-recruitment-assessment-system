@@ -32,95 +32,103 @@ export default {
    */
   async fetch(request, env) {
     const url = new URL(request.url);
+    const corsHeaders = buildCorsHeaders(request);
     const sessionUser = await getSessionUser(request, env);
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      });
+    }
 
     if (request.method === "GET" && url.pathname === "/") {
       return json({
         name: env.APP_NAME,
         status: "ok",
         message: "Java 招聘测评系统后端已启动"
-      });
+      }, 200, {}, corsHeaders);
     }
 
     if (request.method === "GET" && url.pathname === "/health") {
       return json({
         status: "ok",
         now: new Date().toISOString()
-      });
+      }, 200, {}, corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth/login") {
-      return handleLogin(request, env);
+      return handleLogin(request, env, corsHeaders);
     }
 
     if (request.method === "GET" && url.pathname === "/api/auth/me") {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return json({ user: sessionUser });
+      return json({ user: sessionUser }, 200, {}, corsHeaders);
     }
 
     if (request.method === "GET" && url.pathname === "/api/questions") {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
       const result = await findQuestions(env);
-      return json({ items: result.results ?? [] });
+      return json({ items: result.results ?? [] }, 200, {}, corsHeaders);
     }
 
     if (request.method === "GET" && url.pathname === "/api/campaigns") {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
       const result = await findOpenCampaignsByUser(env, sessionUser.sub);
-      return json({ items: result.results ?? [] });
+      return json({ items: result.results ?? [] }, 200, {}, corsHeaders);
     }
 
     const campaignQuestionsMatch = url.pathname.match(/^\/api\/campaigns\/([^/]+)\/questions$/);
     if (request.method === "GET" && campaignQuestionsMatch) {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleGetCampaignQuestions(env, sessionUser, campaignQuestionsMatch[1]);
+      return handleGetCampaignQuestions(env, sessionUser, campaignQuestionsMatch[1], corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/submissions") {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleSubmission(request, env, sessionUser);
+      return handleSubmission(request, env, sessionUser, corsHeaders);
     }
 
     const submissionMatch = url.pathname.match(/^\/api\/submissions\/([^/]+)$/);
     if (request.method === "GET" && submissionMatch) {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleGetSubmission(env, sessionUser, submissionMatch[1]);
+      return handleGetSubmission(env, sessionUser, submissionMatch[1], corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/evaluations") {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleEvaluation(request, env, sessionUser);
+      return handleEvaluation(request, env, sessionUser, corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/proctoring/events") {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleProctoringEvent(request, env, sessionUser);
+      return handleProctoringEvent(request, env, sessionUser, corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/proctoring/snapshots") {
       if (!sessionUser) {
-        return json({ message: "未登录" }, 401);
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleProctoringSnapshot(request, env, sessionUser);
+      return handleProctoringSnapshot(request, env, sessionUser, corsHeaders);
     }
 
-    return json({ message: "接口不存在" }, 404);
+    return json({ message: "接口不存在" }, 404, {}, corsHeaders);
   }
 };
 
@@ -128,24 +136,24 @@ export default {
  * @param {Request} request
  * @param {AppBindings} env
  */
-async function handleLogin(request, env) {
+async function handleLogin(request, env, corsHeaders) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.account !== "string" || typeof body.password !== "string") {
-    return json({ message: "请求参数不合法" }, 400);
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
   }
 
   const user = await findUserByAccount(env, body.account.trim());
   if (!user || typeof user.password_hash !== "string") {
-    return json({ message: "账号或密码错误" }, 401);
+    return json({ message: "账号或密码错误" }, 401, {}, corsHeaders);
   }
 
   if (user.status !== "active") {
-    return json({ message: "账号不可用" }, 403);
+    return json({ message: "账号不可用" }, 403, {}, corsHeaders);
   }
 
   const valid = await verifyPassword(body.password, user.password_hash);
   if (!valid) {
-    return json({ message: "账号或密码错误" }, 401);
+    return json({ message: "账号或密码错误" }, 401, {}, corsHeaders);
   }
 
   const roles = typeof user.role_codes === "string" && user.role_codes.length > 0
@@ -180,11 +188,12 @@ async function handleLogin(request, env) {
       "Set-Cookie": serializeCookie("oas_session", token, {
         httpOnly: true,
         secure: true,
-        sameSite: "Lax",
+        sameSite: "None",
         path: "/",
         maxAge: 60 * 60 * 8
       })
-    }
+    },
+    corsHeaders
   );
 }
 
@@ -193,40 +202,40 @@ async function handleLogin(request, env) {
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
  */
-async function handleSubmission(request, env, sessionUser) {
+async function handleSubmission(request, env, sessionUser, corsHeaders) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.campaignId !== "string" || !Array.isArray(body.answers)) {
-    return json({ message: "请求参数不合法" }, 400);
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
   }
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到可提交的招聘场次" }, 404);
+    return json({ message: "未找到可提交的招聘场次" }, 404, {}, corsHeaders);
   }
 
   if (campaign.status !== "published" && campaign.status !== "in_progress") {
-    return json({ message: "当前招聘场次不可提交" }, 400);
+    return json({ message: "当前招聘场次不可提交" }, 400, {}, corsHeaders);
   }
 
   const now = Date.now();
   if (typeof campaign.start_time === "number" && now < campaign.start_time) {
-    return json({ message: "测评尚未开始" }, 400);
+    return json({ message: "测评尚未开始" }, 400, {}, corsHeaders);
   }
   if (typeof campaign.end_time === "number" && now > campaign.end_time) {
-    return json({ message: "测评已结束" }, 400);
+    return json({ message: "测评已结束" }, 400, {}, corsHeaders);
   }
 
   const submissionCount = await countUserSubmissions(env, body.campaignId, sessionUser.sub);
   const submittedTotal = Number(submissionCount?.total ?? 0);
   const attemptLimit = Number(campaign.attempt_limit ?? 1);
   if (submittedTotal >= attemptLimit) {
-    return json({ message: "已超过允许提交次数" }, 400);
+    return json({ message: "已超过允许提交次数" }, 400, {}, corsHeaders);
   }
 
   const questionSet = await findAssessmentQuestionSet(env, campaign.assessment_id);
   const questions = questionSet.results ?? [];
   if (questions.length === 0) {
-    return json({ message: "该测评模板没有题目" }, 400);
+    return json({ message: "该测评模板没有题目" }, 400, {}, corsHeaders);
   }
 
   const answerMap = normalizeAnswers(body.answers);
@@ -319,7 +328,7 @@ async function handleSubmission(request, env, sessionUser) {
       totalScore,
       pendingManualCount
     }
-  });
+  }, 200, {}, corsHeaders);
 }
 
 /**
@@ -327,21 +336,21 @@ async function handleSubmission(request, env, sessionUser) {
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
  */
-async function handleProctoringEvent(request, env, sessionUser) {
+async function handleProctoringEvent(request, env, sessionUser, corsHeaders) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.campaignId !== "string" || typeof body.eventType !== "string") {
-    return json({ message: "请求参数不合法" }, 400);
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
   }
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到对应招聘场次" }, 404);
+    return json({ message: "未找到对应招聘场次" }, 404, {}, corsHeaders);
   }
 
   if (typeof body.submissionId === "string") {
     const submission = await findSubmissionById(env, body.submissionId);
     if (!submission || submission.user_id !== sessionUser.sub || submission.campaign_id !== body.campaignId) {
-      return json({ message: "提交记录与当前用户或场次不匹配" }, 400);
+      return json({ message: "提交记录与当前用户或场次不匹配" }, 400, {}, corsHeaders);
     }
   }
 
@@ -366,7 +375,7 @@ async function handleProctoringEvent(request, env, sessionUser) {
       riskScore,
       createdAt: now
     }
-  });
+  }, 200, {}, corsHeaders);
 }
 
 /**
@@ -374,23 +383,23 @@ async function handleProctoringEvent(request, env, sessionUser) {
  * @param {SessionUser} sessionUser
  * @param {string} submissionId
  */
-async function handleGetSubmission(env, sessionUser, submissionId) {
+async function handleGetSubmission(env, sessionUser, submissionId, corsHeaders) {
   const submission = await findSubmissionById(env, submissionId);
   if (!submission) {
-    return json({ message: "提交记录不存在" }, 404);
+    return json({ message: "提交记录不存在" }, 404, {}, corsHeaders);
   }
 
   const isOwner = submission.user_id === sessionUser.sub;
   const canReview = hasRole(sessionUser, ["interviewer", "recruiter", "admin"]);
   if (!isOwner && !canReview) {
-    return json({ message: "无权查看该提交记录" }, 403);
+    return json({ message: "无权查看该提交记录" }, 403, {}, corsHeaders);
   }
 
   const answers = await findSubmissionAnswersBySubmissionId(env, submissionId);
   return json({
     submission,
     answers: answers.results ?? []
-  });
+  }, 200, {}, corsHeaders);
 }
 
 /**
@@ -398,10 +407,10 @@ async function handleGetSubmission(env, sessionUser, submissionId) {
  * @param {SessionUser} sessionUser
  * @param {string} campaignId
  */
-async function handleGetCampaignQuestions(env, sessionUser, campaignId) {
+async function handleGetCampaignQuestions(env, sessionUser, campaignId, corsHeaders) {
   const campaign = await findCampaignAssignment(env, campaignId, sessionUser.sub);
   if (!campaign && !hasRole(sessionUser, ["interviewer", "recruiter", "admin"])) {
-    return json({ message: "未找到对应招聘场次" }, 404);
+    return json({ message: "未找到对应招聘场次" }, 404, {}, corsHeaders);
   }
 
   const result = await findCampaignQuestionsForCandidate(
@@ -411,7 +420,7 @@ async function handleGetCampaignQuestions(env, sessionUser, campaignId) {
   );
   const items = result.results ?? [];
   if (items.length === 0) {
-    return json({ message: "未找到题目列表" }, 404);
+    return json({ message: "未找到题目列表" }, 404, {}, corsHeaders);
   }
 
   return json({
@@ -432,7 +441,7 @@ async function handleGetCampaignQuestions(env, sessionUser, campaignId) {
       type: item.type,
       stem: item.stem
     }))
-  });
+  }, 200, {}, corsHeaders);
 }
 
 /**
@@ -440,19 +449,19 @@ async function handleGetCampaignQuestions(env, sessionUser, campaignId) {
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
  */
-async function handleEvaluation(request, env, sessionUser) {
+async function handleEvaluation(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["interviewer", "recruiter", "admin"])) {
-    return json({ message: "无权执行人工评估" }, 403);
+    return json({ message: "无权执行人工评估" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body.submissionId !== "string" || !Array.isArray(body.answers)) {
-    return json({ message: "请求参数不合法" }, 400);
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
   }
 
   const submission = await findSubmissionById(env, body.submissionId);
   if (!submission) {
-    return json({ message: "提交记录不存在" }, 404);
+    return json({ message: "提交记录不存在" }, 404, {}, corsHeaders);
   }
 
   const answersResult = await findSubmissionAnswersBySubmissionId(env, body.submissionId);
@@ -461,17 +470,17 @@ async function handleEvaluation(request, env, sessionUser) {
 
   for (const item of body.answers) {
     if (!item || typeof item !== "object" || typeof item.submissionAnswerId !== "string") {
-      return json({ message: "评估项格式不合法" }, 400);
+      return json({ message: "评估项格式不合法" }, 400, {}, corsHeaders);
     }
 
     const current = answerMap.get(item.submissionAnswerId);
     if (!current) {
-      return json({ message: `未找到作答记录: ${item.submissionAnswerId}` }, 404);
+      return json({ message: `未找到作答记录: ${item.submissionAnswerId}` }, 404, {}, corsHeaders);
     }
 
     const subjectiveScore = Number(item.subjectiveScore);
     if (!Number.isFinite(subjectiveScore) || subjectiveScore < 0) {
-      return json({ message: "主观题分数不合法" }, 400);
+      return json({ message: "主观题分数不合法" }, 400, {}, corsHeaders);
     }
 
     await updateSubmissionAnswerEvaluation(env, {
@@ -521,7 +530,7 @@ async function handleEvaluation(request, env, sessionUser) {
       totalScore,
       recommendation
     }
-  });
+  }, 200, {}, corsHeaders);
 }
 
 /**
@@ -529,7 +538,7 @@ async function handleEvaluation(request, env, sessionUser) {
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
  */
-async function handleProctoringSnapshot(request, env, sessionUser) {
+async function handleProctoringSnapshot(request, env, sessionUser, corsHeaders) {
   const body = await request.json().catch(() => null);
   if (
     !body ||
@@ -537,23 +546,23 @@ async function handleProctoringSnapshot(request, env, sessionUser) {
     typeof body.submissionId !== "string" ||
     typeof body.imageBase64 !== "string"
   ) {
-    return json({ message: "请求参数不合法" }, 400);
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
   }
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到对应招聘场次" }, 404);
+    return json({ message: "未找到对应招聘场次" }, 404, {}, corsHeaders);
   }
 
   const submission = await findSubmissionById(env, body.submissionId);
   if (!submission || submission.user_id !== sessionUser.sub || submission.campaign_id !== body.campaignId) {
-    return json({ message: "提交记录与当前用户或场次不匹配" }, 400);
+    return json({ message: "提交记录与当前用户或场次不匹配" }, 400, {}, corsHeaders);
   }
 
   const contentType = typeof body.contentType === "string" ? body.contentType : "image/jpeg";
   const bytes = decodeBase64Payload(body.imageBase64);
   if (!bytes || bytes.byteLength === 0) {
-    return json({ message: "抓拍图片内容不合法" }, 400);
+    return json({ message: "抓拍图片内容不合法" }, 400, {}, corsHeaders);
   }
 
   const snapshotId = crypto.randomUUID();
@@ -562,7 +571,7 @@ async function handleProctoringSnapshot(request, env, sessionUser) {
   const key = `snapshots/${sessionUser.sub}/${body.submissionId}/${capturedAt}-${snapshotId}.${extension}`;
 
   if (!env.PROCTORING_BUCKET) {
-    return json({ message: "未配置抓拍存储桶" }, 500);
+    return json({ message: "未配置抓拍存储桶" }, 500, {}, corsHeaders);
   }
 
   await env.PROCTORING_BUCKET.put(key, bytes, {
@@ -602,7 +611,7 @@ async function handleProctoringSnapshot(request, env, sessionUser) {
       fileSize: bytes.byteLength,
       capturedAt
     }
-  });
+  }, 200, {}, corsHeaders);
 }
 
 /**
@@ -630,11 +639,12 @@ async function getSessionUser(request, env) {
  * @param {number} [status]
  * @param {Record<string, string>} [extraHeaders]
  */
-function json(data, status = 200, extraHeaders = {}) {
+function json(data, status = 200, extraHeaders = {}, corsHeaders = {}) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
+      ...corsHeaders,
       ...extraHeaders
     }
   });
@@ -888,4 +898,20 @@ function decodeBase64Payload(value) {
   } catch {
     return null;
   }
+}
+
+/**
+ * @param {Request} request
+ */
+function buildCorsHeaders(request) {
+  const origin = request.headers.get("Origin");
+  const requestHeaders = request.headers.get("Access-Control-Request-Headers");
+
+  return {
+    "Access-Control-Allow-Origin": origin ?? "*",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": requestHeaders ?? "Content-Type",
+    "Vary": "Origin"
+  };
 }
