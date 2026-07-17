@@ -41,6 +41,7 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 });
 
 document.getElementById("loadMeButton").addEventListener("click", loadCurrentUser);
+document.getElementById("logoutButton").addEventListener("click", logout);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
 document.getElementById("questionForm").addEventListener("submit", submitQuestion);
 document.getElementById("reloadQuestionBankButton").addEventListener("click", () => loadQuestions());
@@ -145,6 +146,37 @@ async function loadCurrentUser() {
   if (state.activeView === "login" || !canAccessView(state.activeView)) {
     switchView(getLandingView(), { force: true });
   }
+}
+
+async function logout() {
+  const result = await api("/api/auth/logout", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+
+  state.user = null;
+  state.questions = [];
+  state.campaigns = [];
+  state.currentCampaign = null;
+  state.currentQuestions = [];
+  state.currentSubmission = null;
+  refreshSessionBadge();
+  applyNavigation();
+  renderQuestionBankList();
+  renderCandidateWorkspace();
+  renderEnterpriseWorkspace();
+  document.getElementById("submissionMeta").innerHTML = "";
+  document.getElementById("submissionAnswers").innerHTML = "";
+  document.getElementById("evaluationForm").innerHTML = "";
+  document.getElementById("assessmentMeta").innerHTML = "";
+  document.getElementById("assessmentForm").innerHTML = "";
+  switchView("login", { force: true });
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  showFeedback("已退出登录。");
 }
 
 async function warmupWorkspaceData() {

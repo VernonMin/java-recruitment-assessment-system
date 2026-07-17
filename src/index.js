@@ -64,6 +64,10 @@ export default {
       return handleLogin(request, env, corsHeaders);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/auth/logout") {
+      return handleLogout(corsHeaders);
+    }
+
     if (request.method === "GET" && url.pathname === "/api/auth/me") {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
@@ -208,6 +212,26 @@ async function handleLogin(request, env, corsHeaders) {
         sameSite: "None",
         path: "/",
         maxAge: 60 * 60 * 8
+      })
+    },
+    corsHeaders
+  );
+}
+
+/**
+ * @param {Record<string, string>} corsHeaders
+ */
+function handleLogout(corsHeaders) {
+  return json(
+    { message: "已退出登录" },
+    200,
+    {
+      "Set-Cookie": serializeCookie("oas_session", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "None",
+        path: "/",
+        maxAge: 0
       })
     },
     corsHeaders

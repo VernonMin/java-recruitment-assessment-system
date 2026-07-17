@@ -56,6 +56,21 @@
 
 - 获取当前登录用户信息
 
+### `POST /api/auth/logout`
+
+用途：
+
+- 清除当前登录会话 Cookie
+- 让前端回到未登录状态
+
+成功响应示例：
+
+```json
+{
+  "message": "已退出登录"
+}
+```
+
 ### `GET /api/questions`
 
 用途：
