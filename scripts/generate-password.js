@@ -7,9 +7,8 @@ if (!password) {
   process.exit(1);
 }
 
-const iterations = 120000;
+const iterations = 100000;
 const salt = crypto.randomBytes(16).toString("hex");
 const hash = crypto.pbkdf2Sync(password, salt, iterations, 32, "sha256").toString("hex");
 
 console.log(`pbkdf2$${iterations}$${salt}$${hash}`);
-

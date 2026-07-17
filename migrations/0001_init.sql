@@ -247,7 +247,7 @@ insert into users (
 ) values (
   'user_admin',
   'admin',
-  'pbkdf2$120000$a9f8be99b29916296baea6aeb43829ae$a7dff358b99ec86ac3891c2a6143ebc1805bee38e43847486377686b8d093313',
+  'pbkdf2$100000$a9f8be99b29916296baea6aeb43829ae$1a58f36e7914e8cd5a999f69fa3405031218689041bf6d91b88ce3b3400cd526',
   '系统管理员',
   'admin@example.com',
   null,
@@ -374,4 +374,3 @@ insert into recruitment_campaigns (
   1752796800000,
   1752796800000
 );
-

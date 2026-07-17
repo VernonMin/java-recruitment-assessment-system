@@ -32,7 +32,7 @@ async function derivePbkdf2(password, saltHex, iterations) {
  * @param {string} password
  */
 export async function hashPassword(password) {
-  const iterations = 120000;
+  const iterations = 100000;
   const salt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
   const hash = await derivePbkdf2(password, salt, iterations);
   return `pbkdf2$${iterations}$${salt}$${hash}`;
@@ -90,4 +90,3 @@ function timingSafeEqual(left, right) {
   }
   return diff === 0;
 }
-
