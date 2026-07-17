@@ -7,20 +7,53 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="shell">
+    <section id="authShell" class="auth-shell">
+      <div class="auth-layout">
+        <div class="auth-hero">
+          <div class="brand">
+            <div class="brand-mark">J</div>
+            <div>
+              <div class="brand-title">Java 招聘测评系统</div>
+              <div class="brand-subtitle">企业招聘 Java 开发岗位的在线测评与评估平台</div>
+            </div>
+          </div>
+          <h1>登录后进入求职者端或企业端</h1>
+          <p>求职者只看到自己的测评流程。面试官、招聘专员、管理员进入统一企业端，按角色展示对应能力。</p>
+        </div>
+
+        <div class="panel auth-panel">
+          <h2>账号登录</h2>
+          <form id="loginForm" class="stack-form">
+            <label>
+              <span>账号</span>
+              <input name="account" value="admin" autocomplete="username" />
+            </label>
+            <label>
+              <span>密码</span>
+              <input name="password" type="password" value="Admin123456!" autocomplete="current-password" />
+            </label>
+            <button type="submit" class="primary-button">登录系统</button>
+          </form>
+          <p class="hint">演示账号：`admin`、`candidate_demo`、`interviewer_demo`、`recruiter_demo`</p>
+          <section id="feedback" class="feedback hidden"></section>
+        </div>
+      </div>
+    </section>
+
+    <div id="appShell" class="shell hidden">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">J</div>
           <div>
             <div class="brand-title">Java 招聘测评系统</div>
-            <div class="brand-subtitle">Cloudflare 版 MVP · Pages 自动部署校验</div>
+            <div class="brand-subtitle">Cloudflare 版 MVP · 求职者端 / 企业端</div>
           </div>
         </div>
         <nav class="menu">
-          <button data-view="login" class="menu-item active">登录</button>
           <button data-view="candidateHome" class="menu-item">求职者端</button>
           <button data-view="enterpriseHome" class="menu-item">企业端</button>
           <button data-view="questionBank" class="menu-item">题库管理</button>
+          <button data-view="userManagement" class="menu-item">用户管理</button>
           <button data-view="assessment" class="menu-item">答题页</button>
           <button data-view="submission" class="menu-item">提交详情</button>
           <button data-view="review" class="menu-item">人工评估</button>
@@ -33,34 +66,14 @@
       <main class="content">
         <header class="topbar">
           <div>
-            <h1 id="pageTitle">登录</h1>
-            <p id="pageDesc">先使用管理员或候选人账号登录系统。</p>
+            <h1 id="pageTitle">工作台</h1>
+            <p id="pageDesc">已登录。</p>
           </div>
           <div class="topbar-actions">
             <button id="loadMeButton" class="ghost-button">刷新当前用户</button>
             <button id="logoutButton" class="ghost-button">退出登录</button>
           </div>
         </header>
-
-        <section id="feedback" class="feedback hidden"></section>
-
-        <section id="loginView" class="view active">
-          <div class="panel narrow">
-            <h2>账号登录</h2>
-            <form id="loginForm" class="stack-form">
-              <label>
-                <span>账号</span>
-                <input name="account" value="admin" autocomplete="username" />
-              </label>
-              <label>
-                <span>密码</span>
-                <input name="password" type="password" value="Admin123456!" autocomplete="current-password" />
-              </label>
-              <button type="submit" class="primary-button">登录</button>
-            </form>
-            <p class="hint">默认种子账号：`admin / Admin123456!`</p>
-          </div>
-        </section>
 
         <section id="candidateHomeView" class="view">
           <div class="panel">
@@ -77,10 +90,95 @@
           <div class="panel">
             <div class="panel-header">
               <h2>企业端工作台</h2>
-              <p class="hint">企业端内部按面试官、招聘专员、管理员角色显示对应模块。</p>
+              <p class="hint">企业端统一给面试官、招聘专员、管理员使用，再按角色展示各自模块。</p>
             </div>
             <div id="enterpriseSummary" class="meta-strip"></div>
             <div id="enterpriseOverview" class="card-grid"></div>
+          </div>
+        </section>
+
+        <section id="userManagementView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>用户管理</h2>
+              <div class="topbar-actions">
+                <button id="reloadUsersButton" class="ghost-button">刷新用户</button>
+                <button id="reloadAdminCampaignsButton" class="ghost-button">刷新场次</button>
+              </div>
+            </div>
+
+            <div class="split-layout">
+              <form id="createUserForm" class="stack-form panel-subsection">
+                <h3>创建账号</h3>
+                <div class="form-columns">
+                  <label>
+                    <span>账号</span>
+                    <input name="account" placeholder="例如 candidate_zhangsan" />
+                  </label>
+                  <label>
+                    <span>角色</span>
+                    <select name="role">
+                      <option value="candidate">求职者</option>
+                      <option value="interviewer">面试官</option>
+                      <option value="recruiter">招聘专员</option>
+                      <option value="admin">管理员</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="form-columns">
+                  <label>
+                    <span>姓名</span>
+                    <input name="fullName" placeholder="输入姓名" />
+                  </label>
+                  <label>
+                    <span>初始密码</span>
+                    <input name="password" type="password" placeholder="至少 8 位" />
+                  </label>
+                </div>
+                <div class="form-columns">
+                  <label>
+                    <span>邮箱</span>
+                    <input name="email" placeholder="可选" />
+                  </label>
+                  <label>
+                    <span>手机号</span>
+                    <input name="mobile" placeholder="可选" />
+                  </label>
+                </div>
+                <button type="submit" class="primary-button">创建账号</button>
+              </form>
+
+              <form id="assignCampaignForm" class="stack-form panel-subsection">
+                <h3>分配招聘场次</h3>
+                <label>
+                  <span>候选人账号</span>
+                  <input name="account" placeholder="输入 candidate 账号" />
+                </label>
+                <label>
+                  <span>招聘场次</span>
+                  <select id="assignCampaignSelect" name="campaignId"></select>
+                </label>
+                <div class="form-columns">
+                  <label>
+                    <span>允许作答次数</span>
+                    <input name="attemptLimit" type="number" min="1" max="10" value="1" />
+                  </label>
+                  <label>
+                    <span>邀请状态</span>
+                    <select name="invitationStatus">
+                      <option value="invited">invited</option>
+                      <option value="accepted">accepted</option>
+                      <option value="completed">completed</option>
+                      <option value="expired">expired</option>
+                    </select>
+                  </label>
+                </div>
+                <button type="submit" class="primary-button">分配场次</button>
+              </form>
+            </div>
+
+            <div id="userManagementSummary" class="meta-strip"></div>
+            <div id="userList" class="question-list question-list-compact"></div>
           </div>
         </section>
 

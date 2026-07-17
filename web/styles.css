@@ -37,6 +37,49 @@ select {
   grid-template-columns: 280px 1fr;
 }
 
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.auth-layout {
+  width: min(1120px, 100%);
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.auth-hero {
+  padding: 42px;
+  border-radius: 30px;
+  color: #fff8ea;
+  background:
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.3), transparent 20rem),
+    linear-gradient(135deg, rgba(20, 83, 45, 0.96), rgba(31, 26, 20, 0.96));
+  box-shadow: var(--shadow);
+}
+
+.auth-hero h1 {
+  margin: 48px 0 14px;
+  font-size: 42px;
+  line-height: 1.08;
+}
+
+.auth-hero p {
+  margin: 0;
+  max-width: 32rem;
+  color: rgba(255, 248, 234, 0.78);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.auth-panel {
+  align-self: center;
+}
+
 .sidebar {
   padding: 28px 22px;
   background: rgba(31, 26, 20, 0.95);
@@ -169,6 +212,20 @@ select {
 
 .panel.narrow {
   max-width: 480px;
+}
+
+.panel-subsection {
+  padding: 18px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.split-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
 }
 
 .panel-header {
@@ -331,8 +388,21 @@ select {
 }
 
 @media (max-width: 960px) {
+  .auth-shell {
+    padding: 18px;
+  }
+
+  .auth-layout,
   .shell {
     grid-template-columns: 1fr;
+  }
+
+  .auth-hero {
+    padding: 28px;
+  }
+
+  .auth-hero h1 {
+    font-size: 32px;
   }
 
   .sidebar {
@@ -356,6 +426,10 @@ select {
   }
 
   .form-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .split-layout {
     grid-template-columns: 1fr;
   }
 }

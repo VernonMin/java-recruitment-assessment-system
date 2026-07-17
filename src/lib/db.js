@@ -21,6 +21,70 @@ export function findUserByAccount(env, account) {
   ).bind(account).first();
 }
 
+export function findUsers(env) {
+  return env.DB.prepare(
+    `select
+      u.id,
+      u.account,
+      u.full_name,
+      u.email,
+      u.mobile,
+      u.status,
+      u.created_at,
+      group_concat(r.code) as role_codes
+    from users u
+    left join user_roles ur on ur.user_id = u.id
+    left join roles r on r.id = ur.role_id
+    group by u.id
+    order by u.created_at desc, u.account asc`
+  ).all();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} code
+ */
+export function findRoleByCode(env, code) {
+  return env.DB.prepare(
+    "select id, code, name from roles where code = ?"
+  ).bind(code).first();
+}
+
+export function findCampaignsForAdmin(env) {
+  return env.DB.prepare(
+    `select
+      rc.id,
+      rc.title,
+      rc.target_role,
+      rc.start_time,
+      rc.end_time,
+      rc.duration_minutes,
+      rc.status,
+      rc.require_camera,
+      rc.require_fullscreen,
+      a.title as assessment_title
+    from recruitment_campaigns rc
+    left join assessments a on a.id = rc.assessment_id
+    order by rc.created_at desc, rc.title asc`
+  ).all();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} campaignId
+ */
+export function findCampaignById(env, campaignId) {
+  return env.DB.prepare(
+    `select
+      rc.id,
+      rc.assessment_id,
+      rc.title,
+      rc.status
+    from recruitment_campaigns rc
+    where rc.id = ?`
+  ).bind(campaignId).first();
+}
+
 /**
  * @param {import("../types").AppContext["Bindings"]} env
  * @param {string} userId
@@ -84,6 +148,88 @@ export function insertQuestion(env, question) {
     question.createdBy,
     question.createdAt,
     question.updatedAt
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   id: string;
+ *   account: string;
+ *   passwordHash: string;
+ *   fullName: string;
+ *   email: string | null;
+ *   mobile: string | null;
+ *   status: string;
+ *   lastLoginAt: number | null;
+ *   createdAt: number;
+ *   updatedAt: number;
+ * }} user
+ */
+export function insertUser(env, user) {
+  return env.DB.prepare(
+    `insert into users (
+      id, account, password_hash, full_name, email, mobile, status, last_login_at, created_at, updated_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    user.id,
+    user.account,
+    user.passwordHash,
+    user.fullName,
+    user.email,
+    user.mobile,
+    user.status,
+    user.lastLoginAt,
+    user.createdAt,
+    user.updatedAt
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   id: string;
+ *   userId: string;
+ *   roleId: string;
+ *   createdAt: number;
+ * }} userRole
+ */
+export function insertUserRole(env, userRole) {
+  return env.DB.prepare(
+    `insert into user_roles (
+      id, user_id, role_id, created_at
+    ) values (?, ?, ?, ?)`
+  ).bind(
+    userRole.id,
+    userRole.userId,
+    userRole.roleId,
+    userRole.createdAt
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   id: string;
+ *   campaignId: string;
+ *   userId: string;
+ *   attemptLimit: number;
+ *   invitationStatus: string;
+ *   createdAt: number;
+ * }} assignment
+ */
+export function insertCampaignCandidate(env, assignment) {
+  return env.DB.prepare(
+    `insert into campaign_candidates (
+      id, campaign_id, user_id, attempt_limit, invitation_status, created_at
+    ) values (?, ?, ?, ?, ?, ?)`
+  ).bind(
+    assignment.id,
+    assignment.campaignId,
+    assignment.userId,
+    assignment.attemptLimit,
+    assignment.invitationStatus,
+    assignment.createdAt
   ).run();
 }
 

@@ -71,6 +71,57 @@
 }
 ```
 
+### `GET /api/admin/users`
+
+用途：
+
+- 管理员查看当前系统中的账号列表
+- 返回账号基础信息和角色
+
+### `POST /api/admin/users`
+
+用途：
+
+- 管理员创建求职者、面试官、招聘专员、管理员账号
+- 同时写入用户表和角色表
+
+请求体示例：
+
+```json
+{
+  "account": "candidate_zhangsan",
+  "password": "Candidate123!",
+  "fullName": "张三",
+  "role": "candidate",
+  "email": "zhangsan@example.com",
+  "mobile": "13800000000"
+}
+```
+
+### `GET /api/admin/campaigns`
+
+用途：
+
+- 管理员或招聘专员查看招聘场次列表
+- 给候选人分配场次时作为下拉数据源
+
+### `POST /api/admin/campaign-assignments`
+
+用途：
+
+- 管理员或招聘专员把候选人账号分配到某个招聘场次
+
+请求体示例：
+
+```json
+{
+  "account": "candidate_zhangsan",
+  "campaignId": "campaign_java_backend_20260717",
+  "attemptLimit": 1,
+  "invitationStatus": "invited"
+}
+```
+
 ### `GET /api/questions`
 
 用途：
@@ -368,10 +419,12 @@
 
 ## 初始账号
 
-初始化 SQL 已内置一个管理员账号：
+初始化 SQL 已内置以下演示账号：
 
-- 账号：`admin`
-- 密码：`Admin123456!`
+- `admin / Admin123456!`
+- `candidate_demo / Candidate123!`
+- `interviewer_demo / Interviewer123!`
+- `recruiter_demo / Recruiter123!`
 
 首次部署后建议立即修改。
 
@@ -383,6 +436,7 @@
 - 暂未实现抓拍文件访问签名 URL
 - 暂未实现题目编辑与删除接口
 - 预置题库导入当前不做幂等去重控制
+- 用户管理当前暂未实现编辑、禁用、重置密码
 
 ## 文档维护规则
 

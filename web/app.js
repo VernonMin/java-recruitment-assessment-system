@@ -1,18 +1,20 @@
 const state = {
   user: null,
+  users: [],
   questions: [],
   campaigns: [],
+  adminCampaigns: [],
   currentCampaign: null,
   currentQuestions: [],
   currentSubmission: null,
-  activeView: "login",
+  activeView: null,
   apiBaseUrl: loadApiBaseUrl()
 };
 
 const VIEW_ROLES = {
-  login: [],
   candidateHome: ["candidate"],
   enterpriseHome: ["interviewer", "recruiter", "admin"],
+  userManagement: ["admin"],
   questionBank: ["interviewer", "admin"],
   assessment: ["candidate"],
   submission: ["candidate", "interviewer", "recruiter", "admin"],
@@ -20,9 +22,9 @@ const VIEW_ROLES = {
 };
 
 const viewMeta = {
-  login: ["登录", "使用账号密码登录，并进入求职者端或企业端。"],
   candidateHome: ["求职者端", "查看你被分配的测评场次，并进入正式答题流程。"],
   enterpriseHome: ["企业端", "面试官、招聘专员、管理员在同一套企业工作台中使用各自模块。"],
+  userManagement: ["用户管理", "管理员创建账号、查看当前用户，并将求职者分配到招聘场次。"],
   questionBank: ["题库管理", "企业端中的题库能力，供面试官和管理员维护 Java 招聘题库。"],
   assessment: ["答题页", "求职者加载题目、填写答案并提交本次测评。"],
   submission: ["提交详情", "查看提交记录、逐题作答、评分结果与评估意见。"],
@@ -35,6 +37,9 @@ const ROLE_NAME_MAP = {
   recruiter: "招聘专员",
   admin: "管理员"
 };
+
+const authShell = document.getElementById("authShell");
+const appShell = document.getElementById("appShell");
 
 document.querySelectorAll(".menu-item").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -51,15 +56,25 @@ document.getElementById("loadQuestionsButton").addEventListener("click", loadCam
 document.getElementById("loadSubmissionButton").addEventListener("click", loadSubmissionDetail);
 document.getElementById("assessmentForm").addEventListener("submit", submitAssessment);
 document.getElementById("evaluationForm").addEventListener("submit", submitEvaluation);
+document.getElementById("createUserForm").addEventListener("submit", createUser);
+document.getElementById("assignCampaignForm").addEventListener("submit", assignCampaign);
+document.getElementById("reloadUsersButton").addEventListener("click", () => loadUsers());
+document.getElementById("reloadAdminCampaignsButton").addEventListener("click", () => loadAdminCampaigns());
 
-applyNavigation();
+setAuthenticated(false);
 renderCandidateWorkspace();
 renderEnterpriseWorkspace();
-switchView("login", { force: true });
+renderQuestionBankList();
+renderUserManagement();
 loadCurrentUser();
 
-function switchView(view, options = {}) {
-  if (!options.force && !canAccessView(view)) {
+function setAuthenticated(isAuthenticated) {
+  authShell.classList.toggle("hidden", isAuthenticated);
+  appShell.classList.toggle("hidden", !isAuthenticated);
+}
+
+function switchView(view) {
+  if (!canAccessView(view)) {
     showFeedback("当前账号不能访问这个页面。", true);
     return;
   }
@@ -79,15 +94,14 @@ function switchView(view, options = {}) {
 
 function applyNavigation() {
   document.querySelectorAll(".menu-item").forEach((item) => {
-    const view = item.dataset.view;
-    item.hidden = !(view === "login" || canAccessView(view));
+    item.hidden = !canAccessView(item.dataset.view);
   });
 }
 
 function canAccessView(view) {
   const roles = VIEW_ROLES[view];
   if (!roles || roles.length === 0) {
-    return true;
+    return false;
   }
   if (!state.user || !Array.isArray(state.user.roles)) {
     return false;
@@ -98,6 +112,9 @@ function canAccessView(view) {
 function getLandingView() {
   if (hasAnyRole(["candidate"])) {
     return "candidateHome";
+  }
+  if (hasAnyRole(["admin", "interviewer", "recruiter"])) {
+    return "enterpriseHome";
   }
   return "enterpriseHome";
 }
@@ -120,32 +137,27 @@ async function onLogin(event) {
   }
 
   state.user = result.data.user;
+  setAuthenticated(true);
   refreshSessionBadge();
   applyNavigation();
   await warmupWorkspaceData();
   showFeedback("登录成功，已进入对应端。");
-  switchView(getLandingView(), { force: true });
+  switchView(getLandingView());
 }
 
 async function loadCurrentUser() {
   const result = await api("/api/auth/me");
   if (!result.ok) {
-    state.user = null;
-    refreshSessionBadge();
-    applyNavigation();
-    if (state.activeView !== "login") {
-      switchView("login", { force: true });
-    }
+    resetSessionState();
     return;
   }
 
   state.user = result.data.user;
+  setAuthenticated(true);
   refreshSessionBadge();
   applyNavigation();
   await warmupWorkspaceData();
-  if (state.activeView === "login" || !canAccessView(state.activeView)) {
-    switchView(getLandingView(), { force: true });
-  }
+  switchView(getLandingView());
 }
 
 async function logout() {
@@ -154,29 +166,39 @@ async function logout() {
     body: JSON.stringify({})
   });
 
+  resetSessionState();
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+  showFeedback("已退出登录。");
+}
+
+function resetSessionState() {
   state.user = null;
+  state.users = [];
   state.questions = [];
   state.campaigns = [];
+  state.adminCampaigns = [];
   state.currentCampaign = null;
   state.currentQuestions = [];
   state.currentSubmission = null;
+  state.activeView = null;
+  setAuthenticated(false);
   refreshSessionBadge();
   applyNavigation();
-  renderQuestionBankList();
   renderCandidateWorkspace();
   renderEnterpriseWorkspace();
+  renderQuestionBankList();
+  renderUserManagement();
+  clearDynamicPanels();
+}
+
+function clearDynamicPanels() {
   document.getElementById("submissionMeta").innerHTML = "";
   document.getElementById("submissionAnswers").innerHTML = "";
   document.getElementById("evaluationForm").innerHTML = "";
   document.getElementById("assessmentMeta").innerHTML = "";
   document.getElementById("assessmentForm").innerHTML = "";
-  switchView("login", { force: true });
-
-  if (!result.ok) {
-    return showFeedback(result.message, true);
-  }
-
-  showFeedback("已退出登录。");
 }
 
 async function warmupWorkspaceData() {
@@ -187,9 +209,17 @@ async function warmupWorkspaceData() {
   if (hasAnyRole(["interviewer", "admin"])) {
     jobs.push(loadQuestions({ silent: true }));
   }
+  if (hasAnyRole(["admin"])) {
+    jobs.push(loadUsers({ silent: true }));
+  }
+  if (hasAnyRole(["admin", "recruiter"])) {
+    jobs.push(loadAdminCampaigns({ silent: true }));
+  }
+
   await Promise.all(jobs);
   renderCandidateWorkspace();
   renderEnterpriseWorkspace();
+  renderUserManagement();
 }
 
 async function loadCampaigns(options = {}) {
@@ -203,7 +233,6 @@ async function loadCampaigns(options = {}) {
 
   state.campaigns = result.data.items;
   renderCandidateWorkspace();
-  renderEnterpriseWorkspace();
   return true;
 }
 
@@ -222,12 +251,39 @@ async function loadQuestions(options = {}) {
   return true;
 }
 
+async function loadUsers(options = {}) {
+  const result = await api("/api/admin/users");
+  if (!result.ok) {
+    if (!options.silent) {
+      showFeedback(result.message, true);
+    }
+    return false;
+  }
+
+  state.users = result.data.items;
+  renderUserManagement();
+  renderEnterpriseWorkspace();
+  return true;
+}
+
+async function loadAdminCampaigns(options = {}) {
+  const result = await api("/api/admin/campaigns");
+  if (!result.ok) {
+    if (!options.silent) {
+      showFeedback(result.message, true);
+    }
+    return false;
+  }
+
+  state.adminCampaigns = result.data.items;
+  renderUserManagement();
+  renderEnterpriseWorkspace();
+  return true;
+}
+
 function renderCandidateWorkspace() {
   const summary = document.getElementById("candidateSummary");
   const list = document.getElementById("candidateCampaignList");
-  if (!summary || !list) {
-    return;
-  }
 
   summary.innerHTML = renderMetaItems([
     ["当前端", "求职者端"],
@@ -265,25 +321,17 @@ function renderCandidateWorkspace() {
 function renderEnterpriseWorkspace() {
   const summary = document.getElementById("enterpriseSummary");
   const root = document.getElementById("enterpriseOverview");
-  if (!summary || !root) {
-    return;
-  }
-
   const roleText = state.user ? formatRoleNames(state.user.roles) : "未登录";
+
   summary.innerHTML = renderMetaItems([
     ["当前端", "企业端"],
     ["当前账号", state.user?.account || "-"],
     ["企业角色", roleText],
-    ["题库题目数", hasAnyRole(["interviewer", "admin"]) ? state.questions.length : "仅面试官/管理员可见"]
+    ["当前用户数", hasAnyRole(["admin"]) ? state.users.length : "仅管理员可见"]
   ]);
 
   if (!state.user) {
-    root.innerHTML = `
-      <article class="card">
-        <h3>企业端说明</h3>
-        <p>企业端由面试官、招聘专员、管理员共用，登录后会按角色显示对应能力。</p>
-      </article>
-    `;
+    root.innerHTML = "";
     return;
   }
 
@@ -296,6 +344,18 @@ function renderEnterpriseWorkspace() {
         <p>创建 Java 招聘题目、导入示例题库，并持续完善企业题库。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="questionBank">进入题库管理</button>
+        </div>
+      </article>
+    `);
+  }
+
+  if (hasAnyRole(["admin"])) {
+    cards.push(`
+      <article class="card">
+        <h3>用户管理</h3>
+        <p>管理员创建求职者账号、创建企业账号，并把候选人分配到具体招聘场次。</p>
+        <div class="button-row">
+          <button class="ghost-button" data-nav-view="userManagement">进入用户管理</button>
         </div>
       </article>
     `);
@@ -328,17 +388,8 @@ function renderEnterpriseWorkspace() {
   if (hasAnyRole(["recruiter", "admin"])) {
     cards.push(`
       <article class="card">
-        <h3>招聘推进</h3>
-        <p>招聘专员通过企业端跟踪测评流转，后续继续补齐场次发布、候选人分配和结果汇总。</p>
-      </article>
-    `);
-  }
-
-  if (hasAnyRole(["admin"])) {
-    cards.push(`
-      <article class="card">
-        <h3>系统管理</h3>
-        <p>管理员统一管理企业端入口，后续继续扩展用户、角色、审计与系统配置能力。</p>
+        <h3>招聘场次</h3>
+        <p>当前可查看 ${state.adminCampaigns.length} 个招聘场次。后续继续补充场次发布、候选人批量分配和结果汇总。</p>
       </article>
     `);
   }
@@ -353,12 +404,43 @@ function bindViewButtons(root) {
   });
 }
 
-function renderQuestionBankList() {
-  const container = document.getElementById("questionBankList");
-  if (!container) {
+function renderUserManagement() {
+  const summary = document.getElementById("userManagementSummary");
+  const list = document.getElementById("userList");
+  const campaignSelect = document.getElementById("assignCampaignSelect");
+
+  summary.innerHTML = renderMetaItems([
+    ["当前用户数", state.users.length],
+    ["可分配场次数", state.adminCampaigns.length],
+    ["候选人账号数", state.users.filter((item) => item.roles.includes("candidate")).length]
+  ]);
+
+  if (state.adminCampaigns.length === 0) {
+    campaignSelect.innerHTML = `<option value="">当前没有可分配场次</option>`;
+  } else {
+    campaignSelect.innerHTML = state.adminCampaigns.map((item) => `
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.id)})</option>
+    `).join("");
+  }
+
+  if (state.users.length === 0) {
+    list.innerHTML = `<div class="question-card"><p>当前还没有用户数据。</p></div>`;
     return;
   }
 
+  list.innerHTML = state.users.map((item) => `
+    <article class="question-card">
+      <h3>${escapeHtml(item.fullName)} · ${escapeHtml(item.account)}</h3>
+      <p>角色：${escapeHtml(formatRoleNames(item.roles))}</p>
+      <p>状态：${escapeHtml(item.status)}</p>
+      <p>邮箱：${escapeHtml(item.email || "-")}</p>
+      <p>手机号：${escapeHtml(item.mobile || "-")}</p>
+    </article>
+  `).join("");
+}
+
+function renderQuestionBankList() {
+  const container = document.getElementById("questionBankList");
   if (state.questions.length === 0) {
     container.innerHTML = `<div class="question-card"><p>当前还没有题目。</p></div>`;
     return;
@@ -373,6 +455,54 @@ function renderQuestionBankList() {
       <p>状态：${escapeHtml(item.status)}</p>
     </article>
   `).join("");
+}
+
+async function createUser(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const payload = {
+    account: String(formData.get("account") || "").trim(),
+    password: String(formData.get("password") || ""),
+    fullName: String(formData.get("fullName") || "").trim(),
+    role: String(formData.get("role") || "").trim(),
+    email: String(formData.get("email") || "").trim(),
+    mobile: String(formData.get("mobile") || "").trim()
+  };
+
+  const result = await api("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  event.currentTarget.reset();
+  showFeedback(`用户 ${payload.account} 创建成功。`);
+  await loadUsers({ silent: true });
+}
+
+async function assignCampaign(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const payload = {
+    account: String(formData.get("account") || "").trim(),
+    campaignId: String(formData.get("campaignId") || "").trim(),
+    attemptLimit: Number(formData.get("attemptLimit") || 1),
+    invitationStatus: String(formData.get("invitationStatus") || "invited").trim()
+  };
+
+  const result = await api("/api/admin/campaign-assignments", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  showFeedback(`已将 ${payload.account} 分配到场次 ${payload.campaignId}。`);
 }
 
 async function submitQuestion(event) {

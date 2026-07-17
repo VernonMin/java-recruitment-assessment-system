@@ -1,14 +1,19 @@
 import {
   countUserSubmissions,
   aggregateSubmissionScores,
+  findCampaignById,
   findAssessmentQuestionSet,
   findCampaignAssignment,
+  findCampaignsForAdmin,
   findCampaignQuestionsForCandidate,
   findOpenCampaignsByUser,
   findQuestions,
+  findRoleByCode,
   findSubmissionAnswersBySubmissionId,
   findSubmissionById,
   findUserByAccount,
+  findUsers,
+  insertCampaignCandidate,
   insertQuestion,
   insertQuestionAnswer,
   insertQuestionOption,
@@ -17,10 +22,12 @@ import {
   insertSnapshotFile,
   insertSubmission,
   insertSubmissionAnswer,
+  insertUser,
+  insertUserRole,
   updateSubmissionAnswerEvaluation,
   updateSubmissionSummary
 } from "./lib/db.js";
-import { verifyPassword } from "./lib/password.js";
+import { hashPassword, verifyPassword } from "./lib/password.js";
 import { signSession, verifySession } from "./lib/session.js";
 
 /**
@@ -103,6 +110,34 @@ export default {
       }
       const result = await findOpenCampaignsByUser(env, sessionUser.sub);
       return json({ items: result.results ?? [] }, 200, {}, corsHeaders);
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/admin/users") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleGetUsers(env, sessionUser, corsHeaders);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/users") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleCreateUser(request, env, sessionUser, corsHeaders);
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/admin/campaigns") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleGetAdminCampaigns(env, sessionUser, corsHeaders);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/campaign-assignments") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleAssignCampaign(request, env, sessionUser, corsHeaders);
     }
 
     const campaignQuestionsMatch = url.pathname.match(/^\/api\/campaigns\/([^/]+)\/questions$/);
@@ -236,6 +271,216 @@ function handleLogout(corsHeaders) {
     },
     corsHeaders
   );
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleGetUsers(env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin"])) {
+    return json({ message: "无权查看用户列表" }, 403, {}, corsHeaders);
+  }
+
+  const result = await findUsers(env);
+  return json({
+    items: (result.results ?? []).map((item) => ({
+      id: item.id,
+      account: item.account,
+      fullName: item.full_name,
+      email: item.email,
+      mobile: item.mobile,
+      status: item.status,
+      roles: typeof item.role_codes === "string" && item.role_codes
+        ? item.role_codes.split(",")
+        : [],
+      createdAt: item.created_at
+    }))
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleCreateUser(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin"])) {
+    return json({ message: "无权创建用户" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (
+    !body ||
+    typeof body.account !== "string" ||
+    typeof body.password !== "string" ||
+    typeof body.fullName !== "string" ||
+    typeof body.role !== "string"
+  ) {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const account = body.account.trim();
+  const password = body.password;
+  const fullName = body.fullName.trim();
+  const roleCode = body.role.trim();
+  const email = typeof body.email === "string" && body.email.trim() ? body.email.trim() : null;
+  const mobile = typeof body.mobile === "string" && body.mobile.trim() ? body.mobile.trim() : null;
+
+  if (!account || !/^[a-zA-Z0-9_@.-]{4,50}$/.test(account)) {
+    return json({ message: "账号格式不合法" }, 400, {}, corsHeaders);
+  }
+
+  if (password.length < 8) {
+    return json({ message: "密码至少 8 位" }, 400, {}, corsHeaders);
+  }
+
+  if (!fullName) {
+    return json({ message: "姓名不能为空" }, 400, {}, corsHeaders);
+  }
+
+  if (!ALLOWED_USER_ROLES.has(roleCode)) {
+    return json({ message: "角色不支持" }, 400, {}, corsHeaders);
+  }
+
+  const existingUser = await findUserByAccount(env, account);
+  if (existingUser) {
+    return json({ message: "账号已存在" }, 409, {}, corsHeaders);
+  }
+
+  const role = await findRoleByCode(env, roleCode);
+  if (!role) {
+    return json({ message: "角色不存在" }, 400, {}, corsHeaders);
+  }
+
+  const now = Date.now();
+  const userId = crypto.randomUUID();
+  const passwordHash = await hashPassword(password);
+
+  await insertUser(env, {
+    id: userId,
+    account,
+    passwordHash,
+    fullName,
+    email,
+    mobile,
+    status: "active",
+    lastLoginAt: null,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  await insertUserRole(env, {
+    id: crypto.randomUUID(),
+    userId,
+    roleId: role.id,
+    createdAt: now
+  });
+
+  return json({
+    message: "用户创建成功",
+    user: {
+      id: userId,
+      account,
+      fullName,
+      role: roleCode,
+      status: "active"
+    }
+  }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleGetAdminCampaigns(env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter"])) {
+    return json({ message: "无权查看招聘场次" }, 403, {}, corsHeaders);
+  }
+
+  const result = await findCampaignsForAdmin(env);
+  return json({
+    items: result.results ?? []
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter"])) {
+    return json({ message: "无权分配招聘场次" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.account !== "string" || typeof body.campaignId !== "string") {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const account = body.account.trim();
+  const campaignId = body.campaignId.trim();
+  const attemptLimit = Number(body.attemptLimit ?? 1);
+  const invitationStatus = typeof body.invitationStatus === "string" ? body.invitationStatus.trim() : "invited";
+
+  if (!account || !campaignId) {
+    return json({ message: "账号和场次不能为空" }, 400, {}, corsHeaders);
+  }
+
+  if (!Number.isFinite(attemptLimit) || attemptLimit < 1 || attemptLimit > 10) {
+    return json({ message: "允许作答次数不合法" }, 400, {}, corsHeaders);
+  }
+
+  if (!CAMPAIGN_INVITATION_STATUSES.has(invitationStatus)) {
+    return json({ message: "邀请状态不支持" }, 400, {}, corsHeaders);
+  }
+
+  const user = await findUserByAccount(env, account);
+  if (!user) {
+    return json({ message: "账号不存在" }, 404, {}, corsHeaders);
+  }
+
+  const roles = typeof user.role_codes === "string" && user.role_codes ? user.role_codes.split(",") : [];
+  if (!roles.includes("candidate")) {
+    return json({ message: "该账号不是候选人角色" }, 400, {}, corsHeaders);
+  }
+
+  const campaign = await findCampaignById(env, campaignId);
+  if (!campaign) {
+    return json({ message: "招聘场次不存在" }, 404, {}, corsHeaders);
+  }
+
+  try {
+    await insertCampaignCandidate(env, {
+      id: crypto.randomUUID(),
+      campaignId,
+      userId: user.id,
+      attemptLimit,
+      invitationStatus,
+      createdAt: Date.now()
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("UNIQUE")) {
+      return json({ message: "该候选人已分配到当前场次" }, 409, {}, corsHeaders);
+    }
+    throw error;
+  }
+
+  return json({
+    message: "候选人分配成功",
+    assignment: {
+      account,
+      campaignId,
+      attemptLimit,
+      invitationStatus
+    }
+  }, 201, {}, corsHeaders);
 }
 
 /**
@@ -1005,6 +1250,9 @@ const QUESTION_TYPES = new Set([
   "short_answer",
   "scenario_answer"
 ]);
+
+const ALLOWED_USER_ROLES = new Set(["candidate", "interviewer", "recruiter", "admin"]);
+const CAMPAIGN_INVITATION_STATUSES = new Set(["invited", "accepted", "completed", "expired"]);
 
 const JAVA_RECRUITMENT_PRESET_QUESTIONS = [
   {
