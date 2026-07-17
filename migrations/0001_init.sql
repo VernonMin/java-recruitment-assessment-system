@@ -257,8 +257,60 @@ insert into users (
   1752796800000
 );
 
+insert into users (
+  id,
+  account,
+  password_hash,
+  full_name,
+  email,
+  mobile,
+  status,
+  last_login_at,
+  created_at,
+  updated_at
+) values
+  (
+    'user_candidate_demo',
+    'candidate_demo',
+    'pbkdf2$100000$11111111111111111111111111111111$bb54568ce1e7f660de3900ae004fe83d544004dbd59f896f698cdcacf2d42b1d',
+    '求职者演示账号',
+    'candidate_demo@example.com',
+    null,
+    'active',
+    null,
+    1752796800000,
+    1752796800000
+  ),
+  (
+    'user_interviewer_demo',
+    'interviewer_demo',
+    'pbkdf2$100000$22222222222222222222222222222222$b6271d9c5c4b390764b1519fdabb177fba0d71fdcfc3fa4cb377fe210fd5c7af',
+    '面试官演示账号',
+    'interviewer_demo@example.com',
+    null,
+    'active',
+    null,
+    1752796800000,
+    1752796800000
+  ),
+  (
+    'user_recruiter_demo',
+    'recruiter_demo',
+    'pbkdf2$100000$33333333333333333333333333333333$d7048d67319568a9b5530165d435a18bc9c555e0f5aac8cb2bb7a82b56df580f',
+    '招聘专员演示账号',
+    'recruiter_demo@example.com',
+    null,
+    'active',
+    null,
+    1752796800000,
+    1752796800000
+  );
+
 insert into user_roles (id, user_id, role_id, created_at) values
-  ('user_role_admin', 'user_admin', 'role_admin', 1752796800000);
+  ('user_role_admin', 'user_admin', 'role_admin', 1752796800000),
+  ('user_role_candidate_demo', 'user_candidate_demo', 'role_candidate', 1752796800000),
+  ('user_role_interviewer_demo', 'user_interviewer_demo', 'role_interviewer', 1752796800000),
+  ('user_role_recruiter_demo', 'user_recruiter_demo', 'role_recruiter', 1752796800000);
 
 insert into questions (
   id,
@@ -372,5 +424,21 @@ insert into recruitment_campaigns (
   1,
   'user_admin',
   1752796800000,
+  1752796800000
+);
+
+insert into campaign_candidates (
+  id,
+  campaign_id,
+  user_id,
+  attempt_limit,
+  invitation_status,
+  created_at
+) values (
+  'campaign_candidate_demo_assignment',
+  'campaign_java_backend_20260717',
+  'user_candidate_demo',
+  1,
+  'invited',
   1752796800000
 );

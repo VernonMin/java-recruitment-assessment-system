@@ -18,8 +18,9 @@
         </div>
         <nav class="menu">
           <button data-view="login" class="menu-item active">登录</button>
+          <button data-view="candidateHome" class="menu-item">求职者端</button>
+          <button data-view="enterpriseHome" class="menu-item">企业端</button>
           <button data-view="questionBank" class="menu-item">题库管理</button>
-          <button data-view="candidate" class="menu-item">候选人首页</button>
           <button data-view="assessment" class="menu-item">答题页</button>
           <button data-view="submission" class="menu-item">提交详情</button>
           <button data-view="review" class="menu-item">人工评估</button>
@@ -57,6 +58,28 @@
               <button type="submit" class="primary-button">登录</button>
             </form>
             <p class="hint">默认种子账号：`admin / Admin123456!`</p>
+          </div>
+        </section>
+
+        <section id="candidateHomeView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>求职者工作台</h2>
+              <button id="loadCampaignsButton" class="ghost-button">刷新我的测评</button>
+            </div>
+            <div id="candidateSummary" class="meta-strip"></div>
+            <div id="candidateCampaignList" class="card-grid"></div>
+          </div>
+        </section>
+
+        <section id="enterpriseHomeView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>企业端工作台</h2>
+              <p class="hint">企业端内部按面试官、招聘专员、管理员角色显示对应模块。</p>
+            </div>
+            <div id="enterpriseSummary" class="meta-strip"></div>
+            <div id="enterpriseOverview" class="card-grid"></div>
           </div>
         </section>
 
@@ -120,16 +143,6 @@
             </form>
             <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
-          </div>
-        </section>
-
-        <section id="candidateView" class="view">
-          <div class="panel">
-            <div class="panel-header">
-              <h2>候选人测评列表</h2>
-              <button id="loadCampaignsButton" class="ghost-button">刷新场次</button>
-            </div>
-            <div id="campaignList" class="card-grid"></div>
           </div>
         </section>
 
