@@ -727,7 +727,8 @@ export function findSubmissionAnswersBySubmissionId(env, submissionId) {
       sa.final_score,
       sa.reviewer_comment,
       q.type,
-      q.stem
+      q.stem,
+      q.score as configured_score
     from submission_answers sa
     inner join questions q on q.id = sa.question_id
     where sa.submission_id = ?

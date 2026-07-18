@@ -221,6 +221,13 @@ export default {
       return handleGetSubmission(env, sessionUser, submissionMatch[1], corsHeaders);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/evaluations/ai-suggestions") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleAiEvaluationSuggestions(request, env, sessionUser, corsHeaders);
+    }
+
     if (request.method === "POST" && url.pathname === "/api/evaluations") {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
@@ -1257,6 +1264,55 @@ async function handleGetCampaignQuestions(env, sessionUser, campaignId, corsHead
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
  */
+async function handleAiEvaluationSuggestions(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "recruiter", "admin"])) {
+    return json({ message: "无权使用 AI 判分建议" }, 403, {}, corsHeaders);
+  }
+
+  if (!isAiReviewEnabled(env)) {
+    return json({ message: "AI 判分建议未启用，请先配置服务参数" }, 503, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.submissionId !== "string") {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const submission = await findSubmissionById(env, body.submissionId);
+  if (!submission) {
+    return json({ message: "提交记录不存在" }, 404, {}, corsHeaders);
+  }
+
+  const answersResult = await findSubmissionAnswersBySubmissionId(env, body.submissionId);
+  const answers = (answersResult.results ?? []).filter((item) => item.type === "short_answer" || item.type === "scenario_answer");
+  if (answers.length === 0) {
+    return json({ message: "该提交没有需要 AI 辅助判分的主观题" }, 400, {}, corsHeaders);
+  }
+
+  let aiSuggestion;
+  try {
+    aiSuggestion = await requestAiReviewSuggestions(env, {
+      submission,
+      answers
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "AI 判分建议生成失败";
+    return json({ message }, 502, {}, corsHeaders);
+  }
+
+  return json({
+    message: "AI 判分建议已生成",
+    provider: "openai-compatible",
+    model: env.AI_REVIEW_MODEL || "deepseek-chat",
+    suggestion: aiSuggestion
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ */
 async function handleEvaluation(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["interviewer", "recruiter", "admin"])) {
     return json({ message: "无权执行人工评估" }, 403, {}, corsHeaders);
@@ -1667,6 +1723,195 @@ function inferRiskScore(eventType) {
     default:
       return 5;
   }
+}
+
+/**
+ * @param {AppBindings} env
+ */
+function isAiReviewEnabled(env) {
+  return String(env.AI_REVIEW_ENABLED || "").toLowerCase() === "true"
+    && typeof env.AI_REVIEW_API_KEY === "string"
+    && env.AI_REVIEW_API_KEY.trim().length > 0
+    && typeof env.AI_REVIEW_BASE_URL === "string"
+    && env.AI_REVIEW_BASE_URL.trim().length > 0
+    && typeof env.AI_REVIEW_MODEL === "string"
+    && env.AI_REVIEW_MODEL.trim().length > 0;
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {{
+ *   submission: Record<string, unknown>;
+ *   answers: Array<Record<string, unknown>>;
+ * }} params
+ */
+async function requestAiReviewSuggestions(env, params) {
+  const prompt = buildAiReviewPrompt(params.submission, params.answers);
+  const baseUrl = String(env.AI_REVIEW_BASE_URL || "").replace(/\/+$/g, "");
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${env.AI_REVIEW_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: env.AI_REVIEW_MODEL,
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: "你是企业 Java 招聘测评系统的阅卷助手。你只能输出 JSON，不要输出 Markdown，不要输出额外解释。"
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`AI 评估请求失败: ${response.status} ${errorText}`.trim());
+  }
+
+  const payload = await response.json().catch(() => null);
+  const content = extractAiMessageContent(payload);
+  if (!content) {
+    throw new Error("AI 返回内容为空");
+  }
+
+  const parsed = parseAiJson(content);
+  if (!parsed || !Array.isArray(parsed.answers)) {
+    throw new Error("AI 返回结果格式不正确");
+  }
+
+  const maxScoreMap = new Map(
+    params.answers.map((item) => [String(item.id), Number(item.configured_score ?? 0)])
+  );
+
+  return {
+    summary: typeof parsed.summary === "string" ? parsed.summary.trim() : "",
+    recommendation: normalizeRecommendation(parsed.recommendation),
+    answers: parsed.answers.map((item) => ({
+      submissionAnswerId: String(item.submissionAnswerId || "").trim(),
+      suggestedScore: clampScore(
+        Number(item.suggestedScore ?? 0),
+        maxScoreMap.get(String(item.submissionAnswerId || "").trim()) ?? 0
+      ),
+      comment: typeof item.comment === "string" ? item.comment.trim() : "",
+      strengths: Array.isArray(item.strengths) ? item.strengths.map((entry) => String(entry).trim()).filter(Boolean) : [],
+      risks: Array.isArray(item.risks) ? item.risks.map((entry) => String(entry).trim()).filter(Boolean) : []
+    })).filter((item) => item.submissionAnswerId)
+  };
+}
+
+/**
+ * @param {Record<string, unknown>} submission
+ * @param {Array<Record<string, unknown>>} answers
+ */
+function buildAiReviewPrompt(submission, answers) {
+  return JSON.stringify({
+    task: "请为 Java 招聘测评中的主观题生成阅卷建议。分数必须在 0 到题目满分之间。结论只作为建议，不是最终录入结果。",
+    scoringPrinciples: [
+      "优先考察技术正确性",
+      "其次考察分析完整性与工程实践",
+      "如果答案空泛、背概念、不贴题，要明显扣分",
+      "如果答案存在严重技术错误，分数不能过半",
+      "评语要直接指出优点、缺点和遗漏点"
+    ],
+    outputSchema: {
+      summary: "整体建议摘要",
+      recommendation: "strong_hire|hire|hold|reject",
+      answers: [
+        {
+          submissionAnswerId: "作答记录 ID",
+          suggestedScore: "建议分数，数字",
+          comment: "简短评语",
+          strengths: ["优点 1"],
+          risks: ["问题 1"]
+        }
+      ]
+    },
+    submission: {
+      id: submission.id,
+      campaignTitle: submission.campaign_title,
+      targetRole: submission.target_role,
+      candidateName: submission.candidate_name,
+      candidateAccount: submission.candidate_account
+    },
+    answers: answers.map((item) => ({
+      submissionAnswerId: item.id,
+      questionType: item.type,
+      questionStem: item.stem,
+      maxScore: item.configured_score,
+      answer: item.answer_content,
+      currentSubjectiveScore: item.subjective_score,
+      currentComment: item.reviewer_comment
+    }))
+  });
+}
+
+/**
+ * @param {unknown} payload
+ */
+function extractAiMessageContent(payload) {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => typeof item?.text === "string" ? item.text : "")
+      .filter(Boolean)
+      .join("\n");
+  }
+  return "";
+}
+
+/**
+ * @param {string} value
+ */
+function parseAiJson(value) {
+  const trimmed = value.trim();
+  const normalized = trimmed.startsWith("```")
+    ? trimmed.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim()
+    : trimmed;
+
+  try {
+    return JSON.parse(normalized);
+  } catch {
+    const start = normalized.indexOf("{");
+    const end = normalized.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(normalized.slice(start, end + 1));
+    }
+    throw new Error("AI 返回的 JSON 无法解析");
+  }
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeRecommendation(value) {
+  const recommendation = typeof value === "string" ? value.trim() : "hold";
+  return ["strong_hire", "hire", "hold", "reject"].includes(recommendation)
+    ? recommendation
+    : "hold";
+}
+
+/**
+ * @param {number} value
+ * @param {number} maxScore
+ */
+function clampScore(value, maxScore) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  if (!Number.isFinite(maxScore) || maxScore <= 0) {
+    return Math.max(0, Math.round(value));
+  }
+  return Math.min(Math.max(0, Math.round(value)), Math.round(maxScore));
 }
 
 const QUESTION_TYPES = new Set([

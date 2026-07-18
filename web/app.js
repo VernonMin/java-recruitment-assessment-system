@@ -925,6 +925,7 @@ function renderSubmissionAnswers(answers) {
       <p><span class="answer-status">${escapeHtml(item.objective_result)}</span></p>
       <p>客观题得分：${escapeHtml(String(item.objective_score))} 分</p>
       <p>主观题得分：${escapeHtml(String(item.subjective_score))} 分</p>
+      <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
       <p>评语：${escapeHtml(item.reviewer_comment || "-")}</p>
     </article>
   `).join("");
@@ -940,13 +941,21 @@ function renderEvaluationForm(answers, submission) {
 
   form.innerHTML = [
     `<input type="hidden" name="submissionId" value="${escapeHtml(submission.id)}" />`,
+    `<div class="question-card">
+      <div class="button-row">
+        <button id="aiSuggestButton" type="button" class="ghost-button">AI 建议判分</button>
+      </div>
+      <p class="hint">如果后端已配置 DeepSeek 兼容接口，系统会自动填充建议分数和评语，最终仍需人工确认后提交。</p>
+      <div id="aiSuggestionSummary" class="ai-suggestion-summary hidden"></div>
+    </div>`,
     ...subjectiveAnswers.map((item) => `
       <article class="question-card">
         <h3>${escapeHtml(item.stem)}</h3>
         <p>候选人答案：${escapeHtml(item.answer_content)}</p>
+        <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
         <label>
           <span>主观题分数</span>
-          <input name="score:${escapeHtml(item.id)}" value="${escapeHtml(String(item.subjective_score || 0))}" />
+          <input name="score:${escapeHtml(item.id)}" type="number" min="0" max="${escapeHtml(String(item.configured_score ?? 100))}" value="${escapeHtml(String(item.subjective_score || 0))}" />
         </label>
         <label>
           <span>评语</span>
@@ -960,6 +969,11 @@ function renderEvaluationForm(answers, submission) {
     </label>`,
     `<button type="submit" class="primary-button">提交人工评估</button>`
   ].join("");
+
+  const aiSuggestButton = document.getElementById("aiSuggestButton");
+  if (aiSuggestButton) {
+    aiSuggestButton.addEventListener("click", () => requestAiSuggestions(submission.id));
+  }
 }
 
 async function submitEvaluation(event) {
@@ -1000,6 +1014,64 @@ async function submitEvaluation(event) {
   document.getElementById("submissionIdInput").value = submissionId;
   switchView("submission");
   await loadSubmissionDetail();
+}
+
+async function requestAiSuggestions(submissionId) {
+  const button = document.getElementById("aiSuggestButton");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "AI 生成中...";
+  }
+
+  const result = await api("/api/evaluations/ai-suggestions", {
+    method: "POST",
+    body: JSON.stringify({ submissionId })
+  });
+
+  if (button) {
+    button.disabled = false;
+    button.textContent = "AI 建议判分";
+  }
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  applyAiSuggestions(result.data.suggestion);
+  showFeedback("AI 建议分数已填入表单，请人工复核后再提交。");
+}
+
+function applyAiSuggestions(suggestion) {
+  if (!suggestion || !Array.isArray(suggestion.answers)) {
+    return;
+  }
+
+  for (const item of suggestion.answers) {
+    const scoreField = document.getElementsByName(`score:${item.submissionAnswerId}`)[0];
+    const commentField = document.getElementsByName(`comment:${item.submissionAnswerId}`)[0];
+    if (scoreField) {
+      scoreField.value = String(item.suggestedScore ?? 0);
+    }
+    if (commentField) {
+      const details = [];
+      if (Array.isArray(item.strengths) && item.strengths.length > 0) {
+        details.push(`优点：${item.strengths.join("；")}`);
+      }
+      if (Array.isArray(item.risks) && item.risks.length > 0) {
+        details.push(`不足：${item.risks.join("；")}`);
+      }
+      commentField.value = [item.comment, ...details].filter(Boolean).join("\n");
+    }
+  }
+
+  const summaryPanel = document.getElementById("aiSuggestionSummary");
+  if (summaryPanel) {
+    summaryPanel.classList.remove("hidden");
+    summaryPanel.innerHTML = [
+      suggestion.summary ? `<p><strong>AI 总结：</strong>${escapeHtml(suggestion.summary)}</p>` : "",
+      suggestion.recommendation ? `<p><strong>AI 推荐：</strong>${escapeHtml(suggestion.recommendation)}</p>` : ""
+    ].filter(Boolean).join("");
+  }
 }
 
 async function api(path, options = {}) {

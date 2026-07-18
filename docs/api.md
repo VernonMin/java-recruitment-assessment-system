@@ -396,7 +396,51 @@
 成功响应结构：
 
 - `submission`：提交主记录
-- `answers`：逐题作答、客观题结果、主观题分数、评语
+- `answers`：逐题作答、客观题结果、主观题分数、题目满分、评语
+
+### `POST /api/evaluations/ai-suggestions`
+
+用途：
+
+- 面试官、招聘专员、管理员调用 AI 生成主观题建议分数和评语
+- 当前按 OpenAI 兼容接口调用，可配置为 DeepSeek
+- 返回结果只作为建议，不直接写入最终成绩
+
+请求体示例：
+
+```json
+{
+  "submissionId": "submission-id"
+}
+```
+
+成功响应示例：
+
+```json
+{
+  "message": "AI 判分建议已生成",
+  "provider": "openai-compatible",
+  "model": "deepseek-chat",
+  "suggestion": {
+    "summary": "整体回答基础尚可，但工程细节不够扎实。",
+    "recommendation": "hold",
+    "answers": [
+      {
+        "submissionAnswerId": "answer-id-1",
+        "suggestedScore": 12,
+        "comment": "主线正确，但缺少缓存一致性与降级策略。",
+        "strengths": ["能说明排查顺序"],
+        "risks": ["缺少容量与一致性方案"]
+      }
+    ]
+  }
+}
+```
+
+失败说明：
+
+- 若未配置 `AI_REVIEW_ENABLED=true`、`AI_REVIEW_API_KEY` 等参数，会返回 `503`
+- 若上游 AI 服务异常，会返回 `502`
 
 ### `POST /api/evaluations`
 
@@ -404,6 +448,7 @@
 
 - 面试官、招聘专员或管理员对主观题进行人工评估
 - 自动回写提交总分与状态
+- 可以先调用 AI 建议接口，再人工确认后提交最终结果
 
 请求体示例：
 

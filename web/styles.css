@@ -396,6 +396,14 @@ select {
   font-size: 12px;
 }
 
+.ai-suggestion-summary {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #eef6ff;
+  border: 1px solid #b9d5f7;
+}
+
 .inline-form {
   display: flex;
   gap: 10px;
