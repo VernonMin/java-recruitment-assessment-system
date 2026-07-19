@@ -136,6 +136,7 @@ document.getElementById("reloadSubmissionListButton").addEventListener("click", 
 document.getElementById("updateQuestionForm").addEventListener("submit", updateQuestion);
 document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQuestion);
 document.getElementById("updateQuestionId").addEventListener("change", syncSelectedQuestionToForm);
+document.getElementById("deleteQuestionId").addEventListener("change", syncDeleteQuestionToForm);
 document.getElementById("assessmentTemplateForm").addEventListener("submit", submitAssessmentTemplate);
 document.getElementById("assessmentTemplateSelect").addEventListener("change", onAssessmentTemplateSelectChange);
 document.getElementById("assessmentQuestionSearchInput").addEventListener("input", onAssessmentQuestionSearch);
@@ -889,6 +890,7 @@ function renderQuestionBankList() {
   updateQuestionSelect.innerHTML = questionOptions || `<option value="">当前没有题目</option>`;
   deleteQuestionSelect.innerHTML = questionOptions || `<option value="">当前没有题目</option>`;
   syncSelectedQuestionToForm();
+  syncDeleteQuestionToForm();
 
   if (state.questions.length === 0) {
     container.innerHTML = `<div class="question-card"><p>当前还没有题目。</p></div>`;
@@ -912,17 +914,12 @@ function renderQuestionBankList() {
 
   container.querySelectorAll("[data-edit-question-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      updateQuestionSelect.value = button.dataset.editQuestionId;
-      syncSelectedQuestionToForm();
-      openQuestionModal("update");
+      openQuestionModal("update", button.dataset.editQuestionId || "");
     });
   });
   container.querySelectorAll("[data-delete-question-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      updateQuestionSelect.value = button.dataset.deleteQuestionId;
-      syncSelectedQuestionToForm();
-      deleteQuestionSelect.value = button.dataset.deleteQuestionId;
-      openQuestionModal("update");
+      openQuestionModal("delete", button.dataset.deleteQuestionId || "");
     });
   });
 
@@ -1938,6 +1935,28 @@ function syncSelectedQuestionToForm() {
   form.elements.analysis.value = question.analysis || "";
 }
 
+function syncDeleteQuestionToForm() {
+  const form = document.getElementById("deleteQuestionForm");
+  const select = document.getElementById("deleteQuestionId");
+  const summary = document.getElementById("deleteQuestionSummary");
+  const question = state.questions.find((item) => item.id === select.value) || state.questions[0];
+  if (!form || !summary) {
+    return;
+  }
+  if (!question) {
+    summary.innerHTML = "<p>当前没有可删除题目。</p>";
+    return;
+  }
+
+  form.elements.questionId.value = question.id;
+  summary.innerHTML = `
+    <h4>${escapeHtml(question.stem || "未命名题目")}</h4>
+    <p>题型：${escapeHtml(formatQuestionType(question.type))}</p>
+    <p>分值：${escapeHtml(String(question.score || 0))} 分</p>
+    <p>状态：${escapeHtml(question.status || "-")}</p>
+  `;
+}
+
 function openUserModal(mode) {
   closeModalSections();
   document.getElementById("userModal").classList.remove("hidden");
@@ -1959,7 +1978,7 @@ function openUserModal(mode) {
   document.getElementById(sectionId).classList.remove("hidden");
 }
 
-function openQuestionModal(mode) {
+function openQuestionModal(mode, questionId = "") {
   closeModalSections();
   document.getElementById("questionModal").classList.remove("hidden");
   document.getElementById("modalOverlay").classList.remove("hidden");
@@ -1967,12 +1986,37 @@ function openQuestionModal(mode) {
   const desc = document.getElementById("questionModalDesc");
   const mapping = {
     create: ["创建题目", "录入新题目并写入题库。", "questionModalCreate"],
-    update: ["修改题目", "编辑或删除当前选中的题目。", "questionModalUpdate"]
+    update: ["修改题目", "编辑当前题目内容。", "questionModalUpdate"],
+    delete: ["删除题目", "确认删除当前题目。", "questionModalDelete"]
   };
   const [nextTitle, nextDesc, sectionId] = mapping[mode];
   title.textContent = nextTitle;
   desc.textContent = nextDesc;
   document.getElementById(sectionId).classList.remove("hidden");
+
+  if (mode === "update") {
+    const selectWrap = document.getElementById("updateQuestionSelectWrap");
+    const select = document.getElementById("updateQuestionId");
+    if (questionId) {
+      select.value = questionId;
+      selectWrap.classList.add("hidden");
+    } else {
+      selectWrap.classList.remove("hidden");
+    }
+    syncSelectedQuestionToForm();
+  }
+
+  if (mode === "delete") {
+    const selectWrap = document.getElementById("deleteQuestionSelectWrap");
+    const select = document.getElementById("deleteQuestionId");
+    if (questionId) {
+      select.value = questionId;
+      selectWrap.classList.add("hidden");
+    } else {
+      selectWrap.classList.remove("hidden");
+    }
+    syncDeleteQuestionToForm();
+  }
 }
 
 async function openAssessmentTemplateModal(mode, assessmentId = "") {

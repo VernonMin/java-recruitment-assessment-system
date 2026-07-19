@@ -639,7 +639,7 @@
           </div>
           <div id="questionModalUpdate" class="modal-section hidden">
             <form id="updateQuestionForm" class="stack-form">
-              <label>
+              <label id="updateQuestionSelectWrap">
                 <span>选择题目</span>
                 <select id="updateQuestionId" name="questionId"></select>
               </label>
@@ -691,14 +691,16 @@
               </label>
               <button type="submit" class="primary-button">保存题目修改</button>
             </form>
-            <div class="divider"></div>
+          </div>
+          <div id="questionModalDelete" class="modal-section hidden">
             <form id="deleteQuestionForm" class="stack-form danger-panel">
-              <label>
+              <label id="deleteQuestionSelectWrap">
                 <span>选择题目</span>
                 <select id="deleteQuestionId" name="questionId"></select>
               </label>
+              <div id="deleteQuestionSummary" class="question-card compact-card"></div>
               <p class="hint">如果题目已被试卷模板或提交记录引用，系统会拒绝直接删除。</p>
-              <button type="submit" class="danger-button">删除题目</button>
+              <button type="submit" class="danger-button">确认删除题目</button>
             </form>
           </div>
         </section>
