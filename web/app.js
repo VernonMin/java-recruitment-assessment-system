@@ -593,7 +593,7 @@ function renderCandidateWorkspace() {
       <h3>${escapeHtml(item.title)}</h3>
       <p>任务 ID：${escapeHtml(item.id)}</p>
       <p>目标岗位：${escapeHtml(item.target_role || "-")}</p>
-      <p>邀请状态：${escapeHtml(item.invitation_status || "-")}</p>
+      <p>邀请状态：${escapeHtml(formatInvitationStatus(item.invitation_status || "-"))}</p>
       <p>时长：${escapeHtml(String(item.duration_minutes || "-"))} 分钟</p>
       <div class="button-row">
         <button class="ghost-button" data-campaign-id="${escapeHtml(item.id)}">进入答题</button>
@@ -762,16 +762,18 @@ function renderUserManagement() {
 
   list.innerHTML = state.users.map((item) => `
     <article class="question-card">
-      <h3>${escapeHtml(item.fullName)} · ${escapeHtml(item.account)}</h3>
+      <div class="card-header-actions">
+        <h3>${escapeHtml(item.fullName)} · ${escapeHtml(item.account)}</h3>
+        <div class="button-row compact-actions">
+          <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
+          <button class="ghost-button" data-reset-user-id="${escapeHtml(item.id)}">重置密码</button>
+          <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
+        </div>
+      </div>
       <p>角色：${escapeHtml(formatRoleNames(item.roles))}</p>
-      <p>状态：${escapeHtml(item.status)}</p>
+      <p>状态：${escapeHtml(formatUserStatus(item.status))}</p>
       <p>邮箱：${escapeHtml(item.email || "-")}</p>
       <p>手机号：${escapeHtml(item.mobile || "-")}</p>
-      <div class="button-row">
-        <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
-        <button class="ghost-button" data-reset-user-id="${escapeHtml(item.id)}">重置密码</button>
-        <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
-      </div>
     </article>
   `).join("");
 
@@ -812,12 +814,12 @@ function renderCampaignManagement() {
   const assessmentOptions = state.assessmentOptions.length === 0
     ? `<option value="">当前没有可用试卷模板</option>`
     : state.assessmentOptions.map((item) => `
-      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(formatQuestionStatus(item.status))})</option>
     `).join("");
   const campaignOptions = state.adminCampaigns.length === 0
     ? `<option value="">当前没有笔试任务</option>`
     : state.adminCampaigns.map((item) => `
-      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(formatCampaignStatus(item.status))})</option>
     `).join("");
 
   createAssessmentSelect.innerHTML = assessmentOptions;
@@ -843,7 +845,7 @@ function renderCampaignManagement() {
       <h3>${escapeHtml(item.title)}</h3>
       <p>任务 ID：${escapeHtml(item.id)}</p>
       <p>试卷模板：${escapeHtml(item.assessment_title || "-")}</p>
-      <p>状态：${escapeHtml(item.status)}</p>
+      <p>状态：${escapeHtml(formatCampaignStatus(item.status))}</p>
       <p>目标岗位：${escapeHtml(item.target_role || "-")}</p>
       <p>时长：${escapeHtml(String(item.duration_minutes || "-"))} 分钟</p>
       <p>开始：${escapeHtml(formatDateTime(item.start_time))}</p>
@@ -1621,7 +1623,7 @@ function renderSubmissionList() {
   const pagination = document.getElementById("submissionPagination");
   const campaignOptions = hasAnyRole(["recruiter", "admin"])
     ? [`<option value="">全部笔试任务</option>`, ...state.adminCampaigns.map((item) => `
-      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(formatCampaignStatus(item.status))})</option>
     `)].join("")
     : [`<option value="">全部笔试任务</option>`, ...state.campaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}</option>
@@ -1641,7 +1643,7 @@ function renderSubmissionList() {
       <h3>${escapeHtml(item.candidate_name || item.candidate_account || "提交记录")} · ${escapeHtml(item.campaign_title || "-")}</h3>
       <p>提交 ID：${escapeHtml(item.id)}</p>
       <p>候选人账号：${escapeHtml(item.candidate_account || "-")}</p>
-      <p>状态：${escapeHtml(item.status || "-")}</p>
+      <p>状态：${escapeHtml(formatSubmissionStatus(item.status || "-"))}</p>
       <p>提交时间：${escapeHtml(formatDateTime(item.submitted_at || item.created_at))}</p>
       <p>总分：${escapeHtml(String(item.total_score ?? 0))} 分</p>
       <div class="button-row">
@@ -1666,7 +1668,7 @@ function renderSubmissionMeta(submission) {
   meta.innerHTML = renderMetaItems([
     ["提交 ID", submission.id],
     ["笔试任务", submission.campaign_title || submission.campaignId],
-    ["状态", submission.status],
+    ["状态", formatSubmissionStatus(submission.status)],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
     ["总分", `${submission.total_score ?? submission.totalScore ?? 0} 分`]
@@ -1960,6 +1962,40 @@ function formatQuestionStatus(status) {
     draft: "草稿",
     published: "已发布",
     archived: "已归档"
+  }[status] || status;
+}
+
+function formatUserStatus(status) {
+  return {
+    active: "正常",
+    disabled: "禁用",
+    locked: "锁定"
+  }[status] || status;
+}
+
+function formatCampaignStatus(status) {
+  return {
+    draft: "草稿",
+    published: "已发布",
+    in_progress: "进行中",
+    archived: "已归档"
+  }[status] || status;
+}
+
+function formatSubmissionStatus(status) {
+  return {
+    submitted: "已提交",
+    reviewed: "已评阅",
+    grading: "评阅中",
+    graded: "已评分",
+    in_progress: "进行中"
+  }[status] || status;
+}
+
+function formatInvitationStatus(status) {
+  return {
+    invited: "已邀请",
+    completed: "已完成"
   }[status] || status;
 }
 
