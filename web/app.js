@@ -64,11 +64,11 @@ const VIEW_ROLES = {
 };
 
 const viewMeta = {
-  candidateHome: ["求职者端", "查看你被分配的招聘试题，并进入正式答题流程。"],
+  candidateHome: ["求职者端", "查看你被分配的笔试任务，并进入正式答题流程。"],
   enterpriseHome: ["企业端", "面试官、招聘专员、管理员在同一套企业工作台中使用各自模块。"],
-  assessmentManagement: ["测评模板管理", "面试官或管理员创建模板、选择题目并配置模板结构。"],
-  userManagement: ["用户管理", "管理员创建、批量导入、编辑、禁用账号，并给候选人分配招聘试题。"],
-  campaignManagement: ["招聘试题管理", "招聘专员或管理员基于测评模板创建招聘试题。"],
+  assessmentManagement: ["试卷模板管理", "面试官或管理员创建试卷模板、选择题目并配置试卷结构。"],
+  userManagement: ["用户管理", "管理员创建、批量导入、编辑、禁用账号，并给候选人分配笔试任务。"],
+  campaignManagement: ["笔试任务管理", "招聘专员或管理员基于试卷模板创建笔试任务。"],
   questionBank: ["题库管理", "企业端中的题库能力，供面试官和管理员维护 Java 招聘题库。"],
   assessment: ["答题页", "求职者加载题目、填写答案并提交本次测评。"],
   submission: ["提交详情", "查看提交记录、逐题作答、评分结果与评估意见。"],
@@ -557,19 +557,19 @@ function renderCandidateWorkspace() {
 
   summary.innerHTML = renderMetaItems([
     ["当前端", "求职者端"],
-    ["我的招聘试题", state.campaigns.length],
+    ["我的笔试任务", state.campaigns.length],
     ["最近提交", state.currentSubmission?.submission?.id || state.currentSubmission?.id || "暂无"]
   ]);
 
   if (state.campaigns.length === 0) {
-    list.innerHTML = `<article class="card"><h3>暂无测评</h3><p>当前没有分配给你的招聘试题。</p></article>`;
+    list.innerHTML = `<article class="card"><h3>暂无测评</h3><p>当前没有分配给你的笔试任务。</p></article>`;
     return;
   }
 
   list.innerHTML = state.campaigns.map((item) => `
     <article class="card">
       <h3>${escapeHtml(item.title)}</h3>
-      <p>试题 ID：${escapeHtml(item.id)}</p>
+      <p>任务 ID：${escapeHtml(item.id)}</p>
       <p>目标岗位：${escapeHtml(item.target_role || "-")}</p>
       <p>邀请状态：${escapeHtml(item.invitation_status || "-")}</p>
       <p>时长：${escapeHtml(String(item.duration_minutes || "-"))} 分钟</p>
@@ -620,8 +620,8 @@ function renderEnterpriseWorkspace() {
 
     cards.push(`
       <article class="card">
-        <h3>测评模板管理</h3>
-        <p>从题库中组装模板，配置分组、顺序和分值，供招聘试题直接复用。</p>
+        <h3>试卷模板管理</h3>
+        <p>从题库中组装试卷模板，配置分组、顺序和分值，供笔试任务直接复用。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="assessmentManagement">进入模板管理</button>
         </div>
@@ -633,7 +633,7 @@ function renderEnterpriseWorkspace() {
     cards.push(`
       <article class="card">
         <h3>用户管理</h3>
-        <p>管理员创建、批量导入、编辑、禁用账号，并给候选人分配试题。</p>
+        <p>管理员创建、批量导入、编辑、禁用账号，并给候选人分配笔试任务。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="userManagement">进入用户管理</button>
         </div>
@@ -644,10 +644,10 @@ function renderEnterpriseWorkspace() {
   if (hasAnyRole(["recruiter", "admin"])) {
     cards.push(`
       <article class="card">
-        <h3>招聘试题管理</h3>
-        <p>基于测评模板创建招聘试题，并查看当前可管理试题列表。</p>
+        <h3>笔试任务管理</h3>
+        <p>基于试卷模板创建笔试任务，并查看当前可管理任务列表。</p>
         <div class="button-row">
-          <button class="ghost-button" data-nav-view="campaignManagement">进入试题管理</button>
+          <button class="ghost-button" data-nav-view="campaignManagement">进入任务管理</button>
         </div>
       </article>
     `);
@@ -657,7 +657,7 @@ function renderEnterpriseWorkspace() {
     cards.push(`
       <article class="card">
         <h3>结果查看</h3>
-        <p>通过提交详情查看候选人作答、评分结果和当前测评状态。</p>
+        <p>通过提交详情查看候选人作答、评分结果和当前笔试状态。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="submission">查看提交详情</button>
         </div>
@@ -702,7 +702,7 @@ function renderUserManagement() {
   `).join("");
 
   const campaignOptions = state.adminCampaigns.length === 0
-    ? `<option value="">当前没有可分配试题</option>`
+    ? `<option value="">当前没有可分配笔试任务</option>`
     : state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.id)})</option>
     `).join("");
@@ -717,7 +717,7 @@ function renderUserManagement() {
   summary.innerHTML = renderMetaItems([
     ["当前页用户数", state.users.length],
     ["用户总数", state.paginations.users.total],
-    ["可分配试题数", state.adminCampaigns.length],
+    ["可分配笔试任务数", state.adminCampaigns.length],
     ["候选人账号数", state.users.filter((item) => item.roles.includes("candidate")).length]
   ]);
 
@@ -779,12 +779,12 @@ function renderCampaignManagement() {
   const updateCampaignSelect = document.getElementById("updateCampaignId");
 
   const assessmentOptions = state.assessmentOptions.length === 0
-    ? `<option value="">当前没有可用测评模板</option>`
+    ? `<option value="">当前没有可用试卷模板</option>`
     : state.assessmentOptions.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `).join("");
   const campaignOptions = state.adminCampaigns.length === 0
-    ? `<option value="">当前没有招聘试题</option>`
+    ? `<option value="">当前没有笔试任务</option>`
     : state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `).join("");
@@ -795,14 +795,14 @@ function renderCampaignManagement() {
   syncSelectedCampaignToForm();
 
   summary.innerHTML = renderMetaItems([
-    ["测评模板数", state.assessmentOptions.length],
-    ["当前页试题数", state.adminCampaigns.length],
-    ["试题总数", state.paginations.campaigns.total],
-    ["已发布试题", state.adminCampaigns.filter((item) => item.status === "published").length]
+    ["试卷模板数", state.assessmentOptions.length],
+    ["当前页任务数", state.adminCampaigns.length],
+    ["任务总数", state.paginations.campaigns.total],
+    ["已发布任务", state.adminCampaigns.filter((item) => item.status === "published").length]
   ]);
 
   if (state.adminCampaigns.length === 0) {
-    list.innerHTML = `<div class="question-card"><p>当前还没有招聘试题。</p></div>`;
+    list.innerHTML = `<div class="question-card"><p>当前还没有笔试任务。</p></div>`;
     pagination.innerHTML = "";
     return;
   }
@@ -810,15 +810,15 @@ function renderCampaignManagement() {
   list.innerHTML = state.adminCampaigns.map((item) => `
     <article class="question-card">
       <h3>${escapeHtml(item.title)}</h3>
-      <p>试题 ID：${escapeHtml(item.id)}</p>
-      <p>模板：${escapeHtml(item.assessment_title || "-")}</p>
+      <p>任务 ID：${escapeHtml(item.id)}</p>
+      <p>试卷模板：${escapeHtml(item.assessment_title || "-")}</p>
       <p>状态：${escapeHtml(item.status)}</p>
       <p>目标岗位：${escapeHtml(item.target_role || "-")}</p>
       <p>时长：${escapeHtml(String(item.duration_minutes || "-"))} 分钟</p>
       <p>开始：${escapeHtml(formatDateTime(item.start_time))}</p>
       <p>结束：${escapeHtml(formatDateTime(item.end_time))}</p>
       <div class="button-row">
-        <button class="ghost-button" data-edit-campaign-id="${escapeHtml(item.id)}">编辑试题</button>
+        <button class="ghost-button" data-edit-campaign-id="${escapeHtml(item.id)}">编辑任务</button>
       </div>
     </article>
   `).join("");
@@ -843,12 +843,12 @@ function renderAssessmentManagement() {
   summary.innerHTML = renderMetaItems([
     ["当前页模板数", state.assessments.length],
     ["模板总数", state.paginations.assessments.total],
-    ["已发布模板", state.assessments.filter((item) => item.status === "published").length],
+    ["已发布试卷模板", state.assessments.filter((item) => item.status === "published").length],
     ["可选题目数", state.assessmentQuestionPool.length]
   ]);
 
   if (state.assessments.length === 0) {
-    list.innerHTML = `<div class="question-card"><p>当前还没有测评模板。</p></div>`;
+    list.innerHTML = `<div class="question-card"><p>当前还没有试卷模板。</p></div>`;
     pagination.innerHTML = "";
     return;
   }
@@ -856,14 +856,14 @@ function renderAssessmentManagement() {
   list.innerHTML = state.assessments.map((item) => `
     <article class="question-card">
       <h3>${escapeHtml(item.title)}</h3>
-      <p>模板 ID：${escapeHtml(item.id)}</p>
+      <p>试卷模板 ID：${escapeHtml(item.id)}</p>
       <p>状态：${escapeHtml(item.status)}</p>
       <p>目标级别：${escapeHtml(item.target_level || "-")}</p>
-      <p>模板题数：${escapeHtml(String(item.question_count || 0))} 道</p>
-      <p>模板总分：${escapeHtml(String(item.total_score || 0))} 分</p>
+      <p>题目数量：${escapeHtml(String(item.question_count || 0))} 道</p>
+      <p>试卷总分：${escapeHtml(String(item.total_score || 0))} 分</p>
       <p>说明：${escapeHtml(item.description || "-")}</p>
       <div class="button-row">
-        <button class="ghost-button" data-edit-assessment-id="${escapeHtml(item.id)}">编辑模板</button>
+        <button class="ghost-button" data-edit-assessment-id="${escapeHtml(item.id)}">编辑试卷模板</button>
       </div>
     </article>
   `).join("");
@@ -1176,7 +1176,7 @@ async function assignCampaign(event) {
   }
 
   closeModal();
-  showFeedback(`已将 ${payload.account} 分配到试题 ${payload.campaignId}。`);
+  showFeedback(`已将 ${payload.account} 分配到笔试任务 ${payload.campaignId}。`);
   setFormLoading(form, false);
 }
 
@@ -1254,7 +1254,7 @@ async function createCampaign(event) {
 
   form.reset();
   closeModal();
-  showFeedback(`招聘试题 ${payload.title} 创建成功。`);
+  showFeedback(`笔试任务 ${payload.title} 创建成功。`);
   await loadAdminCampaigns({ silent: true });
   setFormLoading(form, false);
 }
@@ -1294,7 +1294,7 @@ async function updateCampaign(event) {
   }
 
   closeModal();
-  showFeedback(`招聘试题 ${payload.title} 更新成功。`);
+  showFeedback(`笔试任务 ${payload.title} 更新成功。`);
   await loadAdminCampaigns({ silent: true });
   setFormLoading(form, false);
 }
@@ -1470,7 +1470,7 @@ async function importPresetQuestions() {
 async function loadCampaignQuestions() {
   const campaignId = document.getElementById("campaignIdInput").value.trim();
   if (!campaignId) {
-    return showFeedback("请先输入 campaignId。", true);
+    return showFeedback("请先输入笔试任务 ID。", true);
   }
 
   const result = await api(`/api/campaigns/${campaignId}/questions`);
@@ -1487,8 +1487,8 @@ async function loadCampaignQuestions() {
 function renderAssessment() {
   const meta = document.getElementById("assessmentMeta");
   meta.innerHTML = renderMetaItems([
-    ["招聘试题", state.currentCampaign.title],
-    ["模板", state.currentCampaign.assessmentTitle],
+    ["笔试任务", state.currentCampaign.title],
+    ["试卷模板", state.currentCampaign.assessmentTitle],
     ["时长", `${state.currentCampaign.durationMinutes || "-"} 分钟`],
     ["摄像头", state.currentCampaign.requireCamera ? "要求" : "不要求"]
   ]);
@@ -1510,7 +1510,7 @@ function renderAssessment() {
 async function submitAssessment(event) {
   event.preventDefault();
   if (!state.currentCampaign) {
-    return showFeedback("请先加载招聘试题题目。", true);
+    return showFeedback("请先加载笔试任务题目。", true);
   }
 
   const answers = state.currentQuestions.map((question) => {
@@ -1566,10 +1566,10 @@ function renderSubmissionList() {
   const list = document.getElementById("submissionList");
   const pagination = document.getElementById("submissionPagination");
   const campaignOptions = hasAnyRole(["recruiter", "admin"])
-    ? [`<option value="">全部招聘试题</option>`, ...state.adminCampaigns.map((item) => `
+    ? [`<option value="">全部笔试任务</option>`, ...state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `)].join("")
-    : [`<option value="">全部招聘试题</option>`, ...state.campaigns.map((item) => `
+    : [`<option value="">全部笔试任务</option>`, ...state.campaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}</option>
     `)].join("");
 
@@ -1611,7 +1611,7 @@ function renderSubmissionMeta(submission) {
   const meta = document.getElementById("submissionMeta");
   meta.innerHTML = renderMetaItems([
     ["提交 ID", submission.id],
-    ["试题", submission.campaign_title || submission.campaignId],
+    ["笔试任务", submission.campaign_title || submission.campaignId],
     ["状态", submission.status],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
@@ -1939,8 +1939,8 @@ function openUserModal(mode) {
     update: ["编辑账号", "修改用户资料、角色和状态。", "userModalUpdate"],
     resetPassword: ["重置密码", "为指定用户重置登录密码。", "userModalResetPassword"],
     delete: ["删除用户", "删除未被业务数据引用的账号。", "userModalDelete"],
-    assignCampaign: ["分配试题", "将单个候选人分配到招聘试题。", "userModalAssignCampaign"],
-    batchAssignCampaign: ["批量分配试题", "批量给候选人分配同一招聘试题。", "userModalBatchAssignCampaign"]
+    assignCampaign: ["分配笔试任务", "将单个候选人分配到笔试任务。", "userModalAssignCampaign"],
+    batchAssignCampaign: ["批量分配笔试任务", "批量给候选人分配同一笔试任务。", "userModalBatchAssignCampaign"]
   };
   const [nextTitle, nextDesc, sectionId] = mapping[mode];
   title.textContent = nextTitle;
@@ -1992,9 +1992,9 @@ async function openAssessmentTemplateModal(mode, assessmentId = "") {
   document.getElementById("assessmentQuestionSearchInput").value = "";
 
   if (mode === "create") {
-    title.textContent = "新增模板";
-    desc.textContent = "创建新的测评模板，并从已发布题目中选择题目。";
-    submitButton.textContent = "创建模板";
+    title.textContent = "新增试卷模板";
+    desc.textContent = "创建新的试卷模板，并从已发布题目中选择题目。";
+    submitButton.textContent = "创建试卷模板";
     selectWrap.classList.add("hidden");
     form.elements.status.value = "draft";
     updateAssessmentTotalScore();
@@ -2003,8 +2003,8 @@ async function openAssessmentTemplateModal(mode, assessmentId = "") {
     return;
   }
 
-  title.textContent = "修改模板";
-  desc.textContent = "修改模板信息、模板题目和每题分值。";
+  title.textContent = "修改试卷模板";
+  desc.textContent = "修改试卷模板信息、题目结构和每题分值。";
   submitButton.textContent = "保存模板修改";
   selectWrap.classList.remove("hidden");
   syncAssessmentTemplateSelect();
@@ -2028,8 +2028,8 @@ function openCampaignModal(mode) {
   const title = document.getElementById("campaignModalTitle");
   const desc = document.getElementById("campaignModalDesc");
   const mapping = {
-    create: ["新增试题", "创建新的招聘试题并配置监控要求。", "campaignModalCreate"],
-    update: ["修改试题", "编辑当前页已检索到的招聘试题。", "campaignModalUpdate"]
+    create: ["新增笔试任务", "创建新的笔试任务并配置监控要求。", "campaignModalCreate"],
+    update: ["修改笔试任务", "编辑当前页已检索到的笔试任务。", "campaignModalUpdate"]
   };
   const [nextTitle, nextDesc, sectionId] = mapping[mode];
   title.textContent = nextTitle;
@@ -2043,7 +2043,7 @@ function syncAssessmentTemplateSelect() {
     return;
   }
   select.innerHTML = state.assessmentOptions.length === 0
-    ? `<option value="">当前没有可选模板</option>`
+    ? `<option value="">当前没有可选试卷模板</option>`
     : state.assessmentOptions.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `).join("");
@@ -2121,7 +2121,7 @@ function renderAssessmentQuestionPool() {
         <p>难度：${escapeHtml(String(item.difficulty || "-"))}</p>
         <div class="button-row">
           <button type="button" class="${selected ? "danger-button" : "ghost-button"}" data-pool-question-id="${escapeHtml(item.id)}" data-action="${selected ? "remove" : "add"}">
-            ${selected ? "移除" : "加入模板"}
+            ${selected ? "移除" : "加入试卷"}
           </button>
         </div>
       </article>
@@ -2292,7 +2292,7 @@ async function submitAssessmentTemplate(event) {
   }
 
   closeModal();
-  showFeedback(mode === "update" ? "测评模板更新成功。" : "测评模板创建成功。");
+  showFeedback(mode === "update" ? "试卷模板更新成功。" : "试卷模板创建成功。");
   await Promise.all([
     loadAssessments({ silent: true }),
     loadAssessmentOptions({ silent: true })

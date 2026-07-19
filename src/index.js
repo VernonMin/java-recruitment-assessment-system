@@ -622,7 +622,7 @@ async function handleBatchCreateUsers(request, env, sessionUser, corsHeaders) {
  */
 async function handleGetAdminCampaigns(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权查看招聘试题" }, 403, {}, corsHeaders);
+    return json({ message: "无权查看笔试任务" }, 403, {}, corsHeaders);
   }
 
   const url = new URL(request.url);
@@ -679,7 +679,7 @@ async function handleGetSubmissions(request, env, sessionUser, corsHeaders) {
  */
 async function handleGetAssessments(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter", "interviewer"])) {
-    return json({ message: "无权查看测评模板" }, 403, {}, corsHeaders);
+    return json({ message: "无权查看试卷模板" }, 403, {}, corsHeaders);
   }
 
   const url = new URL(request.url);
@@ -703,12 +703,12 @@ async function handleGetAssessments(request, env, sessionUser, corsHeaders) {
 
 async function handleGetAssessmentDetail(env, sessionUser, assessmentId, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter", "interviewer"])) {
-    return json({ message: "无权查看测评模板" }, 403, {}, corsHeaders);
+    return json({ message: "无权查看试卷模板" }, 403, {}, corsHeaders);
   }
 
   const assessment = await findAssessmentById(env, assessmentId);
   if (!assessment) {
-    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+    return json({ message: "试卷模板不存在" }, 404, {}, corsHeaders);
   }
 
   const questions = await findAssessmentQuestionsWithDetails(env, assessmentId);
@@ -720,7 +720,7 @@ async function handleGetAssessmentDetail(env, sessionUser, assessmentId, corsHea
 
 async function handleCreateAssessment(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "interviewer"])) {
-    return json({ message: "无权创建测评模板" }, 403, {}, corsHeaders);
+    return json({ message: "无权创建试卷模板" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -755,7 +755,7 @@ async function handleCreateAssessment(request, env, sessionUser, corsHeaders) {
   }
 
   return json({
-    message: "测评模板创建成功",
+    message: "试卷模板创建成功",
     assessment: {
       id: assessmentId,
       title: parsed.title,
@@ -767,12 +767,12 @@ async function handleCreateAssessment(request, env, sessionUser, corsHeaders) {
 
 async function handleUpdateAssessment(request, env, sessionUser, assessmentId, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "interviewer"])) {
-    return json({ message: "无权修改测评模板" }, 403, {}, corsHeaders);
+    return json({ message: "无权修改试卷模板" }, 403, {}, corsHeaders);
   }
 
   const currentAssessment = await findAssessmentById(env, assessmentId);
   if (!currentAssessment) {
-    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+    return json({ message: "试卷模板不存在" }, 404, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -804,7 +804,7 @@ async function handleUpdateAssessment(request, env, sessionUser, assessmentId, c
   }
 
   return json({
-    message: "测评模板更新成功",
+    message: "试卷模板更新成功",
     assessment: {
       id: assessmentId,
       title: parsed.title,
@@ -822,7 +822,7 @@ async function handleUpdateAssessment(request, env, sessionUser, assessmentId, c
  */
 async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权创建招聘试题" }, 403, {}, corsHeaders);
+    return json({ message: "无权创建笔试任务" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -860,12 +860,12 @@ async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
   }
 
   if (!CAMPAIGN_STATUSES.has(status)) {
-    return json({ message: "试题状态不支持" }, 400, {}, corsHeaders);
+    return json({ message: "笔试任务状态不支持" }, 400, {}, corsHeaders);
   }
 
   const assessment = await findAssessmentById(env, assessmentId);
   if (!assessment) {
-    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+    return json({ message: "试卷模板不存在" }, 404, {}, corsHeaders);
   }
 
   const now = Date.now();
@@ -888,7 +888,7 @@ async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
   });
 
   return json({
-    message: "招聘试题创建成功",
+    message: "笔试任务创建成功",
     campaign: {
       id: campaignId,
       title,
@@ -907,12 +907,12 @@ async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
  */
 async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权修改招聘试题" }, 403, {}, corsHeaders);
+    return json({ message: "无权修改笔试任务" }, 403, {}, corsHeaders);
   }
 
   const currentCampaign = await findCampaignById(env, campaignId);
   if (!currentCampaign) {
-    return json({ message: "招聘试题不存在" }, 404, {}, corsHeaders);
+    return json({ message: "笔试任务不存在" }, 404, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -950,12 +950,12 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
   }
 
   if (!CAMPAIGN_STATUSES.has(status)) {
-    return json({ message: "试题状态不支持" }, 400, {}, corsHeaders);
+    return json({ message: "笔试任务状态不支持" }, 400, {}, corsHeaders);
   }
 
   const assessment = await findAssessmentById(env, assessmentId);
   if (!assessment) {
-    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+    return json({ message: "试卷模板不存在" }, 404, {}, corsHeaders);
   }
 
   await updateCampaign(env, {
@@ -974,7 +974,7 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
   });
 
   return json({
-    message: "招聘试题更新成功",
+    message: "笔试任务更新成功",
     campaign: {
       id: campaignId,
       title,
@@ -993,7 +993,7 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
  */
 async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权分配招聘试题" }, 403, {}, corsHeaders);
+    return json({ message: "无权分配笔试任务" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -1007,7 +1007,7 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
   const invitationStatus = typeof body.invitationStatus === "string" ? body.invitationStatus.trim() : "invited";
 
   if (!account || !campaignId) {
-    return json({ message: "账号和试题不能为空" }, 400, {}, corsHeaders);
+    return json({ message: "账号和笔试任务不能为空" }, 400, {}, corsHeaders);
   }
 
   if (!Number.isFinite(attemptLimit) || attemptLimit < 1 || attemptLimit > 10) {
@@ -1030,7 +1030,7 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
 
   const campaign = await findCampaignById(env, campaignId);
   if (!campaign) {
-    return json({ message: "招聘试题不存在" }, 404, {}, corsHeaders);
+    return json({ message: "笔试任务不存在" }, 404, {}, corsHeaders);
   }
 
   try {
@@ -1069,7 +1069,7 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
  */
 async function handleBatchAssignCampaign(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权批量分配招聘试题" }, 403, {}, corsHeaders);
+    return json({ message: "无权批量分配笔试任务" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -1439,7 +1439,7 @@ async function handleDeleteQuestion(env, sessionUser, questionId, corsHeaders) {
   const assessmentCount = Number(dependencies?.assessment_count ?? 0);
   const submissionCount = Number(dependencies?.submission_count ?? 0);
   if (assessmentCount > 0 || submissionCount > 0) {
-    return json({ message: "该题目已被测评模板或提交记录引用，不能直接删除" }, 409, {}, corsHeaders);
+    return json({ message: "该题目已被试卷模板或提交记录引用，不能直接删除" }, 409, {}, corsHeaders);
   }
 
   await deleteQuestionOptionsByQuestionId(env, questionId);
@@ -1498,11 +1498,11 @@ async function handleSubmission(request, env, sessionUser, corsHeaders) {
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到可提交的招聘试题" }, 404, {}, corsHeaders);
+    return json({ message: "未找到可提交的笔试任务" }, 404, {}, corsHeaders);
   }
 
   if (campaign.status !== "published" && campaign.status !== "in_progress") {
-    return json({ message: "当前招聘试题不可提交" }, 400, {}, corsHeaders);
+    return json({ message: "当前笔试任务不可提交" }, 400, {}, corsHeaders);
   }
 
   const now = Date.now();
@@ -1523,7 +1523,7 @@ async function handleSubmission(request, env, sessionUser, corsHeaders) {
   const questionSet = await findAssessmentQuestionSet(env, campaign.assessment_id);
   const questions = questionSet.results ?? [];
   if (questions.length === 0) {
-    return json({ message: "该测评模板没有题目" }, 400, {}, corsHeaders);
+    return json({ message: "该试卷模板没有题目" }, 400, {}, corsHeaders);
   }
 
   const answerMap = normalizeAnswers(body.answers);
@@ -1632,7 +1632,7 @@ async function handleProctoringEvent(request, env, sessionUser, corsHeaders) {
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到对应招聘试题" }, 404, {}, corsHeaders);
+    return json({ message: "未找到对应笔试任务" }, 404, {}, corsHeaders);
   }
 
   if (typeof body.submissionId === "string") {
@@ -1698,7 +1698,7 @@ async function handleGetSubmission(env, sessionUser, submissionId, corsHeaders) 
 async function handleGetCampaignQuestions(env, sessionUser, campaignId, corsHeaders) {
   const campaign = await findCampaignAssignment(env, campaignId, sessionUser.sub);
   if (!campaign && !hasRole(sessionUser, ["interviewer", "recruiter", "admin"])) {
-    return json({ message: "未找到对应招聘试题" }, 404, {}, corsHeaders);
+    return json({ message: "未找到对应笔试任务" }, 404, {}, corsHeaders);
   }
 
   const result = await findCampaignQuestionsForCandidate(
@@ -1888,7 +1888,7 @@ async function handleProctoringSnapshot(request, env, sessionUser, corsHeaders) 
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到对应招聘试题" }, 404, {}, corsHeaders);
+    return json({ message: "未找到对应笔试任务" }, 404, {}, corsHeaders);
   }
 
   const submission = await findSubmissionById(env, body.submissionId);
