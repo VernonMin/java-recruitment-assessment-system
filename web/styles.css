@@ -92,18 +92,18 @@ select {
 .auth-layout {
   position: relative;
   z-index: 1;
-  width: min(1200px, 100%);
+  width: min(1120px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(400px, 440px);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+  gap: 32px;
   align-items: center;
 }
 
 .auth-showcase {
-  padding: 16px 0;
+  padding: 12px 0;
   display: grid;
   align-content: center;
-  gap: 24px;
+  gap: 18px;
 }
 
 .auth-company-badge {
@@ -123,61 +123,62 @@ select {
 
 .auth-showcase-main {
   display: grid;
-  gap: 22px;
-  max-width: 560px;
+  gap: 18px;
+  max-width: 520px;
 }
 
 .auth-brand-lockup {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
 }
 
 .auth-brand-mark {
-  width: 78px;
-  height: 78px;
-  border-radius: 26px;
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
   display: grid;
   place-items: center;
   background:
     radial-gradient(circle at 25% 20%, rgba(255, 233, 196, 0.7), transparent 40%),
     linear-gradient(135deg, #173e2c, #80501b 92%);
   color: #fff9ef;
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   box-shadow: 0 24px 48px rgba(33, 24, 15, 0.16);
 }
 
 .auth-kicker {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: #87684a;
-  font-size: 12px;
-  letter-spacing: 0.24em;
+  font-size: 11px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .auth-title {
   margin: 0;
   font-family: "Iowan Old Style", "Palatino Linotype", "Songti SC", serif;
-  font-size: clamp(54px, 7vw, 88px);
-  line-height: 0.92;
+  font-size: clamp(44px, 5vw, 72px);
+  line-height: 1;
   letter-spacing: -0.05em;
   color: #1f1a14;
+  white-space: nowrap;
 }
 
 .auth-lead {
   margin: 0;
   color: #594b3d;
-  font-size: 20px;
-  line-height: 1.8;
+  font-size: 18px;
+  line-height: 1.7;
 }
 
 .auth-card {
   position: relative;
   align-self: center;
   overflow: hidden;
-  padding: 36px;
-  border-radius: 36px;
+  padding: 32px;
+  border-radius: 30px;
   background: rgba(255, 253, 248, 0.84);
   border: 1px solid rgba(214, 204, 185, 0.7);
   box-shadow:
@@ -202,7 +203,7 @@ select {
 .auth-card-top {
   display: grid;
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .auth-form-kicker {
@@ -214,7 +215,7 @@ select {
 
 .auth-form-title {
   margin: 0;
-  font-size: 36px;
+  font-size: 32px;
 }
 
 .auth-form-desc {
@@ -224,7 +225,7 @@ select {
 }
 
 .auth-form {
-  gap: 18px;
+  gap: 16px;
 }
 
 .password-field {
@@ -280,6 +281,22 @@ select {
   margin-top: 6px;
   min-height: 54px;
   font-size: 16px;
+}
+
+@media (max-width: 1180px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .auth-showcase {
+    max-width: 100%;
+  }
+
+  .auth-card {
+    width: min(460px, 100%);
+    justify-self: start;
+  }
 }
 
 .sidebar {
@@ -730,7 +747,6 @@ select {
     padding: 22px 18px;
   }
 
-  .auth-layout,
   .shell {
     grid-template-columns: 1fr;
   }
@@ -742,6 +758,8 @@ select {
 
   .auth-card {
     padding: 26px 22px;
+    width: 100%;
+    justify-self: stretch;
   }
 
   .auth-brand-mark {
@@ -751,7 +769,8 @@ select {
   }
 
   .auth-title {
-    font-size: 52px;
+    font-size: 40px;
+    white-space: normal;
   }
 
   .sidebar {
