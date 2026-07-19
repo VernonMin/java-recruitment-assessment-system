@@ -93,7 +93,6 @@ document.querySelectorAll(".menu-item").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
 
-document.getElementById("loadMeButton").addEventListener("click", loadCurrentUser);
 document.getElementById("logoutButton").addEventListener("click", logout);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
 togglePasswordButton.addEventListener("click", togglePasswordVisibility);
@@ -608,6 +607,18 @@ function renderEnterpriseWorkspace() {
 
   const cards = [];
 
+  if (hasAnyRole(["admin"])) {
+    cards.push(`
+      <article class="card">
+        <h3>用户管理</h3>
+        <p>管理员创建、批量导入、编辑、禁用账号，并给候选人分配笔试任务。</p>
+        <div class="button-row">
+          <button class="ghost-button" data-nav-view="userManagement">进入用户管理</button>
+        </div>
+      </article>
+    `);
+  }
+
   if (hasAnyRole(["interviewer", "admin"])) {
     cards.push(`
       <article class="card">
@@ -618,25 +629,15 @@ function renderEnterpriseWorkspace() {
         </div>
       </article>
     `);
+  }
 
+  if (hasAnyRole(["interviewer", "admin"])) {
     cards.push(`
       <article class="card">
         <h3>试卷模板管理</h3>
         <p>从题库中组装试卷模板，配置分组、顺序和分值，供笔试任务直接复用。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="assessmentManagement">进入模板管理</button>
-        </div>
-      </article>
-    `);
-  }
-
-  if (hasAnyRole(["admin"])) {
-    cards.push(`
-      <article class="card">
-        <h3>用户管理</h3>
-        <p>管理员创建、批量导入、编辑、禁用账号，并给候选人分配笔试任务。</p>
-        <div class="button-row">
-          <button class="ghost-button" data-nav-view="userManagement">进入用户管理</button>
         </div>
       </article>
     `);
