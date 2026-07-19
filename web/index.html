@@ -99,8 +99,7 @@
 
         <section id="candidateHomeView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>求职者工作台</h2>
+            <div class="action-toolbar">
               <button id="loadCampaignsButton" class="ghost-button">刷新我的测评</button>
             </div>
             <div id="candidateSummary" class="meta-strip"></div>
@@ -110,10 +109,6 @@
 
         <section id="enterpriseHomeView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>企业端工作台</h2>
-              <p class="hint">企业端统一给面试官、招聘专员、管理员使用，再按角色展示各自模块。</p>
-            </div>
             <div id="enterpriseSummary" class="meta-strip"></div>
             <div id="enterpriseOverview" class="card-grid"></div>
           </div>
@@ -200,14 +195,6 @@
 
         <section id="campaignManagementView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>笔试任务管理</h2>
-              <div class="topbar-actions">
-                <button id="reloadAssessmentsButton" class="ghost-button">刷新模板</button>
-                <button id="reloadCampaignManagementButton" class="ghost-button">刷新试题</button>
-              </div>
-            </div>
-
             <form id="campaignSearchForm" class="stack-form panel-subsection">
               <h3>检索笔试任务</h3>
               <div class="form-columns">
@@ -235,6 +222,8 @@
 
             <div class="action-toolbar">
               <button id="openCreateCampaignModalButton" class="primary-button">新增任务</button>
+              <button id="reloadAssessmentsButton" class="ghost-button">刷新模板</button>
+              <button id="reloadCampaignManagementButton" class="ghost-button">刷新任务</button>
             </div>
 
             <div id="campaignManagementSummary" class="meta-strip"></div>
@@ -245,13 +234,6 @@
 
         <section id="questionBankView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>题库管理</h2>
-              <div class="topbar-actions">
-                <button id="importPresetQuestionsButton" class="ghost-button">导入示例题目</button>
-                <button id="reloadQuestionBankButton" class="ghost-button">刷新题库</button>
-              </div>
-            </div>
             <form id="questionSearchForm" class="stack-form panel-subsection">
               <h3>检索题目</h3>
               <div class="form-columns">
@@ -290,6 +272,8 @@
             </form>
             <div class="action-toolbar">
               <button id="openCreateQuestionModalButton" class="primary-button">创建题目</button>
+              <button id="importPresetQuestionsButton" class="ghost-button">导入示例题目</button>
+              <button id="reloadQuestionBankButton" class="ghost-button">刷新题库</button>
             </div>
             <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
@@ -299,14 +283,6 @@
 
         <section id="assessmentManagementView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>试卷模板管理</h2>
-              <div class="topbar-actions">
-                <button id="reloadAssessmentQuestionPoolButton" class="ghost-button">刷新可选题目</button>
-                <button id="reloadAssessmentManagementButton" class="ghost-button">刷新模板</button>
-              </div>
-            </div>
-
             <form id="assessmentSearchForm" class="stack-form panel-subsection">
               <h3>检索试卷模板</h3>
               <div class="form-columns">
@@ -333,6 +309,8 @@
 
             <div class="action-toolbar">
               <button id="openCreateAssessmentModalButton" class="primary-button">新增模板</button>
+              <button id="reloadAssessmentQuestionPoolButton" class="ghost-button">刷新可选题目</button>
+              <button id="reloadAssessmentManagementButton" class="ghost-button">刷新模板</button>
             </div>
 
             <div id="assessmentManagementSummary" class="meta-strip"></div>
@@ -343,12 +321,9 @@
 
         <section id="assessmentView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>答题页</h2>
-              <div class="inline-form">
-                <select id="campaignIdInput"></select>
-                <button id="loadQuestionsButton" class="ghost-button">进入答题</button>
-              </div>
+            <div class="action-toolbar action-toolbar-inline">
+              <select id="campaignIdInput"></select>
+              <button id="loadQuestionsButton" class="primary-button">进入答题</button>
             </div>
             <div id="assessmentMeta" class="meta-strip"></div>
             <div id="assessmentRuntimePanel" class="question-list question-list-compact"></div>
@@ -358,10 +333,6 @@
 
         <section id="submissionView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>答卷详情</h2>
-              <button id="reloadSubmissionListButton" class="ghost-button">刷新提交记录</button>
-            </div>
             <form id="submissionSearchForm" class="stack-form panel-subsection">
               <h3>检索提交记录</h3>
               <div class="form-columns">
@@ -388,15 +359,16 @@
                 <div class="button-row align-end">
                   <button type="submit" class="ghost-button">检索提交</button>
                   <button id="clearSubmissionSearchButton" type="button" class="ghost-button">清空条件</button>
+                  <button id="reloadSubmissionListButton" type="button" class="ghost-button">刷新提交记录</button>
                 </div>
               </div>
             </form>
             <div id="submissionList" class="question-list question-list-compact"></div>
             <div id="submissionPagination" class="pagination-bar"></div>
             <div class="divider"></div>
-            <div class="panel-header">
-              <h3>答卷详情面板</h3>
-              <p class="hint">请从上方答卷列表中点击“查看详情”加载目标答卷。</p>
+            <div class="section-caption">
+              <h3>当前答卷</h3>
+              <p class="hint">从上方列表点击“查看详情”后，这里展示完整答卷、风险记录与作答内容。</p>
             </div>
             <div id="submissionMeta" class="meta-strip"></div>
             <div id="submissionProctoring" class="question-list question-list-compact"></div>
@@ -406,9 +378,9 @@
 
         <section id="reviewView" class="view">
           <div class="panel">
-            <div class="panel-header">
-              <h2>人工/AI 评分复核</h2>
-              <p class="hint">先在“答卷详情”中加载记录，再切到本页复核主观题。</p>
+            <div class="section-caption">
+              <h3>复核工作区</h3>
+              <p class="hint">先在“答卷详情”打开目标答卷，再在这里逐题查看 AI 建议并人工确认最终分数。</p>
             </div>
             <form id="evaluationForm" class="question-list"></form>
           </div>
