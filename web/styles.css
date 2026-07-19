@@ -732,6 +732,14 @@ select {
   font-size: 14px;
 }
 
+.pagination-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
 .pagination-size {
   display: inline-flex;
   align-items: center;
@@ -893,6 +901,52 @@ select {
   border: 1px solid #b9d5f7;
 }
 
+.evaluation-card {
+  display: grid;
+  gap: 16px;
+}
+
+.evaluation-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.evaluation-panel {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  display: grid;
+  gap: 12px;
+}
+
+.evaluation-panel h4,
+.evaluation-panel-header h4 {
+  margin: 0;
+}
+
+.evaluation-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-suggestion-card {
+  border-radius: 14px;
+  padding: 14px;
+  background: #eef6ff;
+  border: 1px solid #b9d5f7;
+  display: grid;
+  gap: 8px;
+}
+
+.ai-suggestion-empty {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px dashed var(--line);
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1017,6 +1071,10 @@ select {
   }
 
   .split-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .evaluation-columns {
     grid-template-columns: 1fr;
   }
 }

@@ -1757,37 +1757,59 @@ function renderEvaluationForm(answers, submission) {
     `<input type="hidden" name="submissionId" value="${escapeHtml(submission.id)}" />`,
     `<div class="question-card">
       <div class="button-row">
-        <button id="aiSuggestButton" type="button" class="ghost-button">AI 建议判分</button>
+        <button id="aiSuggestButton" type="button" class="ghost-button">AI 生成建议</button>
+        <button id="applyAllAiSuggestionsButton" type="button" class="ghost-button hidden">一键采纳 AI 建议</button>
       </div>
-      <p class="hint">如果后端已配置 DeepSeek 兼容接口，系统会自动填充建议分数和评语，最终仍需人工确认后提交。</p>
+      <p class="hint">AI 只生成主观题建议分数与评语，不会直接写入最终成绩。请人工审核、修订后再提交。</p>
       <div id="aiSuggestionSummary" class="ai-suggestion-summary hidden"></div>
     </div>`,
     ...subjectiveAnswers.map((item) => `
-      <article class="question-card">
+      <article class="question-card evaluation-card">
         <h3>${escapeHtml(item.stem)}</h3>
         <p>候选人答案：${escapeHtml(item.answer_content)}</p>
         <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
-        <label>
-          <span>主观题分数</span>
-          <input name="score:${escapeHtml(item.id)}" type="number" min="0" max="${escapeHtml(String(item.configured_score ?? 100))}" value="${escapeHtml(String(item.subjective_score || 0))}" />
-        </label>
-        <label>
-          <span>评语</span>
-          <textarea name="comment:${escapeHtml(item.id)}">${escapeHtml(item.reviewer_comment || "")}</textarea>
-        </label>
+        <div class="evaluation-columns">
+          <section class="evaluation-panel ai-panel">
+            <div class="evaluation-panel-header">
+              <h4>AI 建议分数</h4>
+              <button type="button" class="ghost-button hidden" data-apply-ai-answer="${escapeHtml(item.id)}">采纳 AI 建议</button>
+            </div>
+            <div id="aiSuggestionCard:${escapeHtml(item.id)}" class="ai-suggestion-card ai-suggestion-empty">
+              <p>尚未生成 AI 建议。</p>
+            </div>
+          </section>
+          <section class="evaluation-panel final-panel">
+            <h4>人工最终结果</h4>
+            <label>
+              <span>最终分数</span>
+              <input name="score:${escapeHtml(item.id)}" type="number" min="0" max="${escapeHtml(String(item.configured_score ?? 100))}" value="${escapeHtml(String(item.subjective_score || 0))}" />
+            </label>
+            <label>
+              <span>最终评语</span>
+              <textarea name="comment:${escapeHtml(item.id)}">${escapeHtml(item.reviewer_comment || "")}</textarea>
+            </label>
+          </section>
+        </div>
       </article>
     `),
     `<label>
       <span>推荐结论</span>
       <input name="recommendation" value="${escapeHtml(submission.recommendation || "hold")}" />
     </label>`,
-    `<button type="submit" class="primary-button">提交人工评估</button>`
+    `<button type="submit" class="primary-button">确认并提交最终成绩</button>`
   ].join("");
 
   const aiSuggestButton = document.getElementById("aiSuggestButton");
   if (aiSuggestButton) {
     aiSuggestButton.addEventListener("click", () => requestAiSuggestions(submission.id));
   }
+  const applyAllButton = document.getElementById("applyAllAiSuggestionsButton");
+  if (applyAllButton) {
+    applyAllButton.addEventListener("click", applyAllAiSuggestions);
+  }
+  form.querySelectorAll("[data-apply-ai-answer]").forEach((button) => {
+    button.addEventListener("click", () => applySingleAiSuggestion(button.dataset.applyAiAnswer));
+  });
 }
 
 async function submitEvaluation(event) {
@@ -1844,7 +1866,7 @@ async function requestAiSuggestions(submissionId) {
 
   if (button) {
     button.disabled = false;
-    button.textContent = "AI 建议判分";
+    button.textContent = "AI 生成建议";
   }
 
   if (!result.ok) {
@@ -1852,7 +1874,7 @@ async function requestAiSuggestions(submissionId) {
   }
 
   applyAiSuggestions(result.data.suggestion);
-  showFeedback("AI 建议分数已填入表单，请人工复核后再提交。");
+  showFeedback("AI 建议已生成，请人工审核后决定是否采纳。");
 }
 
 function applyAiSuggestions(suggestion) {
@@ -1861,20 +1883,27 @@ function applyAiSuggestions(suggestion) {
   }
 
   for (const item of suggestion.answers) {
-    const scoreField = document.getElementsByName(`score:${item.submissionAnswerId}`)[0];
-    const commentField = document.getElementsByName(`comment:${item.submissionAnswerId}`)[0];
-    if (scoreField) {
-      scoreField.value = String(item.suggestedScore ?? 0);
-    }
-    if (commentField) {
+    const card = document.getElementById(`aiSuggestionCard:${item.submissionAnswerId}`);
+    const applyButton = document.querySelector(`[data-apply-ai-answer="${CSS.escape(item.submissionAnswerId)}"]`);
+    if (card) {
       const details = [];
       if (Array.isArray(item.strengths) && item.strengths.length > 0) {
-        details.push(`优点：${item.strengths.join("；")}`);
+        details.push(`<p><strong>优点：</strong>${escapeHtml(item.strengths.join("；"))}</p>`);
       }
       if (Array.isArray(item.risks) && item.risks.length > 0) {
-        details.push(`不足：${item.risks.join("；")}`);
+        details.push(`<p><strong>不足：</strong>${escapeHtml(item.risks.join("；"))}</p>`);
       }
-      commentField.value = [item.comment, ...details].filter(Boolean).join("\n");
+      card.classList.remove("ai-suggestion-empty");
+      card.dataset.suggestedScore = String(item.suggestedScore ?? 0);
+      card.dataset.suggestedComment = buildAiSuggestionComment(item);
+      card.innerHTML = [
+        `<p><strong>建议分数：</strong>${escapeHtml(String(item.suggestedScore ?? 0))} / ${escapeHtml(String(item.maxScore ?? ""))}</p>`,
+        item.comment ? `<p><strong>建议评语：</strong>${escapeHtml(item.comment)}</p>` : "",
+        ...details
+      ].join("");
+    }
+    if (applyButton) {
+      applyButton.classList.remove("hidden");
     }
   }
 
@@ -1886,6 +1915,45 @@ function applyAiSuggestions(suggestion) {
       suggestion.recommendation ? `<p><strong>AI 推荐：</strong>${escapeHtml(suggestion.recommendation)}</p>` : ""
     ].filter(Boolean).join("");
   }
+  const applyAllButton = document.getElementById("applyAllAiSuggestionsButton");
+  if (applyAllButton) {
+    applyAllButton.classList.remove("hidden");
+  }
+}
+
+function buildAiSuggestionComment(item) {
+  const details = [];
+  if (Array.isArray(item.strengths) && item.strengths.length > 0) {
+    details.push(`优点：${item.strengths.join("；")}`);
+  }
+  if (Array.isArray(item.risks) && item.risks.length > 0) {
+    details.push(`不足：${item.risks.join("；")}`);
+  }
+  return [item.comment, ...details].filter(Boolean).join("\n");
+}
+
+function applySingleAiSuggestion(submissionAnswerId) {
+  const card = document.getElementById(`aiSuggestionCard:${submissionAnswerId}`);
+  if (!card) {
+    return;
+  }
+  const scoreField = document.getElementsByName(`score:${submissionAnswerId}`)[0];
+  const commentField = document.getElementsByName(`comment:${submissionAnswerId}`)[0];
+  if (scoreField && typeof card.dataset.suggestedScore === "string") {
+    scoreField.value = card.dataset.suggestedScore;
+  }
+  if (commentField && typeof card.dataset.suggestedComment === "string") {
+    commentField.value = card.dataset.suggestedComment;
+  }
+}
+
+function applyAllAiSuggestions() {
+  document.querySelectorAll("[data-apply-ai-answer]").forEach((button) => {
+    if (!button.classList.contains("hidden")) {
+      applySingleAiSuggestion(button.dataset.applyAiAnswer);
+    }
+  });
+  showFeedback("已将 AI 建议填入人工最终结果，请继续复核后提交。");
 }
 
 async function api(path, options = {}) {
@@ -2729,18 +2797,20 @@ function renderPagination(key, pagination) {
   return `
     <div class="pagination-inner">
       <span class="pagination-info">第 ${escapeHtml(String(pagination.page))} / ${escapeHtml(String(totalPages))} 页，共 ${escapeHtml(String(pagination.total))} 条</span>
-      <label class="pagination-size">
-        <span>每页</span>
-        <select data-pagination-size="${escapeHtml(key)}">
-          ${[10, 20, 50, 100].map((size) => `
-            <option value="${escapeHtml(String(size))}" ${pagination.pageSize === size ? "selected" : ""}>${escapeHtml(String(size))}</option>
-          `).join("")}
-        </select>
-        <span>条</span>
-      </label>
-      <div class="button-row">
+      <div class="pagination-actions">
+        <label class="pagination-size">
+          <span>每页</span>
+          <select data-pagination-size="${escapeHtml(key)}">
+            ${[10, 20, 50, 100].map((size) => `
+              <option value="${escapeHtml(String(size))}" ${pagination.pageSize === size ? "selected" : ""}>${escapeHtml(String(size))}</option>
+            `).join("")}
+          </select>
+          <span>条</span>
+        </label>
+        <div class="button-row">
         <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.max(1, pagination.page - 1)))}" ${pagination.page <= 1 ? "disabled" : ""}>上一页</button>
         <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.min(totalPages, pagination.page + 1)))}" ${pagination.page >= totalPages ? "disabled" : ""}>下一页</button>
+        </div>
       </div>
     </div>
   `;
