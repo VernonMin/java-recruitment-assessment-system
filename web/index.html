@@ -856,7 +856,12 @@
               </label>
               <label>
                 <span>目标级别</span>
-                <input name="targetLevel" placeholder="例如 junior / mid / senior" />
+                <select name="targetLevel">
+                  <option value="">不限</option>
+                  <option value="junior">初级</option>
+                  <option value="mid">中级</option>
+                  <option value="senior">高级</option>
+                </select>
               </label>
             </div>
 
@@ -864,9 +869,9 @@
               <label>
                 <span>状态</span>
                 <select name="status">
-                  <option value="draft">draft</option>
-                  <option value="published">published</option>
-                  <option value="archived">archived</option>
+                  <option value="draft">草稿</option>
+                  <option value="published">已发布</option>
+                  <option value="archived">已归档</option>
                 </select>
               </label>
               <label>

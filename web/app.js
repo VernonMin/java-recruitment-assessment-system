@@ -888,8 +888,8 @@ function renderAssessmentManagement() {
     <article class="question-card">
       <h3>${escapeHtml(item.title)}</h3>
       <p>试卷模板 ID：${escapeHtml(item.id)}</p>
-      <p>状态：${escapeHtml(item.status)}</p>
-      <p>目标级别：${escapeHtml(item.target_level || "-")}</p>
+      <p>状态：${escapeHtml(formatQuestionStatus(item.status))}</p>
+      <p>目标级别：${escapeHtml(formatTargetLevel(item.target_level))}</p>
       <p>题目数量：${escapeHtml(String(item.question_count || 0))} 道</p>
       <p>试卷总分：${escapeHtml(String(item.total_score || 0))} 分</p>
       <p>说明：${escapeHtml(item.description || "-")}</p>
@@ -1961,6 +1961,14 @@ function formatQuestionStatus(status) {
     published: "已发布",
     archived: "已归档"
   }[status] || status;
+}
+
+function formatTargetLevel(level) {
+  return {
+    junior: "初级",
+    mid: "中级",
+    senior: "高级"
+  }[level] || level || "不限";
 }
 
 function syncSelectedUserToForm() {
