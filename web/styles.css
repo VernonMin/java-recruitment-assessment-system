@@ -464,7 +464,7 @@ select {
 
 .management-panel {
   display: grid;
-  gap: 22px;
+  gap: 18px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 247, 240, 0.92)),
     radial-gradient(circle at top right, rgba(20, 83, 45, 0.05), transparent 18rem);
@@ -474,33 +474,35 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
 }
 
 .management-kicker {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: #8b6c47;
-  font-size: 11px;
-  letter-spacing: 0.22em;
+  font-size: 10px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .management-hero h2 {
-  margin: 0 0 8px;
-  font-size: 34px;
+  margin: 0 0 6px;
+  font-size: 28px;
+  letter-spacing: -0.02em;
 }
 
 .management-desc {
   margin: 0;
-  max-width: 680px;
+  max-width: 620px;
   color: var(--muted);
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.65;
 }
 
 .management-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.9fr);
-  gap: 18px;
+  gap: 14px;
   align-items: stretch;
 }
 
@@ -515,27 +517,27 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .management-card-head h3 {
-  margin: 0 0 6px;
-  font-size: 20px;
+  margin: 0 0 4px;
+  font-size: 17px;
 }
 
 .management-search-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr);
-  gap: 14px;
+  gap: 12px;
 }
 
 .management-search-footer {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -546,7 +548,7 @@ select {
 
 .management-action-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .management-summary-strip {
@@ -556,7 +558,8 @@ select {
 .management-summary-strip .meta-item {
   background:
     linear-gradient(180deg, rgba(248, 241, 223, 0.92), rgba(255, 255, 255, 0.86));
-  min-height: 98px;
+  min-height: 84px;
+  padding: 12px 14px;
 }
 
 .management-list-card {
@@ -566,7 +569,7 @@ select {
 
 .management-list-card .management-card-head {
   margin: 0;
-  padding: 22px 22px 0;
+  padding: 18px 18px 0;
 }
 
 .user-directory {
@@ -577,9 +580,9 @@ select {
 .user-directory-row {
   display: grid;
   grid-template-columns: minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(130px, 0.6fr) minmax(220px, 1fr) minmax(220px, 0.9fr) minmax(260px, 1fr);
-  gap: 16px;
+  gap: 12px;
   align-items: center;
-  padding: 18px 22px;
+  padding: 14px 18px;
 }
 
 .user-directory-header {
@@ -590,7 +593,7 @@ select {
   border-top: 1px solid rgba(214, 204, 185, 0.82);
   border-bottom: 1px solid rgba(214, 204, 185, 0.82);
   color: #665a4d;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -609,20 +612,20 @@ select {
 
 .user-directory-cell strong {
   display: block;
-  font-size: 16px;
-  margin-bottom: 6px;
+  font-size: 14px;
+  margin-bottom: 4px;
 }
 
 .user-directory-subline,
 .user-directory-meta {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .user-role-badges {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -631,10 +634,10 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
-  padding: 0 12px;
+  min-height: 26px;
+  padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   border: 1px solid transparent;
 }
@@ -664,19 +667,66 @@ select {
 }
 
 .user-directory-empty {
-  padding: 28px 22px;
+  padding: 22px 18px;
 }
 
 .user-directory-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .user-directory-actions .ghost-button,
 .user-directory-actions .danger-button {
-  min-width: 88px;
+  min-width: 72px;
+}
+
+.management-panel .panel-subsection {
+  padding: 16px;
+  border-radius: 18px;
+}
+
+.management-panel input,
+.management-panel select {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.management-panel label span,
+.management-panel .field-label,
+.management-panel .hint {
+  font-size: 12px;
+}
+
+.management-panel .topbar-actions .ghost-button,
+.management-panel .management-search-footer .primary-button,
+.management-panel .management-search-footer .ghost-button,
+.management-panel .management-action-grid .primary-button,
+.management-panel .management-action-grid .ghost-button,
+.management-panel .user-directory-actions .ghost-button,
+.management-panel .user-directory-actions .danger-button {
+  min-height: 40px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.management-panel .topbar-actions .ghost-button {
+  min-height: 38px;
+  padding: 8px 14px;
+}
+
+.management-panel .meta-label {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.management-panel .meta-item strong {
+  font-size: 26px;
+  line-height: 1.05;
 }
 
 .panel-subsection {
@@ -1444,6 +1494,14 @@ select {
 
   .management-action-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .management-hero h2 {
+    font-size: 24px;
+  }
+
+  .management-panel .meta-item strong {
+    font-size: 22px;
   }
 
   .user-directory {
