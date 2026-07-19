@@ -5,13 +5,25 @@ const state = {
   campaigns: [],
   adminCampaigns: [],
   assessments: [],
+  assessmentOptions: [],
+  assessmentQuestionPool: [],
   currentCampaign: null,
   currentQuestions: [],
   currentSubmission: null,
   activeView: null,
+  assessmentDraft: {
+    mode: "create",
+    assessmentId: "",
+    questionSearch: "",
+    selectedQuestions: []
+  },
   userFilters: {
     q: "",
     role: "",
+    status: ""
+  },
+  assessmentFilters: {
+    q: "",
     status: ""
   },
   campaignFilters: {
@@ -31,6 +43,7 @@ const state = {
   paginations: {
     users: { page: 1, pageSize: 10, total: 0 },
     questions: { page: 1, pageSize: 10, total: 0 },
+    assessments: { page: 1, pageSize: 10, total: 0 },
     campaigns: { page: 1, pageSize: 10, total: 0 },
     submissions: { page: 1, pageSize: 10, total: 0 }
   },
@@ -41,6 +54,7 @@ const state = {
 const VIEW_ROLES = {
   candidateHome: ["candidate"],
   enterpriseHome: ["interviewer", "recruiter", "admin"],
+  assessmentManagement: ["interviewer", "admin"],
   userManagement: ["admin"],
   campaignManagement: ["recruiter", "admin"],
   questionBank: ["interviewer", "admin"],
@@ -52,6 +66,7 @@ const VIEW_ROLES = {
 const viewMeta = {
   candidateHome: ["求职者端", "查看你被分配的招聘试题，并进入正式答题流程。"],
   enterpriseHome: ["企业端", "面试官、招聘专员、管理员在同一套企业工作台中使用各自模块。"],
+  assessmentManagement: ["测评模板管理", "面试官或管理员创建模板、选择题目并配置模板结构。"],
   userManagement: ["用户管理", "管理员创建、批量导入、编辑、禁用账号，并给候选人分配招聘试题。"],
   campaignManagement: ["招聘试题管理", "招聘专员或管理员基于测评模板创建招聘试题。"],
   questionBank: ["题库管理", "企业端中的题库能力，供面试官和管理员维护 Java 招聘题库。"],
@@ -101,10 +116,14 @@ document.getElementById("assignCampaignForm").addEventListener("submit", assignC
 document.getElementById("batchAssignCampaignForm").addEventListener("submit", batchAssignCampaigns);
 document.getElementById("reloadUsersButton").addEventListener("click", () => loadUsers());
 document.getElementById("reloadAdminCampaignsButton").addEventListener("click", () => loadAdminCampaigns());
-document.getElementById("reloadAssessmentsButton").addEventListener("click", () => loadAssessments());
+document.getElementById("reloadAssessmentsButton").addEventListener("click", () => loadAssessmentOptions());
+document.getElementById("reloadAssessmentManagementButton").addEventListener("click", () => loadAssessments());
+document.getElementById("reloadAssessmentQuestionPoolButton").addEventListener("click", () => loadAssessmentQuestionPool());
 document.getElementById("reloadCampaignManagementButton").addEventListener("click", () => loadAdminCampaigns());
 document.getElementById("createCampaignForm").addEventListener("submit", createCampaign);
 document.getElementById("updateCampaignForm").addEventListener("submit", updateCampaign);
+document.getElementById("assessmentSearchForm").addEventListener("submit", searchAssessments);
+document.getElementById("clearAssessmentSearchButton").addEventListener("click", clearAssessmentSearch);
 document.getElementById("updateUserId").addEventListener("change", syncSelectedUserToForm);
 document.getElementById("updateCampaignId").addEventListener("change", syncSelectedCampaignToForm);
 document.getElementById("campaignSearchForm").addEventListener("submit", searchCampaigns);
@@ -117,10 +136,14 @@ document.getElementById("reloadSubmissionListButton").addEventListener("click", 
 document.getElementById("updateQuestionForm").addEventListener("submit", updateQuestion);
 document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQuestion);
 document.getElementById("updateQuestionId").addEventListener("change", syncSelectedQuestionToForm);
+document.getElementById("assessmentTemplateForm").addEventListener("submit", submitAssessmentTemplate);
+document.getElementById("assessmentTemplateSelect").addEventListener("change", onAssessmentTemplateSelectChange);
+document.getElementById("assessmentQuestionSearchInput").addEventListener("input", onAssessmentQuestionSearch);
 document.getElementById("openCreateUserModalButton").addEventListener("click", () => openUserModal("create"));
 document.getElementById("openBatchCreateUsersModalButton").addEventListener("click", () => openUserModal("batchCreate"));
 document.getElementById("openAssignCampaignModalButton").addEventListener("click", () => openUserModal("assignCampaign"));
 document.getElementById("openBatchAssignCampaignModalButton").addEventListener("click", () => openUserModal("batchAssignCampaign"));
+document.getElementById("openCreateAssessmentModalButton").addEventListener("click", () => openAssessmentTemplateModal("create"));
 document.getElementById("openCreateCampaignModalButton").addEventListener("click", () => openCampaignModal("create"));
 document.getElementById("openUpdateCampaignModalButton").addEventListener("click", () => openCampaignModal("update"));
 document.getElementById("openCreateQuestionModalButton").addEventListener("click", () => openQuestionModal("create"));
@@ -138,6 +161,7 @@ setAuthenticated(false);
 renderCandidateWorkspace();
 renderEnterpriseWorkspace();
 renderQuestionBankList();
+renderAssessmentManagement();
 renderUserManagement();
 renderCampaignManagement();
 loadCurrentUser();
@@ -262,16 +286,26 @@ function resetSessionState() {
   state.campaigns = [];
   state.adminCampaigns = [];
   state.assessments = [];
+  state.assessmentOptions = [];
+  state.assessmentQuestionPool = [];
   state.currentCampaign = null;
   state.currentQuestions = [];
   state.currentSubmission = null;
   state.submissions = [];
   state.activeView = null;
+  state.assessmentDraft = {
+    mode: "create",
+    assessmentId: "",
+    questionSearch: "",
+    selectedQuestions: []
+  };
+  state.assessmentFilters = { q: "", status: "" };
   state.campaignFilters = { q: "", status: "" };
   state.submissionFilters = { q: "", status: "", campaignId: "" };
   state.paginations = {
     users: { page: 1, pageSize: 10, total: 0 },
     questions: { page: 1, pageSize: 10, total: 0 },
+    assessments: { page: 1, pageSize: 10, total: 0 },
     campaigns: { page: 1, pageSize: 10, total: 0 },
     submissions: { page: 1, pageSize: 10, total: 0 }
   };
@@ -281,6 +315,7 @@ function resetSessionState() {
   renderCandidateWorkspace();
   renderEnterpriseWorkspace();
   renderQuestionBankList();
+  renderAssessmentManagement();
   renderUserManagement();
   renderCampaignManagement();
   clearDynamicPanels();
@@ -303,13 +338,17 @@ async function warmupWorkspaceData() {
   }
   if (hasAnyRole(["interviewer", "admin"])) {
     jobs.push(loadQuestions({ silent: true }));
+    jobs.push(loadAssessments({ silent: true }));
+    jobs.push(loadAssessmentQuestionPool({ silent: true }));
   }
   if (hasAnyRole(["admin"])) {
     jobs.push(loadUsers({ silent: true }));
   }
   if (hasAnyRole(["admin", "recruiter"])) {
     jobs.push(loadAdminCampaigns({ silent: true }));
-    jobs.push(loadAssessments({ silent: true }));
+  }
+  if (hasAnyRole(["admin", "recruiter", "interviewer"])) {
+    jobs.push(loadAssessmentOptions({ silent: true }));
   }
   if (hasAnyRole(["candidate", "interviewer", "recruiter", "admin"])) {
     jobs.push(loadSubmissionList({ silent: true }));
@@ -317,6 +356,7 @@ async function warmupWorkspaceData() {
   await Promise.all(jobs);
   renderCandidateWorkspace();
   renderEnterpriseWorkspace();
+  renderAssessmentManagement();
   renderUserManagement();
   renderCampaignManagement();
 }
@@ -450,7 +490,16 @@ async function loadSubmissionList(options = {}) {
 }
 
 async function loadAssessments(options = {}) {
-  const result = await api("/api/admin/assessments");
+  const search = new URLSearchParams();
+  if (state.assessmentFilters.q) {
+    search.set("q", state.assessmentFilters.q);
+  }
+  if (state.assessmentFilters.status) {
+    search.set("status", state.assessmentFilters.status);
+  }
+  search.set("page", String(options.page || state.paginations.assessments.page));
+  search.set("pageSize", String(state.paginations.assessments.pageSize));
+  const result = await api(`/api/admin/assessments?${search.toString()}`);
   if (!result.ok) {
     if (!options.silent) {
       showFeedback(result.message, true);
@@ -459,7 +508,46 @@ async function loadAssessments(options = {}) {
   }
 
   state.assessments = result.data.items;
+  state.paginations.assessments = normalizePaginationState(result.data.pagination, state.paginations.assessments);
+  renderAssessmentManagement();
+  return true;
+}
+
+async function loadAssessmentOptions(options = {}) {
+  const search = new URLSearchParams({
+    page: "1",
+    pageSize: "100"
+  });
+  const result = await api(`/api/admin/assessments?${search.toString()}`);
+  if (!result.ok) {
+    if (!options.silent) {
+      showFeedback(result.message, true);
+    }
+    return false;
+  }
+
+  state.assessmentOptions = result.data.items;
   renderCampaignManagement();
+  syncAssessmentTemplateSelect();
+  return true;
+}
+
+async function loadAssessmentQuestionPool(options = {}) {
+  const search = new URLSearchParams({
+    status: "published",
+    page: "1",
+    pageSize: "100"
+  });
+  const result = await api(`/api/questions?${search.toString()}`);
+  if (!result.ok) {
+    if (!options.silent) {
+      showFeedback(result.message, true);
+    }
+    return false;
+  }
+
+  state.assessmentQuestionPool = result.data.items;
+  renderAssessmentQuestionPool();
   return true;
 }
 
@@ -526,6 +614,16 @@ function renderEnterpriseWorkspace() {
         <p>创建 Java 招聘题目、导入示例题库，并持续完善企业题库。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="questionBank">进入题库管理</button>
+        </div>
+      </article>
+    `);
+
+    cards.push(`
+      <article class="card">
+        <h3>测评模板管理</h3>
+        <p>从题库中组装模板，配置分组、顺序和分值，供招聘试题直接复用。</p>
+        <div class="button-row">
+          <button class="ghost-button" data-nav-view="assessmentManagement">进入模板管理</button>
         </div>
       </article>
     `);
@@ -680,9 +778,9 @@ function renderCampaignManagement() {
   const updateAssessmentSelect = document.getElementById("updateCampaignAssessmentId");
   const updateCampaignSelect = document.getElementById("updateCampaignId");
 
-  const assessmentOptions = state.assessments.length === 0
+  const assessmentOptions = state.assessmentOptions.length === 0
     ? `<option value="">当前没有可用测评模板</option>`
-    : state.assessments.map((item) => `
+    : state.assessmentOptions.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `).join("");
   const campaignOptions = state.adminCampaigns.length === 0
@@ -697,7 +795,7 @@ function renderCampaignManagement() {
   syncSelectedCampaignToForm();
 
   summary.innerHTML = renderMetaItems([
-    ["测评模板数", state.assessments.length],
+    ["测评模板数", state.assessmentOptions.length],
     ["当前页试题数", state.adminCampaigns.length],
     ["试题总数", state.paginations.campaigns.total],
     ["已发布试题", state.adminCampaigns.filter((item) => item.status === "published").length]
@@ -735,6 +833,49 @@ function renderCampaignManagement() {
 
   pagination.innerHTML = renderPagination("campaigns", state.paginations.campaigns);
   bindPagination("campaigns", loadAdminCampaigns);
+}
+
+function renderAssessmentManagement() {
+  const summary = document.getElementById("assessmentManagementSummary");
+  const list = document.getElementById("assessmentManagementList");
+  const pagination = document.getElementById("assessmentPagination");
+
+  summary.innerHTML = renderMetaItems([
+    ["当前页模板数", state.assessments.length],
+    ["模板总数", state.paginations.assessments.total],
+    ["已发布模板", state.assessments.filter((item) => item.status === "published").length],
+    ["可选题目数", state.assessmentQuestionPool.length]
+  ]);
+
+  if (state.assessments.length === 0) {
+    list.innerHTML = `<div class="question-card"><p>当前还没有测评模板。</p></div>`;
+    pagination.innerHTML = "";
+    return;
+  }
+
+  list.innerHTML = state.assessments.map((item) => `
+    <article class="question-card">
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>模板 ID：${escapeHtml(item.id)}</p>
+      <p>状态：${escapeHtml(item.status)}</p>
+      <p>目标级别：${escapeHtml(item.target_level || "-")}</p>
+      <p>模板题数：${escapeHtml(String(item.question_count || 0))} 道</p>
+      <p>模板总分：${escapeHtml(String(item.total_score || 0))} 分</p>
+      <p>说明：${escapeHtml(item.description || "-")}</p>
+      <div class="button-row">
+        <button class="ghost-button" data-edit-assessment-id="${escapeHtml(item.id)}">编辑模板</button>
+      </div>
+    </article>
+  `).join("");
+
+  list.querySelectorAll("[data-edit-assessment-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openAssessmentTemplateModal("update", button.dataset.editAssessmentId || "");
+    });
+  });
+
+  pagination.innerHTML = renderPagination("assessments", state.paginations.assessments);
+  bindPagination("assessments", loadAssessments);
 }
 
 function renderQuestionBankList() {
@@ -806,6 +947,24 @@ async function clearUserSearch() {
   state.userFilters = { q: "", role: "", status: "" };
   state.paginations.users.page = 1;
   await loadUsers();
+}
+
+async function searchAssessments(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  state.assessmentFilters = {
+    q: String(formData.get("q") || "").trim(),
+    status: String(formData.get("status") || "").trim()
+  };
+  state.paginations.assessments.page = 1;
+  await loadAssessments();
+}
+
+async function clearAssessmentSearch() {
+  document.getElementById("assessmentSearchForm").reset();
+  state.assessmentFilters = { q: "", status: "" };
+  state.paginations.assessments.page = 1;
+  await loadAssessments();
 }
 
 async function searchCampaigns(event) {
@@ -1720,6 +1879,17 @@ function formatRoleNames(roles) {
   return (roles || []).map((role) => ROLE_NAME_MAP[role] || role).join(" / ");
 }
 
+function formatQuestionType(type) {
+  return {
+    single_choice: "单选题",
+    multiple_choice: "多选题",
+    true_false: "判断题",
+    fill_blank: "填空题",
+    short_answer: "简答题",
+    scenario_answer: "场景分析题"
+  }[type] || type;
+}
+
 function syncSelectedUserToForm() {
   const form = document.getElementById("updateUserForm");
   const select = document.getElementById("updateUserId");
@@ -1794,6 +1964,63 @@ function openQuestionModal(mode) {
   document.getElementById(sectionId).classList.remove("hidden");
 }
 
+async function openAssessmentTemplateModal(mode, assessmentId = "") {
+  if (state.assessmentOptions.length === 0) {
+    await loadAssessmentOptions({ silent: true });
+  }
+  if (state.assessmentQuestionPool.length === 0) {
+    await loadAssessmentQuestionPool({ silent: true });
+  }
+
+  closeModalSections();
+  document.getElementById("assessmentTemplateModal").classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+
+  const title = document.getElementById("assessmentTemplateModalTitle");
+  const desc = document.getElementById("assessmentTemplateModalDesc");
+  const form = document.getElementById("assessmentTemplateForm");
+  const selectWrap = document.getElementById("assessmentTemplateSelectWrap");
+  const submitButton = document.getElementById("assessmentTemplateSubmitButton");
+
+  state.assessmentDraft.mode = mode;
+  state.assessmentDraft.assessmentId = assessmentId || "";
+  state.assessmentDraft.questionSearch = "";
+  state.assessmentDraft.selectedQuestions = [];
+  form.reset();
+  form.elements.mode.value = mode;
+  form.elements.assessmentId.value = assessmentId || "";
+  document.getElementById("assessmentQuestionSearchInput").value = "";
+
+  if (mode === "create") {
+    title.textContent = "新增模板";
+    desc.textContent = "创建新的测评模板，并从已发布题目中选择题目。";
+    submitButton.textContent = "创建模板";
+    selectWrap.classList.add("hidden");
+    form.elements.status.value = "draft";
+    updateAssessmentTotalScore();
+    renderAssessmentQuestionPool();
+    renderSelectedAssessmentQuestions();
+    return;
+  }
+
+  title.textContent = "修改模板";
+  desc.textContent = "修改模板信息、模板题目和每题分值。";
+  submitButton.textContent = "保存模板修改";
+  selectWrap.classList.remove("hidden");
+  syncAssessmentTemplateSelect();
+
+  const nextId = assessmentId || state.assessmentOptions[0]?.id || "";
+  form.elements.assessmentSelect.value = nextId;
+  form.elements.assessmentId.value = nextId;
+  state.assessmentDraft.assessmentId = nextId;
+  if (nextId) {
+    await loadAssessmentTemplateDetail(nextId);
+  } else {
+    renderAssessmentQuestionPool();
+    renderSelectedAssessmentQuestions();
+  }
+}
+
 function openCampaignModal(mode) {
   closeModalSections();
   document.getElementById("campaignModal").classList.remove("hidden");
@@ -1808,6 +2035,269 @@ function openCampaignModal(mode) {
   title.textContent = nextTitle;
   desc.textContent = nextDesc;
   document.getElementById(sectionId).classList.remove("hidden");
+}
+
+function syncAssessmentTemplateSelect() {
+  const select = document.getElementById("assessmentTemplateSelect");
+  if (!select) {
+    return;
+  }
+  select.innerHTML = state.assessmentOptions.length === 0
+    ? `<option value="">当前没有可选模板</option>`
+    : state.assessmentOptions.map((item) => `
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
+    `).join("");
+}
+
+async function onAssessmentTemplateSelectChange(event) {
+  const assessmentId = String(event.currentTarget.value || "").trim();
+  if (!assessmentId) {
+    return;
+  }
+  await loadAssessmentTemplateDetail(assessmentId);
+}
+
+function onAssessmentQuestionSearch(event) {
+  state.assessmentDraft.questionSearch = String(event.currentTarget.value || "").trim().toLowerCase();
+  renderAssessmentQuestionPool();
+}
+
+async function loadAssessmentTemplateDetail(assessmentId) {
+  const result = await api(`/api/admin/assessments/${assessmentId}`);
+  if (!result.ok) {
+    showFeedback(result.message, true);
+    return false;
+  }
+
+  fillAssessmentTemplateForm(result.data.assessment, result.data.questions || []);
+  return true;
+}
+
+function fillAssessmentTemplateForm(assessment, questions) {
+  const form = document.getElementById("assessmentTemplateForm");
+  form.elements.assessmentId.value = assessment.id;
+  form.elements.title.value = assessment.title || "";
+  form.elements.targetLevel.value = assessment.target_level || "";
+  form.elements.status.value = assessment.status || "draft";
+  form.elements.description.value = assessment.description || "";
+  state.assessmentDraft.assessmentId = assessment.id;
+  state.assessmentDraft.selectedQuestions = questions.map((item) => ({
+    questionId: item.question_id,
+    stem: item.stem,
+    type: item.type,
+    difficulty: item.difficulty,
+    sectionName: item.section_name || "",
+    sortOrder: Number(item.sort_order || 0),
+    score: Number(item.score || 0)
+  }));
+  updateAssessmentTotalScore();
+  renderAssessmentQuestionPool();
+  renderSelectedAssessmentQuestions();
+}
+
+function renderAssessmentQuestionPool() {
+  const container = document.getElementById("assessmentQuestionPoolList");
+  const selectedIds = new Set(state.assessmentDraft.selectedQuestions.map((item) => item.questionId));
+  const keyword = state.assessmentDraft.questionSearch;
+  const items = state.assessmentQuestionPool.filter((item) => {
+    if (!keyword) {
+      return true;
+    }
+    return `${item.stem || ""} ${item.type || ""}`.toLowerCase().includes(keyword);
+  });
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="template-empty">当前没有可选题目，请先在题库中发布题目。</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map((item) => {
+    const selected = selectedIds.has(item.id);
+    return `
+      <article class="template-pool-card">
+        <h4>${escapeHtml(item.stem)}</h4>
+        <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
+        <p>建议分值：${escapeHtml(String(item.score || 0))} 分</p>
+        <p>难度：${escapeHtml(String(item.difficulty || "-"))}</p>
+        <div class="button-row">
+          <button type="button" class="${selected ? "danger-button" : "ghost-button"}" data-pool-question-id="${escapeHtml(item.id)}" data-action="${selected ? "remove" : "add"}">
+            ${selected ? "移除" : "加入模板"}
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  container.querySelectorAll("[data-pool-question-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.action === "remove") {
+        removeAssessmentQuestion(button.dataset.poolQuestionId || "");
+        return;
+      }
+      addAssessmentQuestion(button.dataset.poolQuestionId || "");
+    });
+  });
+}
+
+function renderSelectedAssessmentQuestions() {
+  const container = document.getElementById("assessmentSelectedQuestionList");
+  const items = [...state.assessmentDraft.selectedQuestions].sort((a, b) => a.sortOrder - b.sortOrder);
+  if (items.length === 0) {
+    container.innerHTML = `<div class="template-empty">当前还没有选择题目。</div>`;
+    updateAssessmentTotalScore();
+    return;
+  }
+
+  container.innerHTML = items.map((item) => `
+    <article class="template-selected-card">
+      <h4>${escapeHtml(item.stem)}</h4>
+      <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
+      <div class="template-selected-grid">
+        <label>
+          <span>分组</span>
+          <input data-selected-field="sectionName" data-question-id="${escapeHtml(item.questionId)}" value="${escapeHtml(item.sectionName || "")}" placeholder="例如 Java 基础" />
+        </label>
+        <label>
+          <span>排序</span>
+          <input data-selected-field="sortOrder" data-question-id="${escapeHtml(item.questionId)}" type="number" min="1" value="${escapeHtml(String(item.sortOrder))}" />
+        </label>
+        <label>
+          <span>分值</span>
+          <input data-selected-field="score" data-question-id="${escapeHtml(item.questionId)}" type="number" min="1" value="${escapeHtml(String(item.score))}" />
+        </label>
+      </div>
+      <div class="button-row">
+        <button type="button" class="danger-button" data-remove-selected-question-id="${escapeHtml(item.questionId)}">移除题目</button>
+      </div>
+    </article>
+  `).join("");
+
+  container.querySelectorAll("[data-selected-field]").forEach((field) => {
+    field.addEventListener("input", () => updateAssessmentQuestionField(
+      field.dataset.questionId || "",
+      field.dataset.selectedField || "",
+      field.value
+    ));
+  });
+  container.querySelectorAll("[data-remove-selected-question-id]").forEach((button) => {
+    button.addEventListener("click", () => removeAssessmentQuestion(button.dataset.removeSelectedQuestionId || ""));
+  });
+
+  updateAssessmentTotalScore();
+}
+
+function addAssessmentQuestion(questionId) {
+  const current = state.assessmentDraft.selectedQuestions.find((item) => item.questionId === questionId);
+  if (current) {
+    return;
+  }
+  const question = state.assessmentQuestionPool.find((item) => item.id === questionId);
+  if (!question) {
+    return;
+  }
+
+  state.assessmentDraft.selectedQuestions.push({
+    questionId: question.id,
+    stem: question.stem,
+    type: question.type,
+    difficulty: question.difficulty,
+    sectionName: "",
+    sortOrder: state.assessmentDraft.selectedQuestions.length + 1,
+    score: Number(question.score || 10)
+  });
+  renderAssessmentQuestionPool();
+  renderSelectedAssessmentQuestions();
+}
+
+function removeAssessmentQuestion(questionId) {
+  state.assessmentDraft.selectedQuestions = state.assessmentDraft.selectedQuestions
+    .filter((item) => item.questionId !== questionId)
+    .map((item, index) => ({
+      ...item,
+      sortOrder: index + 1
+    }));
+  renderAssessmentQuestionPool();
+  renderSelectedAssessmentQuestions();
+}
+
+function updateAssessmentQuestionField(questionId, field, rawValue) {
+  state.assessmentDraft.selectedQuestions = state.assessmentDraft.selectedQuestions.map((item) => {
+    if (item.questionId !== questionId) {
+      return item;
+    }
+    if (field === "sortOrder") {
+      return { ...item, sortOrder: Math.max(1, Number(rawValue || 1)) };
+    }
+    if (field === "score") {
+      return { ...item, score: Math.max(1, Number(rawValue || 1)) };
+    }
+    if (field === "sectionName") {
+      return { ...item, sectionName: rawValue };
+    }
+    return item;
+  });
+
+  state.assessmentDraft.selectedQuestions.sort((a, b) => a.sortOrder - b.sortOrder);
+  state.assessmentDraft.selectedQuestions = state.assessmentDraft.selectedQuestions.map((item, index) => ({
+    ...item,
+    sortOrder: index + 1
+  }));
+  renderSelectedAssessmentQuestions();
+}
+
+function updateAssessmentTotalScore() {
+  const total = state.assessmentDraft.selectedQuestions.reduce((sum, item) => sum + Number(item.score || 0), 0);
+  const field = document.getElementById("assessmentTotalScoreInput");
+  if (field) {
+    field.value = String(total);
+  }
+}
+
+async function submitAssessmentTemplate(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, state.assessmentDraft.mode === "create" ? "创建中..." : "保存中...");
+  const formData = new FormData(form);
+  const mode = String(formData.get("mode") || "create").trim();
+  const assessmentId = String(formData.get("assessmentId") || "").trim();
+
+  const payload = {
+    title: String(formData.get("title") || "").trim(),
+    targetLevel: String(formData.get("targetLevel") || "").trim(),
+    status: String(formData.get("status") || "draft").trim(),
+    description: String(formData.get("description") || "").trim(),
+    questions: state.assessmentDraft.selectedQuestions.map((item) => ({
+      questionId: item.questionId,
+      sectionName: item.sectionName,
+      sortOrder: item.sortOrder,
+      score: Number(item.score || 0)
+    }))
+  };
+
+  const path = mode === "update"
+    ? `/api/admin/assessments/${assessmentId}`
+    : "/api/admin/assessments";
+  const method = mode === "update" ? "PUT" : "POST";
+  const result = await api(path, {
+    method,
+    body: JSON.stringify(payload)
+  });
+
+  if (!result.ok) {
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
+  }
+
+  closeModal();
+  showFeedback(mode === "update" ? "测评模板更新成功。" : "测评模板创建成功。");
+  await Promise.all([
+    loadAssessments({ silent: true }),
+    loadAssessmentOptions({ silent: true })
+  ]);
+  setFormLoading(form, false);
 }
 
 function closeModal() {

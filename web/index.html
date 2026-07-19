@@ -74,6 +74,7 @@
           <button data-view="candidateHome" class="menu-item">求职者端</button>
           <button data-view="enterpriseHome" class="menu-item">企业端</button>
           <button data-view="questionBank" class="menu-item">题库管理</button>
+          <button data-view="assessmentManagement" class="menu-item">测评模板管理</button>
           <button data-view="userManagement" class="menu-item">用户管理</button>
           <button data-view="campaignManagement" class="menu-item">招聘试题管理</button>
           <button data-view="assessment" class="menu-item">答题页</button>
@@ -272,6 +273,49 @@
             <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
             <div id="questionPagination" class="pagination-bar"></div>
+          </div>
+        </section>
+
+        <section id="assessmentManagementView" class="view">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>测评模板管理</h2>
+              <div class="topbar-actions">
+                <button id="reloadAssessmentQuestionPoolButton" class="ghost-button">刷新可选题目</button>
+                <button id="reloadAssessmentManagementButton" class="ghost-button">刷新模板</button>
+              </div>
+            </div>
+
+            <form id="assessmentSearchForm" class="stack-form panel-subsection">
+              <h3>检索测评模板</h3>
+              <div class="form-columns">
+                <label>
+                  <span>关键词</span>
+                  <input name="q" placeholder="模板名称 / 模板说明 / 目标级别" />
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="">全部状态</option>
+                    <option value="draft">draft</option>
+                    <option value="published">published</option>
+                    <option value="archived">archived</option>
+                  </select>
+                </label>
+              </div>
+              <div class="button-row">
+                <button type="submit" class="ghost-button">检索模板</button>
+                <button id="clearAssessmentSearchButton" type="button" class="ghost-button">清空条件</button>
+              </div>
+            </form>
+
+            <div class="action-toolbar">
+              <button id="openCreateAssessmentModalButton" class="primary-button">新增模板</button>
+            </div>
+
+            <div id="assessmentManagementSummary" class="meta-strip"></div>
+            <div id="assessmentManagementList" class="question-list question-list-compact"></div>
+            <div id="assessmentPagination" class="pagination-bar"></div>
           </div>
         </section>
 
@@ -787,6 +831,77 @@
               <button type="submit" class="primary-button">保存试题修改</button>
             </form>
           </div>
+        </section>
+
+        <section id="assessmentTemplateModal" class="modal-card hidden">
+          <div class="modal-header">
+            <div>
+              <h3 id="assessmentTemplateModalTitle">模板操作</h3>
+              <p id="assessmentTemplateModalDesc" class="hint">创建或修改测评模板，并从题库中选择题目。</p>
+            </div>
+            <button type="button" class="ghost-button" data-close-modal>关闭</button>
+          </div>
+
+          <form id="assessmentTemplateForm" class="stack-form">
+            <input type="hidden" name="mode" value="create" />
+            <input type="hidden" name="assessmentId" value="" />
+
+            <label id="assessmentTemplateSelectWrap" class="hidden">
+              <span>选择模板</span>
+              <select id="assessmentTemplateSelect" name="assessmentSelect"></select>
+            </label>
+
+            <div class="form-columns">
+              <label>
+                <span>模板名称</span>
+                <input name="title" placeholder="例如 Java 后端高级工程师模板" />
+              </label>
+              <label>
+                <span>目标级别</span>
+                <input name="targetLevel" placeholder="例如 junior / mid / senior" />
+              </label>
+            </div>
+
+            <div class="form-columns">
+              <label>
+                <span>状态</span>
+                <select name="status">
+                  <option value="draft">draft</option>
+                  <option value="published">published</option>
+                  <option value="archived">archived</option>
+                </select>
+              </label>
+              <label>
+                <span>题目总分</span>
+                <input id="assessmentTotalScoreInput" name="totalScore" value="0" readonly />
+              </label>
+            </div>
+
+            <label>
+              <span>模板说明</span>
+              <textarea name="description" placeholder="输入模板说明"></textarea>
+            </label>
+
+            <div class="split-layout template-builder-layout">
+              <div class="panel-subsection">
+                <div class="panel-header template-panel-header">
+                  <h3>可选题目</h3>
+                  <input id="assessmentQuestionSearchInput" class="template-search-input" placeholder="按题干 / 题型筛选" />
+                </div>
+                <div id="assessmentQuestionPoolList" class="question-list"></div>
+              </div>
+
+              <div class="panel-subsection">
+                <div class="panel-header template-panel-header">
+                  <h3>已选题目</h3>
+                  <p class="hint">可调整分组、顺序和模板内分值。</p>
+                </div>
+                <div id="assessmentSelectedQuestionList" class="question-list"></div>
+              </div>
+            </div>
+
+            <button id="assessmentTemplateSubmitButton" type="submit" class="primary-button">保存模板</button>
+          </form>
         </section>
       </div>
     </div>

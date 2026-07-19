@@ -2,21 +2,25 @@ import {
   countUserSubmissions,
   countQuestionDependencies,
   countUserDependencies,
+  deleteAssessmentQuestionsByAssessmentId,
   deleteQuestionAnswersByQuestionId,
   deleteQuestionById,
   deleteQuestionOptionsByQuestionId,
   aggregateSubmissionScores,
   deleteUserRolesByUserId,
   deleteUserById,
+  findAssessmentById,
   findCampaignById,
+  findAssessmentQuestionsWithDetails,
   findAssessmentQuestionSet,
-  findAssessmentsForAdmin,
+  findAssessments,
   findCampaignAssignment,
   findCampaignsForAdmin,
   findCampaignQuestionsForCandidate,
   findOpenCampaignsByUser,
   findQuestionById,
   findQuestionOptions,
+  findQuestionsByIds,
   findQuestions,
   findRoleByCode,
   findSubmissionAnswersBySubmissionId,
@@ -26,6 +30,8 @@ import {
   findUsers,
   insertCampaignCandidate,
   insertCampaign,
+  insertAssessment,
+  insertAssessmentQuestion,
   insertQuestion,
   insertQuestionAnswer,
   insertQuestionOption,
@@ -36,6 +42,7 @@ import {
   insertSubmissionAnswer,
   insertUser,
   insertUserRole,
+  updateAssessment,
   updateCampaign,
   updateQuestion,
   updateUserPassword,
@@ -166,7 +173,14 @@ export default {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleGetAssessments(env, sessionUser, corsHeaders);
+      return handleGetAssessments(request, env, sessionUser, corsHeaders);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/assessments") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleCreateAssessment(request, env, sessionUser, corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/admin/campaigns") {
@@ -196,6 +210,20 @@ export default {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
       return handleUpdateCampaign(request, env, sessionUser, adminCampaignMatch[1], corsHeaders);
+    }
+
+    const adminAssessmentMatch = url.pathname.match(/^\/api\/admin\/assessments\/([^/]+)$/);
+    if (request.method === "GET" && adminAssessmentMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleGetAssessmentDetail(env, sessionUser, adminAssessmentMatch[1], corsHeaders);
+    }
+    if (request.method === "PUT" && adminAssessmentMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleUpdateAssessment(request, env, sessionUser, adminAssessmentMatch[1], corsHeaders);
     }
 
     const adminUserMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
@@ -649,14 +677,140 @@ async function handleGetSubmissions(request, env, sessionUser, corsHeaders) {
  * @param {SessionUser} sessionUser
  * @param {Record<string, string>} corsHeaders
  */
-async function handleGetAssessments(env, sessionUser, corsHeaders) {
+async function handleGetAssessments(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter", "interviewer"])) {
     return json({ message: "无权查看测评模板" }, 403, {}, corsHeaders);
   }
 
-  const result = await findAssessmentsForAdmin(env);
+  const url = new URL(request.url);
+  const result = await findAssessments(env, {
+    q: url.searchParams.get("q") || "",
+    status: url.searchParams.get("status") || ""
+  }, {
+    page: url.searchParams.get("page") || 1,
+    pageSize: url.searchParams.get("pageSize") || 10
+  });
+
   return json({
-    items: result.results ?? []
+    items: result.results ?? [],
+    pagination: {
+      page: Number(result.page ?? 1),
+      pageSize: Number(result.pageSize ?? 10),
+      total: Number(result.total ?? 0)
+    }
+  }, 200, {}, corsHeaders);
+}
+
+async function handleGetAssessmentDetail(env, sessionUser, assessmentId, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter", "interviewer"])) {
+    return json({ message: "无权查看测评模板" }, 403, {}, corsHeaders);
+  }
+
+  const assessment = await findAssessmentById(env, assessmentId);
+  if (!assessment) {
+    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+  }
+
+  const questions = await findAssessmentQuestionsWithDetails(env, assessmentId);
+  return json({
+    assessment,
+    questions: questions.results ?? []
+  }, 200, {}, corsHeaders);
+}
+
+async function handleCreateAssessment(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "interviewer"])) {
+    return json({ message: "无权创建测评模板" }, 403, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  const parsed = await parseAssessmentPayload(env, body);
+  if (!parsed.ok) {
+    return json({ message: parsed.message }, 400, {}, corsHeaders);
+  }
+
+  const now = Date.now();
+  const assessmentId = `assessment_${crypto.randomUUID().replaceAll("-", "").slice(0, 18)}`;
+  await insertAssessment(env, {
+    id: assessmentId,
+    title: parsed.title,
+    description: parsed.description,
+    totalScore: parsed.totalScore,
+    targetLevel: parsed.targetLevel,
+    status: parsed.status,
+    createdBy: sessionUser.sub,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  for (const item of parsed.questions) {
+    await insertAssessmentQuestion(env, {
+      id: crypto.randomUUID(),
+      assessmentId,
+      questionId: item.questionId,
+      sectionName: item.sectionName,
+      sortOrder: item.sortOrder,
+      score: item.score
+    });
+  }
+
+  return json({
+    message: "测评模板创建成功",
+    assessment: {
+      id: assessmentId,
+      title: parsed.title,
+      status: parsed.status,
+      totalScore: parsed.totalScore
+    }
+  }, 201, {}, corsHeaders);
+}
+
+async function handleUpdateAssessment(request, env, sessionUser, assessmentId, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "interviewer"])) {
+    return json({ message: "无权修改测评模板" }, 403, {}, corsHeaders);
+  }
+
+  const currentAssessment = await findAssessmentById(env, assessmentId);
+  if (!currentAssessment) {
+    return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  const parsed = await parseAssessmentPayload(env, body);
+  if (!parsed.ok) {
+    return json({ message: parsed.message }, 400, {}, corsHeaders);
+  }
+
+  await updateAssessment(env, {
+    id: assessmentId,
+    title: parsed.title,
+    description: parsed.description,
+    totalScore: parsed.totalScore,
+    targetLevel: parsed.targetLevel,
+    status: parsed.status,
+    updatedAt: Date.now()
+  });
+  await deleteAssessmentQuestionsByAssessmentId(env, assessmentId);
+
+  for (const item of parsed.questions) {
+    await insertAssessmentQuestion(env, {
+      id: crypto.randomUUID(),
+      assessmentId,
+      questionId: item.questionId,
+      sectionName: item.sectionName,
+      sortOrder: item.sortOrder,
+      score: item.score
+    });
+  }
+
+  return json({
+    message: "测评模板更新成功",
+    assessment: {
+      id: assessmentId,
+      title: parsed.title,
+      status: parsed.status,
+      totalScore: parsed.totalScore
+    }
   }, 200, {}, corsHeaders);
 }
 
@@ -709,8 +863,7 @@ async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
     return json({ message: "试题状态不支持" }, 400, {}, corsHeaders);
   }
 
-  const assessments = await findAssessmentsForAdmin(env);
-  const assessment = (assessments.results ?? []).find((item) => item.id === assessmentId);
+  const assessment = await findAssessmentById(env, assessmentId);
   if (!assessment) {
     return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
   }
@@ -800,8 +953,7 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
     return json({ message: "试题状态不支持" }, 400, {}, corsHeaders);
   }
 
-  const assessments = await findAssessmentsForAdmin(env);
-  const assessment = (assessments.results ?? []).find((item) => item.id === assessmentId);
+  const assessment = await findAssessmentById(env, assessmentId);
   if (!assessment) {
     return json({ message: "测评模板不存在" }, 404, {}, corsHeaders);
   }
@@ -2244,10 +2396,90 @@ const QUESTION_TYPES = new Set([
   "scenario_answer"
 ]);
 
+const ASSESSMENT_STATUSES = new Set(["draft", "published", "archived"]);
 const ALLOWED_USER_ROLES = new Set(["candidate", "interviewer", "recruiter", "admin"]);
 const CAMPAIGN_INVITATION_STATUSES = new Set(["invited", "accepted", "completed", "expired"]);
 const CAMPAIGN_STATUSES = new Set(["draft", "published", "in_progress", "archived"]);
 const USER_STATUSES = new Set(["active", "disabled", "locked"]);
+
+async function parseAssessmentPayload(env, body) {
+  if (
+    !body ||
+    typeof body.title !== "string" ||
+    !Array.isArray(body.questions)
+  ) {
+    return { ok: false, message: "请求参数不合法" };
+  }
+
+  const title = body.title.trim();
+  const description = typeof body.description === "string" && body.description.trim() ? body.description.trim() : null;
+  const targetLevel = typeof body.targetLevel === "string" && body.targetLevel.trim() ? body.targetLevel.trim() : null;
+  const status = typeof body.status === "string" && body.status.trim() ? body.status.trim() : "draft";
+  if (!title) {
+    return { ok: false, message: "模板标题不能为空" };
+  }
+  if (!ASSESSMENT_STATUSES.has(status)) {
+    return { ok: false, message: "模板状态不支持" };
+  }
+  if (body.questions.length === 0) {
+    return { ok: false, message: "请至少选择一道题目" };
+  }
+
+  const normalizedQuestions = body.questions.map((item, index) => ({
+    questionId: typeof item?.questionId === "string" ? item.questionId.trim() : "",
+    sectionName: typeof item?.sectionName === "string" && item.sectionName.trim() ? item.sectionName.trim() : null,
+    sortOrder: Number(item?.sortOrder ?? index + 1),
+    score: Number(item?.score ?? 0)
+  }));
+
+  const duplicateIds = new Set();
+  const questionIds = [];
+  for (const item of normalizedQuestions) {
+    if (!item.questionId) {
+      return { ok: false, message: "模板题目缺少 questionId" };
+    }
+    if (!Number.isFinite(item.sortOrder) || item.sortOrder <= 0) {
+      return { ok: false, message: "题目排序必须为正整数" };
+    }
+    if (!Number.isFinite(item.score) || item.score <= 0) {
+      return { ok: false, message: "题目分值必须大于 0" };
+    }
+    if (duplicateIds.has(item.questionId)) {
+      return { ok: false, message: "同一模板中不能重复选择题目" };
+    }
+    duplicateIds.add(item.questionId);
+    questionIds.push(item.questionId);
+  }
+
+  const questionResult = await findQuestionsByIds(env, questionIds);
+  const questionMap = new Map((questionResult.results ?? []).map((item) => [item.id, item]));
+  for (const item of normalizedQuestions) {
+    const question = questionMap.get(item.questionId);
+    if (!question) {
+      return { ok: false, message: "存在无效题目，请刷新后重试" };
+    }
+    if (question.status !== "published") {
+      return { ok: false, message: "模板只能选择已发布题目" };
+    }
+  }
+
+  const sortedQuestions = normalizedQuestions
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((item, index) => ({
+      ...item,
+      sortOrder: index + 1
+    }));
+
+  return {
+    ok: true,
+    title,
+    description,
+    targetLevel,
+    status,
+    totalScore: sortedQuestions.reduce((sum, item) => sum + item.score, 0),
+    questions: sortedQuestions
+  };
+}
 
 /**
  * @param {AppBindings} env

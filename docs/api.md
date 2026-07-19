@@ -167,6 +167,30 @@
 
 - 管理员、招聘专员、面试官查看测评模板列表
 - 给新增或修改招聘试题时作为模板下拉数据源
+- 支持按 `q`、`status` 检索
+- 支持按 `page`、`pageSize` 分页查询
+
+### `GET /api/admin/assessments/:id`
+
+用途：
+
+- 查看单个测评模板详情
+- 返回模板基本信息和模板内题目列表
+
+### `POST /api/admin/assessments`
+
+用途：
+
+- 管理员或面试官创建测评模板
+- 从已发布题目中选择题目组成模板
+- 支持为每题配置分组、顺序和模板内分值
+
+### `PUT /api/admin/assessments/:id`
+
+用途：
+
+- 管理员或面试官修改已有测评模板
+- 支持整体替换模板题目结构
 
 ### `POST /api/admin/campaigns`
 
@@ -563,11 +587,6 @@
 
 ## 待扩展接口
 
-- `POST /api/questions`
-- `PUT /api/questions/:id`
-- `POST /api/assessments`
-- `POST /api/campaigns`
-- `GET /api/campaigns/:id/questions`
 - `GET /api/proctoring/events`
 - `GET /api/snapshots/:id`
 
@@ -590,7 +609,7 @@
 - 暂未实现抓拍文件访问签名 URL
 - 暂未实现题目编辑与删除接口
 - 预置题库导入当前不做幂等去重控制
-- 用户管理当前暂未实现编辑、禁用、重置密码
+- 当前暂未实现测评模板删除接口
 
 ## 文档维护规则
 

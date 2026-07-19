@@ -172,6 +172,152 @@ export function findAssessmentsForAdmin(env) {
   ).all();
 }
 
+export async function findAssessments(env, filters = {}, pagination = null) {
+  const clauses = [];
+  const bindings = [];
+
+  if (typeof filters.q === "string" && filters.q.trim()) {
+    const q = `%${filters.q.trim()}%`;
+    clauses.push("(a.title like ? or coalesce(a.description, '') like ? or coalesce(a.target_level, '') like ?)");
+    bindings.push(q, q, q);
+  }
+
+  if (typeof filters.status === "string" && filters.status.trim()) {
+    clauses.push("a.status = ?");
+    bindings.push(filters.status.trim());
+  }
+
+  const whereSql = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
+  const pager = normalizePagination(pagination);
+  const countSql = `select count(*) as total from assessments a ${whereSql}`;
+  const listSql = `select
+      a.id,
+      a.title,
+      a.description,
+      a.total_score,
+      a.target_level,
+      a.status,
+      a.created_by,
+      a.created_at,
+      a.updated_at,
+      (
+        select count(*)
+        from assessment_questions aq
+        where aq.assessment_id = a.id
+      ) as question_count
+    from assessments a
+    ${whereSql}
+    order by a.created_at desc, a.title asc`;
+
+  if (!pager) {
+    return env.DB.prepare(listSql).bind(...bindings).all();
+  }
+
+  const [countResult, listResult] = await Promise.all([
+    env.DB.prepare(countSql).bind(...bindings).first(),
+    env.DB.prepare(`${listSql} limit ? offset ?`).bind(...bindings, pager.pageSize, pager.offset).all()
+  ]);
+
+  return {
+    results: listResult.results ?? [],
+    total: Number(countResult?.total ?? 0),
+    page: pager.page,
+    pageSize: pager.pageSize
+  };
+}
+
+export function findAssessmentById(env, assessmentId) {
+  return env.DB.prepare(
+    `select
+      id,
+      title,
+      description,
+      total_score,
+      target_level,
+      status,
+      created_by,
+      created_at,
+      updated_at
+    from assessments
+    where id = ?`
+  ).bind(assessmentId).first();
+}
+
+export function findAssessmentQuestionsWithDetails(env, assessmentId) {
+  return env.DB.prepare(
+    `select
+      aq.id,
+      aq.assessment_id,
+      aq.question_id,
+      aq.section_name,
+      aq.sort_order,
+      aq.score,
+      q.type,
+      q.stem,
+      q.status as question_status,
+      q.difficulty
+    from assessment_questions aq
+    inner join questions q on q.id = aq.question_id
+    where aq.assessment_id = ?
+    order by aq.sort_order asc, aq.question_id asc`
+  ).bind(assessmentId).all();
+}
+
+export function insertAssessment(env, assessment) {
+  return env.DB.prepare(
+    `insert into assessments (
+      id, title, description, total_score, target_level, status, created_by, created_at, updated_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    assessment.id,
+    assessment.title,
+    assessment.description,
+    assessment.totalScore,
+    assessment.targetLevel,
+    assessment.status,
+    assessment.createdBy,
+    assessment.createdAt,
+    assessment.updatedAt
+  ).run();
+}
+
+export function updateAssessment(env, assessment) {
+  return env.DB.prepare(
+    `update assessments
+    set title = ?, description = ?, total_score = ?, target_level = ?, status = ?, updated_at = ?
+    where id = ?`
+  ).bind(
+    assessment.title,
+    assessment.description,
+    assessment.totalScore,
+    assessment.targetLevel,
+    assessment.status,
+    assessment.updatedAt,
+    assessment.id
+  ).run();
+}
+
+export function deleteAssessmentQuestionsByAssessmentId(env, assessmentId) {
+  return env.DB.prepare(
+    "delete from assessment_questions where assessment_id = ?"
+  ).bind(assessmentId).run();
+}
+
+export function insertAssessmentQuestion(env, item) {
+  return env.DB.prepare(
+    `insert into assessment_questions (
+      id, assessment_id, question_id, section_name, sort_order, score
+    ) values (?, ?, ?, ?, ?, ?)`
+  ).bind(
+    item.id,
+    item.assessmentId,
+    item.questionId,
+    item.sectionName,
+    item.sortOrder,
+    item.score
+  ).run();
+}
+
 /**
  * @param {import("../types").AppContext["Bindings"]} env
  * @param {string} campaignId
@@ -291,6 +437,25 @@ export function findQuestionById(env, questionId) {
     left join question_answers qa on qa.question_id = q.id
     where q.id = ?`
   ).bind(questionId).first();
+}
+
+export function findQuestionsByIds(env, questionIds) {
+  if (!Array.isArray(questionIds) || questionIds.length === 0) {
+    return Promise.resolve({ results: [] });
+  }
+
+  const placeholders = questionIds.map(() => "?").join(", ");
+  return env.DB.prepare(
+    `select
+      id,
+      type,
+      stem,
+      difficulty,
+      score,
+      status
+    from questions
+    where id in (${placeholders})`
+  ).bind(...questionIds).all();
 }
 
 export function findQuestionOptions(env, questionId) {
