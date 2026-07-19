@@ -1511,35 +1511,52 @@ select {
   z-index: 1000;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: rgba(20, 16, 10, 0.46);
-  backdrop-filter: blur(6px);
+  padding: 28px;
+  background:
+    radial-gradient(circle at top, rgba(255, 226, 184, 0.24), transparent 28rem),
+    rgba(28, 22, 15, 0.46);
+  backdrop-filter: blur(10px);
 }
 
 .modal-shell {
-  width: min(860px, 100%);
+  width: min(920px, 100%);
 }
 
 .modal-card {
   max-height: min(88vh, 920px);
   overflow: auto;
-  background: #fffdf8;
-  border: 1px solid rgba(214, 204, 185, 0.92);
-  border-radius: 26px;
-  padding: 24px;
-  box-shadow: 0 24px 48px rgba(26, 18, 11, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(20, 83, 45, 0.05), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 254, 250, 0.98), rgba(248, 244, 237, 0.95));
+  border: 1px solid rgba(228, 218, 200, 0.94);
+  border-radius: 32px;
+  padding: 28px;
+  box-shadow: 0 36px 80px rgba(28, 20, 12, 0.24);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: start;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 18px;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(232, 222, 205, 0.92);
 }
 
 .modal-header h3 {
   margin: 0 0 8px;
+  color: #1f1711;
+  font-size: 28px;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.modal-header .hint {
+  max-width: 620px;
+  color: #7a6d60;
+  font-size: 14px;
+  line-height: 1.75;
 }
 
 .modal-section {
@@ -1561,6 +1578,132 @@ select {
 
 .inline-form input {
   width: 320px;
+}
+
+.modal-card .stack-form {
+  gap: 18px;
+}
+
+.modal-card .form-columns {
+  gap: 14px;
+}
+
+.modal-card label {
+  display: grid;
+  gap: 8px;
+}
+
+.modal-card label > span,
+.modal-card .field-label {
+  color: #6f6255;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-card input,
+.modal-card textarea,
+.modal-card select {
+  border-radius: 18px;
+  border: 1px solid rgba(220, 209, 192, 0.96);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.modal-card input,
+.modal-card select {
+  min-height: 48px;
+  padding: 11px 15px;
+  font-size: 14px;
+}
+
+.modal-card textarea {
+  min-height: 132px;
+  padding: 13px 15px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.modal-card .hint {
+  color: #7f7265;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.modal-card .primary-button,
+.modal-card .ghost-button,
+.modal-card .danger-button {
+  min-height: 46px;
+  padding: 10px 18px;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+.modal-card [data-close-modal] {
+  min-width: 94px;
+  flex: 0 0 auto;
+}
+
+.modal-card .stack-form > .primary-button,
+.modal-card .stack-form > .danger-button {
+  margin-top: 4px;
+}
+
+.modal-card .checkbox-row {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(232, 222, 205, 0.92);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.modal-card .checkbox-item span {
+  font-size: 14px;
+}
+
+.modal-card .danger-panel {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(239, 198, 198, 0.9);
+  background: linear-gradient(180deg, rgba(255, 244, 244, 0.92), rgba(255, 252, 252, 0.86));
+}
+
+.modal-card .candidate-picker-list,
+.modal-card .candidate-picker-selected,
+.modal-card .question-card.compact-card {
+  border-radius: 20px;
+  border-color: rgba(228, 218, 200, 0.9);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.modal-card .candidate-picker-toolbar {
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(232, 223, 206, 0.9);
+  background: rgba(252, 248, 240, 0.88);
+}
+
+.modal-card .candidate-picker-count {
+  color: #2b2017;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-card .candidate-picker-actions .ghost-button {
+  min-height: 38px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.modal-card .password-field input {
+  padding-right: 52px;
+}
+
+.modal-card .password-toggle {
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(249, 243, 231, 0.96);
+  border: 1px solid rgba(225, 213, 193, 0.92);
 }
 
 @media (max-width: 960px) {
@@ -1613,6 +1756,31 @@ select {
 
   .inline-form input {
     width: 100%;
+  }
+
+  .modal-overlay {
+    padding: 16px;
+  }
+
+  .modal-shell {
+    width: 100%;
+  }
+
+  .modal-card {
+    max-height: min(92vh, 920px);
+    padding: 22px 18px;
+    border-radius: 24px;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .modal-header h3 {
+    font-size: 24px;
   }
 
   .feedback-toast {
@@ -1693,6 +1861,17 @@ select {
 }
 
 @media (max-width: 640px) {
+  .modal-card {
+    padding: 18px 16px;
+    border-radius: 22px;
+  }
+
+  .modal-card .primary-button,
+  .modal-card .ghost-button,
+  .modal-card .danger-button {
+    width: 100%;
+  }
+
   .management-action-grid {
     grid-template-columns: 1fr;
   }
