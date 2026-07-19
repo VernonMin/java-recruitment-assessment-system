@@ -88,8 +88,6 @@ const ROLE_NAME_MAP = {
 const authShell = document.getElementById("authShell");
 const appShell = document.getElementById("appShell");
 const modalOverlay = document.getElementById("modalOverlay");
-const loginPasswordInput = document.getElementById("loginPasswordInput");
-const togglePasswordButton = document.getElementById("togglePasswordButton");
 let feedbackTimer = null;
 
 document.querySelectorAll(".menu-item").forEach((button) => {
@@ -98,7 +96,6 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 
 document.getElementById("logoutButton").addEventListener("click", logout);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
-togglePasswordButton.addEventListener("click", togglePasswordVisibility);
 document.getElementById("questionForm").addEventListener("submit", submitQuestion);
 document.getElementById("reloadQuestionBankButton").addEventListener("click", () => loadQuestions());
 document.getElementById("importPresetQuestionsButton").addEventListener("click", importPresetQuestions);
@@ -170,6 +167,7 @@ renderQuestionBankList();
 renderAssessmentManagement();
 renderUserManagement();
 renderCampaignManagement();
+bindPasswordToggles();
 loadCurrentUser();
 
 function setAuthenticated(isAuthenticated) {
@@ -180,12 +178,27 @@ function setAuthenticated(isAuthenticated) {
   }
 }
 
-function togglePasswordVisibility() {
-  const nextType = loginPasswordInput.type === "password" ? "text" : "password";
+function bindPasswordToggles(root = document) {
+  root.querySelectorAll("[data-password-toggle]").forEach((button) => {
+    if (button.dataset.boundPasswordToggle === "true") {
+      return;
+    }
+    button.dataset.boundPasswordToggle = "true";
+    button.addEventListener("click", () => togglePasswordVisibility(button));
+  });
+}
+
+function togglePasswordVisibility(button) {
+  const field = button.closest(".password-field");
+  const input = field?.querySelector("input[type=\"password\"], input[type=\"text\"]");
+  if (!input) {
+    return;
+  }
+  const nextType = input.type === "password" ? "text" : "password";
   const isVisible = nextType === "text";
-  loginPasswordInput.type = nextType;
-  togglePasswordButton.setAttribute("aria-label", isVisible ? "隐藏密码" : "显示密码");
-  togglePasswordButton.setAttribute("aria-pressed", String(isVisible));
+  input.type = nextType;
+  button.setAttribute("aria-label", isVisible ? "隐藏密码" : "显示密码");
+  button.setAttribute("aria-pressed", String(isVisible));
 }
 
 function switchView(view) {
@@ -1204,10 +1217,11 @@ async function disableUserWithHistory(userId, form = null, fallbackMessage = "")
   }
 
   if (user.status === "disabled") {
-    const message = "该账号已有历史记录，且当前已经是禁用状态。";
+    const message = "禁用账号不支持删除。";
     if (form) {
       setFormFeedback(form, message);
       setFormLoading(form, false);
+      return;
     }
     showFeedback(message);
     return;

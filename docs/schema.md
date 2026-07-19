@@ -233,6 +233,12 @@ erDiagram
 
 - `(campaign_id, user_id)` 唯一索引
 
+候选流程状态建议：
+
+- 账号表 `users.status` 只保留登录权限语义，例如 `active`、`locked`、`disabled`
+- 候选人业务进度建议独立建模，例如增加候选流程状态字段或单独的 candidate lifecycle 表，表达 `待分配`、`待作答`、`已作答`、`评估中`、`已通过`、`未通过`、`流程结束`、`已归档`
+- 这样可以避免把“流程结束”误写成账号“禁用”
+
 ## 提交与评估
 
 ### `submissions`
