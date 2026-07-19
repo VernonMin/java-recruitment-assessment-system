@@ -3648,20 +3648,24 @@ function renderPagination(key, pagination) {
   const totalPages = Math.max(1, Math.ceil((pagination.total || 0) / pagination.pageSize));
   return `
     <div class="pagination-inner">
-      <span class="pagination-info">第 ${escapeHtml(String(pagination.page))} / ${escapeHtml(String(totalPages))} 页，共 ${escapeHtml(String(pagination.total))} 条</span>
+      <div class="pagination-summary">
+        <span class="pagination-info">第 ${escapeHtml(String(pagination.page))} / ${escapeHtml(String(totalPages))} 页</span>
+        <span class="pagination-divider"></span>
+        <span class="pagination-total">共 ${escapeHtml(String(pagination.total))} 条</span>
+      </div>
       <div class="pagination-actions">
         <label class="pagination-size">
-          <span>每页</span>
+          <span class="pagination-size-label">每页</span>
           <select data-pagination-size="${escapeHtml(key)}">
             ${[10, 20, 50, 100].map((size) => `
               <option value="${escapeHtml(String(size))}" ${pagination.pageSize === size ? "selected" : ""}>${escapeHtml(String(size))}</option>
             `).join("")}
           </select>
-          <span>条</span>
+          <span class="pagination-size-label">条</span>
         </label>
-        <div class="button-row">
-        <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.max(1, pagination.page - 1)))}" ${pagination.page <= 1 ? "disabled" : ""}>上一页</button>
-        <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.min(totalPages, pagination.page + 1)))}" ${pagination.page >= totalPages ? "disabled" : ""}>下一页</button>
+        <div class="pagination-buttons">
+          <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.max(1, pagination.page - 1)))}" ${pagination.page <= 1 ? "disabled" : ""}>上一页</button>
+          <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.min(totalPages, pagination.page + 1)))}" ${pagination.page >= totalPages ? "disabled" : ""}>下一页</button>
         </div>
       </div>
     </div>
