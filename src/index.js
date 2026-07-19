@@ -1,7 +1,13 @@
 import {
   countUserSubmissions,
+  countQuestionDependencies,
+  countUserDependencies,
+  deleteQuestionAnswersByQuestionId,
+  deleteQuestionById,
+  deleteQuestionOptionsByQuestionId,
   aggregateSubmissionScores,
   deleteUserRolesByUserId,
+  deleteUserById,
   findCampaignById,
   findAssessmentQuestionSet,
   findAssessmentsForAdmin,
@@ -9,6 +15,8 @@ import {
   findCampaignsForAdmin,
   findCampaignQuestionsForCandidate,
   findOpenCampaignsByUser,
+  findQuestionById,
+  findQuestionOptions,
   findQuestions,
   findRoleByCode,
   findSubmissionAnswersBySubmissionId,
@@ -28,6 +36,7 @@ import {
   insertUser,
   insertUserRole,
   updateCampaign,
+  updateQuestion,
   updateUserPassword,
   updateUserProfile,
   updateSubmissionAnswerEvaluation,
@@ -92,8 +101,7 @@ export default {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      const result = await findQuestions(env);
-      return json({ items: result.results ?? [] }, 200, {}, corsHeaders);
+      return handleGetQuestions(request, env, sessionUser, corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/questions") {
@@ -122,7 +130,7 @@ export default {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleGetUsers(env, sessionUser, corsHeaders);
+      return handleGetUsers(request, env, sessionUser, corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/admin/users") {
@@ -189,6 +197,12 @@ export default {
       }
       return handleUpdateUser(request, env, sessionUser, adminUserMatch[1], corsHeaders);
     }
+    if (request.method === "DELETE" && adminUserMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleDeleteUser(env, sessionUser, adminUserMatch[1], corsHeaders);
+    }
 
     const adminResetPasswordMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/reset-password$/);
     if (request.method === "POST" && adminResetPasswordMatch) {
@@ -204,6 +218,20 @@ export default {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
       return handleGetCampaignQuestions(env, sessionUser, campaignQuestionsMatch[1], corsHeaders);
+    }
+
+    const questionMatch = url.pathname.match(/^\/api\/questions\/([^/]+)$/);
+    if (request.method === "PUT" && questionMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleUpdateQuestion(request, env, sessionUser, questionMatch[1], corsHeaders);
+    }
+    if (request.method === "DELETE" && questionMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleDeleteQuestion(env, sessionUser, questionMatch[1], corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/submissions") {
@@ -343,12 +371,17 @@ function handleLogout(corsHeaders) {
  * @param {SessionUser} sessionUser
  * @param {Record<string, string>} corsHeaders
  */
-async function handleGetUsers(env, sessionUser, corsHeaders) {
+async function handleGetUsers(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin"])) {
     return json({ message: "无权查看用户列表" }, 403, {}, corsHeaders);
   }
 
-  const result = await findUsers(env);
+  const url = new URL(request.url);
+  const result = await findUsers(env, {
+    q: url.searchParams.get("q") || "",
+    role: url.searchParams.get("role") || "",
+    status: url.searchParams.get("status") || ""
+  });
   return json({
     items: (result.results ?? []).map((item) => ({
       id: item.id,
@@ -362,6 +395,50 @@ async function handleGetUsers(env, sessionUser, corsHeaders) {
         : [],
       createdAt: item.created_at
     }))
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleGetQuestions(request, env, sessionUser, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "admin"])) {
+    return json({ message: "无权查看题库" }, 403, {}, corsHeaders);
+  }
+
+  const url = new URL(request.url);
+  const result = await findQuestions(env, {
+    q: url.searchParams.get("q") || "",
+    type: url.searchParams.get("type") || "",
+    status: url.searchParams.get("status") || ""
+  });
+
+  const items = await Promise.all((result.results ?? []).map(async (item) => {
+    const options = await findQuestionOptions(env, item.id);
+    return {
+      id: item.id,
+      type: item.type,
+      stem: item.stem,
+      analysis: item.analysis,
+      difficulty: item.difficulty,
+      score: item.score,
+      tags: item.tags,
+      status: item.status,
+      answerType: item.answer_type,
+      answer: item.answer_content,
+      caseSensitive: Boolean(item.case_sensitive),
+      options: (options.results ?? []).map((option) => ({
+        optionKey: option.option_key,
+        optionText: option.option_text
+      }))
+    };
+  }));
+
+  return json({
+    items
   }, 200, {}, corsHeaders);
 }
 
@@ -918,6 +995,46 @@ async function handleResetUserPassword(request, env, sessionUser, userId, corsHe
 }
 
 /**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} userId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleDeleteUser(env, sessionUser, userId, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin"])) {
+    return json({ message: "无权删除用户" }, 403, {}, corsHeaders);
+  }
+
+  if (userId === sessionUser.sub) {
+    return json({ message: "不能删除当前登录账号" }, 400, {}, corsHeaders);
+  }
+
+  const currentUsers = await findUsers(env);
+  const user = (currentUsers.results ?? []).find((item) => item.id === userId);
+  if (!user) {
+    return json({ message: "用户不存在" }, 404, {}, corsHeaders);
+  }
+
+  const dependencies = await countUserDependencies(env, userId);
+  const campaignCount = Number(dependencies?.campaign_count ?? 0);
+  const submissionCount = Number(dependencies?.submission_count ?? 0);
+  if (campaignCount > 0 || submissionCount > 0) {
+    return json({ message: "该用户已有场次分配或提交记录，不能直接删除" }, 409, {}, corsHeaders);
+  }
+
+  await deleteUserRolesByUserId(env, userId);
+  await deleteUserById(env, userId);
+
+  return json({
+    message: "用户删除成功",
+    user: {
+      id: userId,
+      account: user.account
+    }
+  }, 200, {}, corsHeaders);
+}
+
+/**
  * @param {Request} request
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
@@ -980,6 +1097,145 @@ async function handleCreateQuestion(request, env, sessionUser, corsHeaders) {
       status: createdQuestion.status
     }
   }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} questionId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleUpdateQuestion(request, env, sessionUser, questionId, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "admin"])) {
+    return json({ message: "无权修改题目" }, 403, {}, corsHeaders);
+  }
+
+  const currentQuestion = await findQuestionById(env, questionId);
+  if (!currentQuestion) {
+    return json({ message: "题目不存在" }, 404, {}, corsHeaders);
+  }
+
+  const dependencies = await countQuestionDependencies(env, questionId);
+  const submissionCount = Number(dependencies?.submission_count ?? 0);
+  if (submissionCount > 0) {
+    return json({ message: "该题目已有提交记录，不能直接修改" }, 409, {}, corsHeaders);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.type !== "string" || typeof body.stem !== "string") {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const type = body.type.trim();
+  const stem = body.stem.trim();
+  const score = Number(body.score ?? 0);
+  const difficulty = Number(body.difficulty ?? 3);
+  const status = typeof body.status === "string" ? body.status : "draft";
+  const normalizedOptions = normalizeQuestionOptions(body.options);
+  const normalizedAnswer = normalizeQuestionAnswer(type, body.answer);
+  const answerType = inferAnswerType(type);
+
+  if (!stem) {
+    return json({ message: "题干不能为空" }, 400, {}, corsHeaders);
+  }
+  if (!QUESTION_TYPES.has(type)) {
+    return json({ message: "题型不支持" }, 400, {}, corsHeaders);
+  }
+  if (!Number.isFinite(score) || score < 0) {
+    return json({ message: "分值不合法" }, 400, {}, corsHeaders);
+  }
+  if (!Number.isFinite(difficulty) || difficulty < 1 || difficulty > 5) {
+    return json({ message: "难度必须在 1 到 5 之间" }, 400, {}, corsHeaders);
+  }
+  if (requiresOptions(type) && normalizedOptions.length === 0) {
+    return json({ message: "当前题型至少需要一个选项" }, 400, {}, corsHeaders);
+  }
+  if (answerType !== "manual" && !normalizedAnswer) {
+    return json({ message: "当前题型必须提供标准答案" }, 400, {}, corsHeaders);
+  }
+
+  await updateQuestion(env, {
+    questionId,
+    type,
+    stem,
+    analysis: typeof body.analysis === "string" && body.analysis.trim() ? body.analysis.trim() : null,
+    difficulty,
+    score,
+    tags: Array.isArray(body.tags) ? JSON.stringify(body.tags.map((item) => String(item).trim()).filter(Boolean)) : null,
+    status,
+    updatedAt: Date.now()
+  });
+
+  await deleteQuestionOptionsByQuestionId(env, questionId);
+  for (const [index, option] of normalizedOptions.entries()) {
+    await insertQuestionOption(env, {
+      id: crypto.randomUUID(),
+      questionId,
+      optionKey: option.optionKey,
+      optionText: option.optionText,
+      sortOrder: index + 1
+    });
+  }
+
+  await deleteQuestionAnswersByQuestionId(env, questionId);
+  await insertQuestionAnswer(env, {
+    id: crypto.randomUUID(),
+    questionId,
+    answerType,
+    answerContent: normalizedAnswer,
+    caseSensitive: body.caseSensitive ? 1 : 0,
+    createdAt: Date.now()
+  });
+
+  return json({
+    message: "题目更新成功",
+    question: {
+      id: questionId,
+      type,
+      stem,
+      score,
+      difficulty,
+      status,
+      previousType: currentQuestion.type
+    }
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} questionId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleDeleteQuestion(env, sessionUser, questionId, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "admin"])) {
+    return json({ message: "无权删除题目" }, 403, {}, corsHeaders);
+  }
+
+  const currentQuestion = await findQuestionById(env, questionId);
+  if (!currentQuestion) {
+    return json({ message: "题目不存在" }, 404, {}, corsHeaders);
+  }
+
+  const dependencies = await countQuestionDependencies(env, questionId);
+  const assessmentCount = Number(dependencies?.assessment_count ?? 0);
+  const submissionCount = Number(dependencies?.submission_count ?? 0);
+  if (assessmentCount > 0 || submissionCount > 0) {
+    return json({ message: "该题目已被测评模板或提交记录引用，不能直接删除" }, 409, {}, corsHeaders);
+  }
+
+  await deleteQuestionOptionsByQuestionId(env, questionId);
+  await deleteQuestionAnswersByQuestionId(env, questionId);
+  await deleteQuestionById(env, questionId);
+
+  return json({
+    message: "题目删除成功",
+    question: {
+      id: questionId,
+      stem: currentQuestion.stem
+    }
+  }, 200, {}, corsHeaders);
 }
 
 /**

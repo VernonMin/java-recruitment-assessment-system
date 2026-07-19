@@ -108,6 +108,41 @@
               </div>
             </div>
 
+            <form id="userSearchForm" class="stack-form panel-subsection">
+              <h3>检索用户</h3>
+              <div class="form-columns">
+                <label>
+                  <span>关键词</span>
+                  <input name="q" placeholder="账号 / 姓名 / 邮箱 / 手机号" />
+                </label>
+                <label>
+                  <span>角色</span>
+                  <select name="role">
+                    <option value="">全部角色</option>
+                    <option value="candidate">求职者</option>
+                    <option value="interviewer">面试官</option>
+                    <option value="recruiter">招聘专员</option>
+                    <option value="admin">管理员</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="">全部状态</option>
+                    <option value="active">active</option>
+                    <option value="disabled">disabled</option>
+                    <option value="locked">locked</option>
+                  </select>
+                </label>
+                <div class="button-row align-end">
+                  <button type="submit" class="ghost-button">检索用户</button>
+                  <button id="clearUserSearchButton" type="button" class="ghost-button">清空条件</button>
+                </div>
+              </div>
+            </form>
+
             <div class="split-layout">
               <form id="createUserForm" class="stack-form panel-subsection">
                 <h3>创建账号</h3>
@@ -203,18 +238,30 @@
                 <button type="submit" class="primary-button">保存用户信息</button>
               </form>
 
-              <form id="resetPasswordForm" class="stack-form panel-subsection">
-                <h3>重置密码</h3>
-                <label>
-                  <span>选择用户</span>
-                  <select id="resetPasswordUserId" name="userId"></select>
-                </label>
-                <label>
-                  <span>新密码</span>
-                  <input name="password" type="password" placeholder="至少 8 位" />
-                </label>
-                <button type="submit" class="primary-button">重置密码</button>
-              </form>
+              <div class="stack-form panel-subsection">
+                <form id="resetPasswordForm" class="stack-form">
+                  <h3>重置密码</h3>
+                  <label>
+                    <span>选择用户</span>
+                    <select id="resetPasswordUserId" name="userId"></select>
+                  </label>
+                  <label>
+                    <span>新密码</span>
+                    <input name="password" type="password" placeholder="至少 8 位" />
+                  </label>
+                  <button type="submit" class="primary-button">重置密码</button>
+                </form>
+                <div class="divider"></div>
+                <form id="deleteUserForm" class="stack-form danger-panel">
+                  <h3>删除用户</h3>
+                  <label>
+                    <span>选择用户</span>
+                    <select id="deleteUserId" name="userId"></select>
+                  </label>
+                  <p class="hint">如果该账号已被分配场次或已有提交记录，系统会拒绝直接删除。</p>
+                  <button type="submit" class="danger-button">删除用户</button>
+                </form>
+              </div>
             </div>
 
             <div class="split-layout">
@@ -426,11 +473,17 @@
                 <button id="reloadQuestionBankButton" class="ghost-button">刷新题库</button>
               </div>
             </div>
-            <form id="questionForm" class="stack-form">
+            <form id="questionSearchForm" class="stack-form panel-subsection">
+              <h3>检索题目</h3>
               <div class="form-columns">
+                <label>
+                  <span>关键词</span>
+                  <input name="q" placeholder="题干 / 解析 / 标签" />
+                </label>
                 <label>
                   <span>题型</span>
                   <select name="type">
+                    <option value="">全部题型</option>
                     <option value="single_choice">单选题</option>
                     <option value="multiple_choice">多选题</option>
                     <option value="true_false">判断题</option>
@@ -439,42 +492,140 @@
                     <option value="scenario_answer">场景分析题</option>
                   </select>
                 </label>
+              </div>
+              <div class="form-columns">
                 <label>
                   <span>状态</span>
                   <select name="status">
+                    <option value="">全部状态</option>
                     <option value="draft">草稿</option>
                     <option value="published">已发布</option>
                   </select>
                 </label>
+                <div class="button-row align-end">
+                  <button type="submit" class="ghost-button">检索题目</button>
+                  <button id="clearQuestionSearchButton" type="button" class="ghost-button">清空条件</button>
+                </div>
               </div>
-              <label>
-                <span>题干</span>
-                <textarea name="stem" placeholder="输入题干"></textarea>
-              </label>
-              <div class="form-columns">
-                <label>
-                  <span>分值</span>
-                  <input name="score" type="number" value="10" min="0" />
-                </label>
-                <label>
-                  <span>难度</span>
-                  <input name="difficulty" type="number" value="3" min="1" max="5" />
-                </label>
-              </div>
-              <label>
-                <span>选项</span>
-                <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
-              </label>
-              <label>
-                <span>标准答案</span>
-                <input name="answer" placeholder="例如：B 或 A,B" />
-              </label>
-              <label>
-                <span>解析</span>
-                <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
-              </label>
-              <button type="submit" class="primary-button">创建题目</button>
             </form>
+            <div class="split-layout">
+              <form id="questionForm" class="stack-form panel-subsection">
+                <h3>创建题目</h3>
+                <div class="form-columns">
+                  <label>
+                    <span>题型</span>
+                    <select name="type">
+                      <option value="single_choice">单选题</option>
+                      <option value="multiple_choice">多选题</option>
+                      <option value="true_false">判断题</option>
+                      <option value="fill_blank">填空题</option>
+                      <option value="short_answer">简答题</option>
+                      <option value="scenario_answer">场景分析题</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>状态</span>
+                    <select name="status">
+                      <option value="draft">草稿</option>
+                      <option value="published">已发布</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <span>题干</span>
+                  <textarea name="stem" placeholder="输入题干"></textarea>
+                </label>
+                <div class="form-columns">
+                  <label>
+                    <span>分值</span>
+                    <input name="score" type="number" value="10" min="0" />
+                  </label>
+                  <label>
+                    <span>难度</span>
+                    <input name="difficulty" type="number" value="3" min="1" max="5" />
+                  </label>
+                </div>
+                <label>
+                  <span>选项</span>
+                  <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
+                </label>
+                <label>
+                  <span>标准答案</span>
+                  <input name="answer" placeholder="例如：B 或 A,B" />
+                </label>
+                <label>
+                  <span>解析</span>
+                  <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
+                </label>
+                <button type="submit" class="primary-button">创建题目</button>
+              </form>
+              <div class="stack-form panel-subsection">
+                <form id="updateQuestionForm" class="stack-form">
+                  <h3>修改题目</h3>
+                  <label>
+                    <span>选择题目</span>
+                    <select id="updateQuestionId" name="questionId"></select>
+                  </label>
+                  <div class="form-columns">
+                    <label>
+                      <span>题型</span>
+                      <select name="type">
+                        <option value="single_choice">单选题</option>
+                        <option value="multiple_choice">多选题</option>
+                        <option value="true_false">判断题</option>
+                        <option value="fill_blank">填空题</option>
+                        <option value="short_answer">简答题</option>
+                        <option value="scenario_answer">场景分析题</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>状态</span>
+                      <select name="status">
+                        <option value="draft">草稿</option>
+                        <option value="published">已发布</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>
+                    <span>题干</span>
+                    <textarea name="stem" placeholder="输入题干"></textarea>
+                  </label>
+                  <div class="form-columns">
+                    <label>
+                      <span>分值</span>
+                      <input name="score" type="number" value="10" min="0" />
+                    </label>
+                    <label>
+                      <span>难度</span>
+                      <input name="difficulty" type="number" value="3" min="1" max="5" />
+                    </label>
+                  </div>
+                  <label>
+                    <span>选项</span>
+                    <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
+                  </label>
+                  <label>
+                    <span>标准答案</span>
+                    <input name="answer" placeholder="例如：B 或 A,B" />
+                  </label>
+                  <label>
+                    <span>解析</span>
+                    <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
+                  </label>
+                  <button type="submit" class="primary-button">保存题目修改</button>
+                </form>
+                <div class="divider"></div>
+                <form id="deleteQuestionForm" class="stack-form danger-panel">
+                  <h3>删除题目</h3>
+                  <label>
+                    <span>选择题目</span>
+                    <select id="deleteQuestionId" name="questionId"></select>
+                  </label>
+                  <p class="hint">如果题目已被测评模板或提交记录引用，系统会拒绝直接删除。</p>
+                  <button type="submit" class="danger-button">删除题目</button>
+                </form>
+              </div>
+            </div>
             <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
           </div>

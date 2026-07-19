@@ -21,7 +21,27 @@ export function findUserByAccount(env, account) {
   ).bind(account).first();
 }
 
-export function findUsers(env) {
+export function findUsers(env, filters = {}) {
+  const clauses = [];
+  const bindings = [];
+
+  if (typeof filters.q === "string" && filters.q.trim()) {
+    const q = `%${filters.q.trim()}%`;
+    clauses.push("(u.account like ? or u.full_name like ? or coalesce(u.email, '') like ? or coalesce(u.mobile, '') like ?)");
+    bindings.push(q, q, q, q);
+  }
+
+  if (typeof filters.role === "string" && filters.role.trim()) {
+    clauses.push("exists (select 1 from user_roles ur2 inner join roles r2 on r2.id = ur2.role_id where ur2.user_id = u.id and r2.code = ?)");
+    bindings.push(filters.role.trim());
+  }
+
+  if (typeof filters.status === "string" && filters.status.trim()) {
+    clauses.push("u.status = ?");
+    bindings.push(filters.status.trim());
+  }
+
+  const whereSql = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
   return env.DB.prepare(
     `select
       u.id,
@@ -35,9 +55,10 @@ export function findUsers(env) {
     from users u
     left join user_roles ur on ur.user_id = u.id
     left join roles r on r.id = ur.role_id
+    ${whereSql}
     group by u.id
     order by u.created_at desc, u.account asc`
-  ).all();
+  ).bind(...bindings).all();
 }
 
 /**
@@ -127,13 +148,77 @@ export function findOpenCampaignsByUser(env, userId) {
   ).bind(userId).all();
 }
 
-export function findQuestions(env) {
+export function findQuestions(env, filters = {}) {
+  const clauses = [];
+  const bindings = [];
+
+  if (typeof filters.q === "string" && filters.q.trim()) {
+    const q = `%${filters.q.trim()}%`;
+    clauses.push("(q.stem like ? or coalesce(q.analysis, '') like ? or coalesce(q.tags, '') like ?)");
+    bindings.push(q, q, q);
+  }
+
+  if (typeof filters.type === "string" && filters.type.trim()) {
+    clauses.push("q.type = ?");
+    bindings.push(filters.type.trim());
+  }
+
+  if (typeof filters.status === "string" && filters.status.trim()) {
+    clauses.push("q.status = ?");
+    bindings.push(filters.status.trim());
+  }
+
+  const whereSql = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
   return env.DB.prepare(
-    `select id, type, stem, difficulty, score, status, created_by, created_at
-    from questions
-    order by created_at desc
-    limit 50`
-  ).all();
+    `select
+      q.id,
+      q.type,
+      q.stem,
+      q.analysis,
+      q.difficulty,
+      q.score,
+      q.tags,
+      q.status,
+      q.created_by,
+      q.created_at,
+      qa.answer_type,
+      qa.answer_content,
+      qa.case_sensitive
+    from questions q
+    left join question_answers qa on qa.question_id = q.id
+    ${whereSql}
+    order by q.created_at desc
+    limit 100`
+  ).bind(...bindings).all();
+}
+
+export function findQuestionById(env, questionId) {
+  return env.DB.prepare(
+    `select
+      q.id,
+      q.type,
+      q.stem,
+      q.analysis,
+      q.difficulty,
+      q.score,
+      q.tags,
+      q.status,
+      qa.answer_type,
+      qa.answer_content,
+      qa.case_sensitive
+    from questions q
+    left join question_answers qa on qa.question_id = q.id
+    where q.id = ?`
+  ).bind(questionId).first();
+}
+
+export function findQuestionOptions(env, questionId) {
+  return env.DB.prepare(
+    `select id, option_key, option_text, sort_order
+    from question_options
+    where question_id = ?
+    order by sort_order asc`
+  ).bind(questionId).all();
 }
 
 /**
@@ -284,6 +369,20 @@ export function updateUserPassword(env, params) {
   ).run();
 }
 
+export function countUserDependencies(env, userId) {
+  return env.DB.prepare(
+    `select
+      (select count(*) from campaign_candidates where user_id = ?) as campaign_count,
+      (select count(*) from submissions where user_id = ?) as submission_count`
+  ).bind(userId, userId).first();
+}
+
+export function deleteUserById(env, userId) {
+  return env.DB.prepare(
+    "delete from users where id = ?"
+  ).bind(userId).run();
+}
+
 /**
  * @param {import("../types").AppContext["Bindings"]} env
  * @param {{
@@ -392,6 +491,24 @@ export function updateCampaign(env, campaign) {
   ).run();
 }
 
+export function updateQuestion(env, question) {
+  return env.DB.prepare(
+    `update questions
+    set type = ?, stem = ?, analysis = ?, difficulty = ?, score = ?, tags = ?, status = ?, updated_at = ?
+    where id = ?`
+  ).bind(
+    question.type,
+    question.stem,
+    question.analysis,
+    question.difficulty,
+    question.score,
+    question.tags,
+    question.status,
+    question.updatedAt,
+    question.questionId
+  ).run();
+}
+
 /**
  * @param {import("../types").AppContext["Bindings"]} env
  * @param {{
@@ -440,6 +557,32 @@ export function insertQuestionAnswer(env, answer) {
     answer.caseSensitive,
     answer.createdAt
   ).run();
+}
+
+export function deleteQuestionOptionsByQuestionId(env, questionId) {
+  return env.DB.prepare(
+    "delete from question_options where question_id = ?"
+  ).bind(questionId).run();
+}
+
+export function deleteQuestionAnswersByQuestionId(env, questionId) {
+  return env.DB.prepare(
+    "delete from question_answers where question_id = ?"
+  ).bind(questionId).run();
+}
+
+export function countQuestionDependencies(env, questionId) {
+  return env.DB.prepare(
+    `select
+      (select count(*) from assessment_questions where question_id = ?) as assessment_count,
+      (select count(*) from submission_answers where question_id = ?) as submission_count`
+  ).bind(questionId, questionId).first();
+}
+
+export function deleteQuestionById(env, questionId) {
+  return env.DB.prepare(
+    "delete from questions where id = ?"
+  ).bind(questionId).run();
 }
 
 /**

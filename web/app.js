@@ -9,6 +9,16 @@ const state = {
   currentQuestions: [],
   currentSubmission: null,
   activeView: null,
+  userFilters: {
+    q: "",
+    role: "",
+    status: ""
+  },
+  questionFilters: {
+    q: "",
+    type: "",
+    status: ""
+  },
   apiBaseUrl: loadApiBaseUrl()
 };
 
@@ -60,9 +70,12 @@ document.getElementById("loadSubmissionButton").addEventListener("click", loadSu
 document.getElementById("assessmentForm").addEventListener("submit", submitAssessment);
 document.getElementById("evaluationForm").addEventListener("submit", submitEvaluation);
 document.getElementById("createUserForm").addEventListener("submit", createUser);
+document.getElementById("userSearchForm").addEventListener("submit", searchUsers);
+document.getElementById("clearUserSearchButton").addEventListener("click", clearUserSearch);
 document.getElementById("batchCreateUsersForm").addEventListener("submit", batchCreateUsers);
 document.getElementById("updateUserForm").addEventListener("submit", updateUser);
 document.getElementById("resetPasswordForm").addEventListener("submit", resetUserPassword);
+document.getElementById("deleteUserForm").addEventListener("submit", deleteUser);
 document.getElementById("assignCampaignForm").addEventListener("submit", assignCampaign);
 document.getElementById("batchAssignCampaignForm").addEventListener("submit", batchAssignCampaigns);
 document.getElementById("reloadUsersButton").addEventListener("click", () => loadUsers());
@@ -73,6 +86,11 @@ document.getElementById("createCampaignForm").addEventListener("submit", createC
 document.getElementById("updateCampaignForm").addEventListener("submit", updateCampaign);
 document.getElementById("updateUserId").addEventListener("change", syncSelectedUserToForm);
 document.getElementById("updateCampaignId").addEventListener("change", syncSelectedCampaignToForm);
+document.getElementById("questionSearchForm").addEventListener("submit", searchQuestions);
+document.getElementById("clearQuestionSearchButton").addEventListener("click", clearQuestionSearch);
+document.getElementById("updateQuestionForm").addEventListener("submit", updateQuestion);
+document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQuestion);
+document.getElementById("updateQuestionId").addEventListener("change", syncSelectedQuestionToForm);
 
 setAuthenticated(false);
 renderCandidateWorkspace();
@@ -251,7 +269,18 @@ async function loadCampaigns(options = {}) {
 }
 
 async function loadQuestions(options = {}) {
-  const result = await api("/api/questions");
+  const search = new URLSearchParams();
+  if (state.questionFilters.q) {
+    search.set("q", state.questionFilters.q);
+  }
+  if (state.questionFilters.type) {
+    search.set("type", state.questionFilters.type);
+  }
+  if (state.questionFilters.status) {
+    search.set("status", state.questionFilters.status);
+  }
+  const query = search.toString();
+  const result = await api(`/api/questions${query ? `?${query}` : ""}`);
   if (!result.ok) {
     if (!options.silent) {
       showFeedback(result.message, true);
@@ -266,7 +295,18 @@ async function loadQuestions(options = {}) {
 }
 
 async function loadUsers(options = {}) {
-  const result = await api("/api/admin/users");
+  const search = new URLSearchParams();
+  if (state.userFilters.q) {
+    search.set("q", state.userFilters.q);
+  }
+  if (state.userFilters.role) {
+    search.set("role", state.userFilters.role);
+  }
+  if (state.userFilters.status) {
+    search.set("status", state.userFilters.status);
+  }
+  const query = search.toString();
+  const result = await api(`/api/admin/users${query ? `?${query}` : ""}`);
   if (!result.ok) {
     if (!options.silent) {
       showFeedback(result.message, true);
@@ -443,6 +483,7 @@ function renderUserManagement() {
   const batchAssignCampaignSelect = document.getElementById("batchAssignCampaignSelect");
   const updateUserSelect = document.getElementById("updateUserId");
   const resetPasswordUserSelect = document.getElementById("resetPasswordUserId");
+  const deleteUserSelect = document.getElementById("deleteUserId");
 
   const userOptions = state.users.map((item) => `
     <option value="${escapeHtml(item.id)}">${escapeHtml(item.fullName)} (${escapeHtml(item.account)})</option>
@@ -456,6 +497,7 @@ function renderUserManagement() {
 
   updateUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   resetPasswordUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
+  deleteUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   assignCampaignSelect.innerHTML = campaignOptions;
   batchAssignCampaignSelect.innerHTML = campaignOptions;
   syncSelectedUserToForm();
@@ -478,8 +520,25 @@ function renderUserManagement() {
       <p>状态：${escapeHtml(item.status)}</p>
       <p>邮箱：${escapeHtml(item.email || "-")}</p>
       <p>手机号：${escapeHtml(item.mobile || "-")}</p>
+      <div class="button-row">
+        <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
+        <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
+      </div>
     </article>
   `).join("");
+
+  list.querySelectorAll("[data-edit-user-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      updateUserSelect.value = button.dataset.editUserId;
+      syncSelectedUserToForm();
+    });
+  });
+  list.querySelectorAll("[data-delete-user-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      deleteUserSelect.value = button.dataset.deleteUserId;
+      await deleteUserById(button.dataset.deleteUserId);
+    });
+  });
 }
 
 function renderCampaignManagement() {
@@ -532,6 +591,15 @@ function renderCampaignManagement() {
 
 function renderQuestionBankList() {
   const container = document.getElementById("questionBankList");
+  const updateQuestionSelect = document.getElementById("updateQuestionId");
+  const deleteQuestionSelect = document.getElementById("deleteQuestionId");
+  const questionOptions = state.questions.map((item) => `
+    <option value="${escapeHtml(item.id)}">${escapeHtml(item.stem.slice(0, 36))}</option>
+  `).join("");
+  updateQuestionSelect.innerHTML = questionOptions || `<option value="">当前没有题目</option>`;
+  deleteQuestionSelect.innerHTML = questionOptions || `<option value="">当前没有题目</option>`;
+  syncSelectedQuestionToForm();
+
   if (state.questions.length === 0) {
     container.innerHTML = `<div class="question-card"><p>当前还没有题目。</p></div>`;
     return;
@@ -544,8 +612,42 @@ function renderQuestionBankList() {
       <p>分值：${escapeHtml(String(item.score))} 分</p>
       <p>难度：${escapeHtml(String(item.difficulty))}</p>
       <p>状态：${escapeHtml(item.status)}</p>
+      <div class="button-row">
+        <button class="ghost-button" data-edit-question-id="${escapeHtml(item.id)}">编辑</button>
+        <button class="danger-button" data-delete-question-id="${escapeHtml(item.id)}">删除</button>
+      </div>
     </article>
   `).join("");
+
+  container.querySelectorAll("[data-edit-question-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      updateQuestionSelect.value = button.dataset.editQuestionId;
+      syncSelectedQuestionToForm();
+    });
+  });
+  container.querySelectorAll("[data-delete-question-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      deleteQuestionSelect.value = button.dataset.deleteQuestionId;
+      await deleteQuestionById(button.dataset.deleteQuestionId);
+    });
+  });
+}
+
+async function searchUsers(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  state.userFilters = {
+    q: String(formData.get("q") || "").trim(),
+    role: String(formData.get("role") || "").trim(),
+    status: String(formData.get("status") || "").trim()
+  };
+  await loadUsers();
+}
+
+async function clearUserSearch() {
+  document.getElementById("userSearchForm").reset();
+  state.userFilters = { q: "", role: "", status: "" };
+  await loadUsers();
 }
 
 async function createUser(event) {
@@ -643,6 +745,27 @@ async function resetUserPassword(event) {
 
   event.currentTarget.reset();
   showFeedback("密码重置成功。");
+}
+
+async function deleteUser(event) {
+  event.preventDefault();
+  const userId = String(new FormData(event.currentTarget).get("userId") || "").trim();
+  await deleteUserById(userId);
+}
+
+async function deleteUserById(userId) {
+  if (!userId) {
+    return showFeedback("请先选择用户。", true);
+  }
+  const result = await api(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+    body: JSON.stringify({})
+  });
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+  showFeedback("用户删除成功。");
+  await loadUsers({ silent: true });
 }
 
 async function assignCampaign(event) {
@@ -792,6 +915,75 @@ async function submitQuestion(event) {
   event.currentTarget.elements.score.value = "10";
   event.currentTarget.elements.difficulty.value = "3";
   showFeedback("题目创建成功。");
+  await loadQuestions({ silent: true });
+}
+
+async function searchQuestions(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  state.questionFilters = {
+    q: String(formData.get("q") || "").trim(),
+    type: String(formData.get("type") || "").trim(),
+    status: String(formData.get("status") || "").trim()
+  };
+  await loadQuestions();
+}
+
+async function clearQuestionSearch() {
+  document.getElementById("questionSearchForm").reset();
+  state.questionFilters = { q: "", type: "", status: "" };
+  await loadQuestions();
+}
+
+async function updateQuestion(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const type = String(formData.get("type") || "").trim();
+  const questionId = String(formData.get("questionId") || "").trim();
+  const payload = {
+    type,
+    stem: String(formData.get("stem") || "").trim(),
+    score: Number(formData.get("score") || 0),
+    difficulty: Number(formData.get("difficulty") || 3),
+    status: String(formData.get("status") || "draft"),
+    options: parseOptionLines(String(formData.get("options") || "")),
+    answer: type === "multiple_choice"
+      ? String(formData.get("answer") || "").split(",").map((item) => item.trim()).filter(Boolean)
+      : String(formData.get("answer") || "").trim(),
+    analysis: String(formData.get("analysis") || "").trim()
+  };
+
+  const result = await api(`/api/questions/${questionId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  showFeedback("题目更新成功。");
+  await loadQuestions({ silent: true });
+}
+
+async function deleteQuestion(event) {
+  event.preventDefault();
+  const questionId = String(new FormData(event.currentTarget).get("questionId") || "").trim();
+  await deleteQuestionById(questionId);
+}
+
+async function deleteQuestionById(questionId) {
+  if (!questionId) {
+    return showFeedback("请先选择题目。", true);
+  }
+  const result = await api(`/api/questions/${questionId}`, {
+    method: "DELETE",
+    body: JSON.stringify({})
+  });
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+  showFeedback("题目删除成功。");
   await loadQuestions({ silent: true });
 }
 
@@ -1130,6 +1322,27 @@ function syncSelectedUserToForm() {
   form.elements.mobile.value = user.mobile || "";
 }
 
+function syncSelectedQuestionToForm() {
+  const form = document.getElementById("updateQuestionForm");
+  const select = document.getElementById("updateQuestionId");
+  const question = state.questions.find((item) => item.id === select.value) || state.questions[0];
+  if (!form || !question) {
+    return;
+  }
+
+  form.elements.questionId.value = question.id;
+  form.elements.type.value = question.type || "single_choice";
+  form.elements.status.value = question.status || "draft";
+  form.elements.stem.value = question.stem || "";
+  form.elements.score.value = String(question.score || 0);
+  form.elements.difficulty.value = String(question.difficulty || 3);
+  form.elements.options.value = Array.isArray(question.options)
+    ? question.options.map((item) => `${item.optionKey}|${item.optionText}`).join("\n")
+    : "";
+  form.elements.answer.value = normalizeQuestionAnswerForForm(question);
+  form.elements.analysis.value = question.analysis || "";
+}
+
 function syncSelectedCampaignToForm() {
   const form = document.getElementById("updateCampaignForm");
   const select = document.getElementById("updateCampaignId");
@@ -1217,6 +1430,21 @@ function toDatetimeLocalValue(value) {
   const hour = String(date.getHours()).padStart(2, "0");
   const minute = String(date.getMinutes()).padStart(2, "0");
   return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function normalizeQuestionAnswerForForm(question) {
+  if (question.type === "multiple_choice") {
+    try {
+      const parsed = JSON.parse(question.answer || "[]");
+      return Array.isArray(parsed) ? parsed.join(",") : "";
+    } catch {
+      return "";
+    }
+  }
+  if (question.type === "short_answer" || question.type === "scenario_answer") {
+    return "";
+  }
+  return question.answer || "";
 }
 
 function escapeHtml(value) {
