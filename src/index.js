@@ -17,12 +17,16 @@ import {
   findCampaignAssignment,
   findCampaignsForAdmin,
   findCampaignQuestionsForCandidate,
+  findActiveSubmissionByCampaignAndUser,
   findOpenCampaignsByUser,
+  findProctoringEventsBySubmissionId,
   findQuestionById,
   findQuestionOptions,
   findQuestionsByIds,
   findQuestions,
   findRoleByCode,
+  findSnapshotFileById,
+  findSnapshotFilesBySubmissionId,
   findSubmissionAnswersBySubmissionId,
   findSubmissionById,
   findSubmissions,
@@ -43,8 +47,10 @@ import {
   insertSubmissionAnswer,
   insertUser,
   insertUserRole,
+  finalizeSubmission,
   updateAssessment,
   updateCampaign,
+  updateCampaignCandidateInvitationStatus,
   updateQuestion,
   updateUserPassword,
   updateUserProfile,
@@ -278,12 +284,43 @@ export default {
       return handleSubmission(request, env, sessionUser, corsHeaders);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/submissions/session") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleStartSubmissionSession(request, env, sessionUser, corsHeaders);
+    }
+
     const submissionMatch = url.pathname.match(/^\/api\/submissions\/([^/]+)$/);
     if (request.method === "GET" && submissionMatch) {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
       return handleGetSubmission(env, sessionUser, submissionMatch[1], corsHeaders);
+    }
+
+    const completeSubmissionMatch = url.pathname.match(/^\/api\/submissions\/([^/]+)\/complete$/);
+    if (request.method === "PUT" && completeSubmissionMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleCompleteSubmission(request, env, sessionUser, completeSubmissionMatch[1], corsHeaders);
+    }
+
+    const submissionProctoringMatch = url.pathname.match(/^\/api\/submissions\/([^/]+)\/proctoring$/);
+    if (request.method === "GET" && submissionProctoringMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleGetSubmissionProctoring(env, sessionUser, submissionProctoringMatch[1], corsHeaders);
+    }
+
+    const snapshotMatch = url.pathname.match(/^\/api\/proctoring\/snapshots\/([^/]+)$/);
+    if (request.method === "GET" && snapshotMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleGetProctoringSnapshot(env, sessionUser, snapshotMatch[1], corsHeaders);
     }
 
     if (request.method === "POST" && url.pathname === "/api/evaluations/ai-suggestions") {
@@ -1667,6 +1704,220 @@ async function handleSubmission(request, env, sessionUser, corsHeaders) {
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
  */
+async function handleStartSubmissionSession(request, env, sessionUser, corsHeaders) {
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.campaignId !== "string") {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
+  if (!campaign) {
+    return json({ message: "未找到可作答的笔试任务" }, 404, {}, corsHeaders);
+  }
+
+  if (campaign.status !== "published" && campaign.status !== "in_progress") {
+    return json({ message: "当前笔试任务不可开始作答" }, 400, {}, corsHeaders);
+  }
+
+  const now = Date.now();
+  if (typeof campaign.start_time === "number" && now < campaign.start_time) {
+    return json({ message: "测评尚未开始" }, 400, {}, corsHeaders);
+  }
+  if (typeof campaign.end_time === "number" && now > campaign.end_time) {
+    return json({ message: "测评已结束" }, 400, {}, corsHeaders);
+  }
+
+  const activeSubmission = await findActiveSubmissionByCampaignAndUser(env, body.campaignId, sessionUser.sub);
+  if (activeSubmission) {
+    return json({
+      message: "已恢复进行中的答题记录",
+      submission: {
+        id: activeSubmission.id,
+        campaignId: activeSubmission.campaign_id,
+        status: activeSubmission.status,
+        startedAt: activeSubmission.started_at,
+        durationMinutes: Number(campaign.duration_minutes ?? 0),
+        expiresAt: calculateExpiresAt(activeSubmission.started_at, campaign.duration_minutes)
+      }
+    }, 200, {}, corsHeaders);
+  }
+
+  const submissionCount = await countUserSubmissions(env, body.campaignId, sessionUser.sub);
+  const submittedTotal = Number(submissionCount?.total ?? 0);
+  const attemptLimit = Number(campaign.attempt_limit ?? 1);
+  if (submittedTotal >= attemptLimit) {
+    return json({ message: "已超过允许提交次数" }, 400, {}, corsHeaders);
+  }
+
+  const startedAt = now;
+  const submissionId = crypto.randomUUID();
+  await insertSubmission(env, {
+    id: submissionId,
+    campaignId: body.campaignId,
+    userId: sessionUser.sub,
+    submitNo: submittedTotal + 1,
+    status: "in_progress",
+    startedAt,
+    submittedAt: null,
+    objectiveScore: 0,
+    subjectiveScore: 0,
+    totalScore: 0,
+    antiCheatRiskLevel: "low",
+    recommendation: null,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  return json({
+    message: "答题已开始",
+    submission: {
+      id: submissionId,
+      campaignId: body.campaignId,
+      status: "in_progress",
+      startedAt,
+      durationMinutes: Number(campaign.duration_minutes ?? 0),
+      expiresAt: calculateExpiresAt(startedAt, campaign.duration_minutes)
+    }
+  }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} submissionId
+ */
+async function handleCompleteSubmission(request, env, sessionUser, submissionId, corsHeaders) {
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.answers)) {
+    return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
+  }
+
+  const submission = await findSubmissionById(env, submissionId);
+  if (!submission || submission.user_id !== sessionUser.sub) {
+    return json({ message: "提交记录不存在或无权操作" }, 404, {}, corsHeaders);
+  }
+  if (submission.status !== "in_progress") {
+    return json({ message: "该答卷已经完成提交，不能重复交卷" }, 400, {}, corsHeaders);
+  }
+
+  const campaign = await findCampaignAssignment(env, submission.campaign_id, sessionUser.sub);
+  if (!campaign) {
+    return json({ message: "未找到对应笔试任务" }, 404, {}, corsHeaders);
+  }
+
+  const questionSet = await findAssessmentQuestionSet(env, campaign.assessment_id);
+  const questions = questionSet.results ?? [];
+  if (questions.length === 0) {
+    return json({ message: "该试卷模板没有题目" }, 400, {}, corsHeaders);
+  }
+
+  const answerMap = normalizeAnswers(body.answers);
+  const now = Date.now();
+  let objectiveScore = 0;
+  let subjectiveScore = 0;
+  let pendingManualCount = 0;
+  const evaluatedAnswers = [];
+
+  for (const question of questions) {
+    const answerContent = answerMap.get(question.question_id) ?? "";
+    const evaluated = evaluateAnswer(question, answerContent);
+
+    objectiveScore += evaluated.objectiveScore;
+    subjectiveScore += evaluated.subjectiveScore;
+    if (evaluated.objectiveResult === "pending") {
+      pendingManualCount += 1;
+    }
+    evaluatedAnswers.push({
+      id: crypto.randomUUID(),
+      questionId: question.question_id,
+      answerContent: typeof answerContent === "string" ? answerContent : JSON.stringify(answerContent),
+      objectiveResult: evaluated.objectiveResult,
+      objectiveScore: evaluated.objectiveScore,
+      subjectiveScore: evaluated.subjectiveScore,
+      finalScore: evaluated.objectiveScore + evaluated.subjectiveScore,
+      reviewerComment: null,
+      comment: evaluated.comment
+    });
+  }
+
+  for (const answer of evaluatedAnswers) {
+    await insertSubmissionAnswer(env, {
+      id: answer.id,
+      submissionId,
+      questionId: answer.questionId,
+      answerContent: answer.answerContent,
+      objectiveResult: answer.objectiveResult,
+      objectiveScore: answer.objectiveScore,
+      subjectiveScore: answer.subjectiveScore,
+      finalScore: answer.finalScore,
+      reviewerComment: answer.reviewerComment,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    await insertEvaluationRecord(env, {
+      id: crypto.randomUUID(),
+      submissionId,
+      submissionAnswerId: answer.id,
+      evaluationType: answer.objectiveResult === "pending" ? "manual" : "auto",
+      scoreBefore: null,
+      scoreAfter: answer.finalScore,
+      comment: answer.comment,
+      evaluatedBy: null,
+      evaluatedAt: now
+    });
+  }
+
+  const totalScore = objectiveScore + subjectiveScore;
+  const status = pendingManualCount > 0 ? "grading" : "graded";
+
+  await finalizeSubmission(env, {
+    submissionId,
+    status,
+    submittedAt: now,
+    objectiveScore,
+    subjectiveScore,
+    totalScore,
+    recommendation: null
+  });
+  await updateCampaignCandidateInvitationStatus(env, submission.campaign_id, sessionUser.sub, "completed");
+
+  if (body.autoSubmitted) {
+    await insertProctoringEvent(env, {
+      id: crypto.randomUUID(),
+      campaignId: submission.campaign_id,
+      submissionId,
+      userId: sessionUser.sub,
+      eventType: "timeout_auto_submit",
+      eventValue: JSON.stringify({
+        reason: typeof body.autoSubmitReason === "string" ? body.autoSubmitReason : "timer_expired"
+      }),
+      riskScore: inferRiskScore("timeout_auto_submit"),
+      createdAt: now
+    });
+  }
+
+  return json({
+    message: body.autoSubmitted ? "已自动提交答卷" : "提交成功",
+    submission: {
+      id: submissionId,
+      campaignId: submission.campaign_id,
+      submitNo: submission.submit_no,
+      status,
+      objectiveScore,
+      subjectiveScore,
+      totalScore,
+      pendingManualCount
+    }
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ */
 async function handleProctoringEvent(request, env, sessionUser, corsHeaders) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.campaignId !== "string" || typeof body.eventType !== "string") {
@@ -1772,6 +2023,50 @@ async function handleGetCampaignQuestions(env, sessionUser, campaignId, corsHead
       type: item.type,
       stem: item.stem
     }))
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} submissionId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleGetSubmissionProctoring(env, sessionUser, submissionId, corsHeaders) {
+  const submission = await findSubmissionById(env, submissionId);
+  if (!submission) {
+    return json({ message: "提交记录不存在" }, 404, {}, corsHeaders);
+  }
+
+  const isOwner = submission.user_id === sessionUser.sub;
+  const canReview = hasRole(sessionUser, ["interviewer", "recruiter", "admin"]);
+  if (!isOwner && !canReview) {
+    return json({ message: "无权查看该提交的监控记录" }, 403, {}, corsHeaders);
+  }
+
+  const [eventsResult, snapshotsResult] = await Promise.all([
+    findProctoringEventsBySubmissionId(env, submissionId),
+    findSnapshotFilesBySubmissionId(env, submissionId)
+  ]);
+  const events = (eventsResult.results ?? []).map((item) => ({
+    ...item,
+    event_value: parseJsonSafely(item.event_value)
+  }));
+  const snapshots = (snapshotsResult.results ?? []).map((item) => ({
+    ...item,
+    url: `/api/proctoring/snapshots/${item.id}`
+  }));
+  const totalRiskScore = events.reduce((sum, item) => sum + Number(item.risk_score ?? 0), 0);
+
+  return json({
+    summary: {
+      eventCount: events.length,
+      snapshotCount: snapshots.length,
+      totalRiskScore,
+      riskLevel: inferRiskLevel(totalRiskScore)
+    },
+    events,
+    snapshots
   }, 200, {}, corsHeaders);
 }
 
@@ -1992,6 +2287,42 @@ async function handleProctoringSnapshot(request, env, sessionUser, corsHeaders) 
       capturedAt
     }
   }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} snapshotId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleGetProctoringSnapshot(env, sessionUser, snapshotId, corsHeaders) {
+  const snapshot = await findSnapshotFileById(env, snapshotId);
+  if (!snapshot) {
+    return json({ message: "抓拍记录不存在" }, 404, {}, corsHeaders);
+  }
+
+  const canReview = hasRole(sessionUser, ["interviewer", "recruiter", "admin"]);
+  if (!canReview && snapshot.user_id !== sessionUser.sub) {
+    return json({ message: "无权查看该抓拍" }, 403, {}, corsHeaders);
+  }
+
+  if (!env.PROCTORING_BUCKET) {
+    return json({ message: "未配置抓拍存储桶" }, 500, {}, corsHeaders);
+  }
+
+  const object = await env.PROCTORING_BUCKET.get(snapshot.r2_key);
+  if (!object) {
+    return json({ message: "抓拍文件不存在" }, 404, {}, corsHeaders);
+  }
+
+  return new Response(object.body, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": snapshot.content_type,
+      "Cache-Control": "private, max-age=60"
+    }
+  });
 }
 
 /**
@@ -2234,10 +2565,55 @@ function inferRiskScore(eventType) {
       return 15;
     case "network_offline":
       return 10;
+    case "timeout_auto_submit":
+      return 10;
     case "snapshot_uploaded":
       return 0;
     default:
       return 5;
+  }
+}
+
+/**
+ * @param {number} totalRiskScore
+ */
+function inferRiskLevel(totalRiskScore) {
+  if (totalRiskScore >= 80) {
+    return "高风险";
+  }
+  if (totalRiskScore >= 40) {
+    return "中风险";
+  }
+  if (totalRiskScore > 0) {
+    return "低风险";
+  }
+  return "正常";
+}
+
+/**
+ * @param {number | null | undefined} startedAt
+ * @param {number | null | undefined} durationMinutes
+ */
+function calculateExpiresAt(startedAt, durationMinutes) {
+  const normalizedStartedAt = Number(startedAt);
+  const normalizedDuration = Number(durationMinutes);
+  if (!Number.isFinite(normalizedStartedAt) || !Number.isFinite(normalizedDuration) || normalizedDuration <= 0) {
+    return null;
+  }
+  return normalizedStartedAt + normalizedDuration * 60 * 1000;
+}
+
+/**
+ * @param {string | null} value
+ */
+function parseJsonSafely(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
   }
 }
 

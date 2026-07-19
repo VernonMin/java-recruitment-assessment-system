@@ -920,7 +920,36 @@ export function countUserSubmissions(env, campaignId, userId) {
   return env.DB.prepare(
     `select count(*) as total
     from submissions
-    where campaign_id = ? and user_id = ?`
+    where campaign_id = ? and user_id = ? and status != 'in_progress'`
+  ).bind(campaignId, userId).first();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} campaignId
+ * @param {string} userId
+ */
+export function findActiveSubmissionByCampaignAndUser(env, campaignId, userId) {
+  return env.DB.prepare(
+    `select
+      id,
+      campaign_id,
+      user_id,
+      submit_no,
+      status,
+      started_at,
+      submitted_at,
+      objective_score,
+      subjective_score,
+      total_score,
+      anti_cheat_risk_level,
+      recommendation,
+      created_at,
+      updated_at
+    from submissions
+    where campaign_id = ? and user_id = ? and status = 'in_progress'
+    order by created_at desc
+    limit 1`
   ).bind(campaignId, userId).first();
 }
 
@@ -956,7 +985,7 @@ export function findAssessmentQuestionSet(env, assessmentId) {
  *   submitNo: number;
  *   status: string;
  *   startedAt: number;
- *   submittedAt: number;
+ *   submittedAt: number | null;
  *   objectiveScore: number;
  *   subjectiveScore: number;
  *   totalScore: number;
@@ -1293,6 +1322,120 @@ export function updateSubmissionSummary(env, params) {
     Date.now(),
     params.submissionId
   ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {{
+ *   submissionId: string;
+ *   status: string;
+ *   submittedAt: number;
+ *   objectiveScore: number;
+ *   subjectiveScore: number;
+ *   totalScore: number;
+ *   recommendation: string | null;
+ * }} params
+ */
+export function finalizeSubmission(env, params) {
+  return env.DB.prepare(
+    `update submissions
+    set
+      status = ?,
+      submitted_at = ?,
+      objective_score = ?,
+      subjective_score = ?,
+      total_score = ?,
+      recommendation = ?,
+      updated_at = ?
+    where id = ?`
+  ).bind(
+    params.status,
+    params.submittedAt,
+    params.objectiveScore,
+    params.subjectiveScore,
+    params.totalScore,
+    params.recommendation,
+    Date.now(),
+    params.submissionId
+  ).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} submissionId
+ */
+export function findProctoringEventsBySubmissionId(env, submissionId) {
+  return env.DB.prepare(
+    `select
+      id,
+      campaign_id,
+      submission_id,
+      user_id,
+      event_type,
+      event_value,
+      risk_score,
+      created_at
+    from proctoring_events
+    where submission_id = ?
+    order by created_at asc`
+  ).bind(submissionId).all();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} submissionId
+ */
+export function findSnapshotFilesBySubmissionId(env, submissionId) {
+  return env.DB.prepare(
+    `select
+      id,
+      submission_id,
+      user_id,
+      r2_key,
+      content_type,
+      file_size,
+      captured_at,
+      created_at
+    from snapshot_files
+    where submission_id = ?
+    order by captured_at desc, created_at desc`
+  ).bind(submissionId).all();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} snapshotId
+ */
+export function findSnapshotFileById(env, snapshotId) {
+  return env.DB.prepare(
+    `select
+      sf.id,
+      sf.submission_id,
+      sf.user_id,
+      sf.r2_key,
+      sf.content_type,
+      sf.file_size,
+      sf.captured_at,
+      sf.created_at,
+      s.campaign_id
+    from snapshot_files sf
+    inner join submissions s on s.id = sf.submission_id
+    where sf.id = ?`
+  ).bind(snapshotId).first();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} campaignId
+ * @param {string} userId
+ * @param {string} invitationStatus
+ */
+export function updateCampaignCandidateInvitationStatus(env, campaignId, userId, invitationStatus) {
+  return env.DB.prepare(
+    `update campaign_candidates
+    set invitation_status = ?
+    where campaign_id = ? and user_id = ?`
+  ).bind(invitationStatus, campaignId, userId).run();
 }
 
 /**

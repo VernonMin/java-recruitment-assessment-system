@@ -332,6 +332,7 @@
               </div>
             </div>
             <div id="assessmentMeta" class="meta-strip"></div>
+            <div id="assessmentRuntimePanel" class="question-list question-list-compact"></div>
             <form id="assessmentForm" class="question-list"></form>
           </div>
         </section>
@@ -353,11 +354,12 @@
                   <span>状态</span>
                   <select name="status">
                     <option value="">全部状态</option>
-                    <option value="submitted">已提交</option>
-                    <option value="reviewed">已评阅</option>
+                    <option value="in_progress">进行中</option>
+                    <option value="grading">评阅中</option>
+                    <option value="graded">已评分</option>
                   </select>
                 </label>
-                <p class="hint">已提交：候选人已交卷待查看；已评阅：已完成人工评估。</p>
+                <p class="hint">进行中：候选人正在作答；评阅中：已交卷且有主观题待处理；已评分：总成绩已生成。</p>
               </div>
               <div class="form-columns">
                 <label>
@@ -381,6 +383,7 @@
               </div>
             </div>
             <div id="submissionMeta" class="meta-strip"></div>
+            <div id="submissionProctoring" class="question-list question-list-compact"></div>
             <div id="submissionAnswers" class="question-list"></div>
           </div>
         </section>

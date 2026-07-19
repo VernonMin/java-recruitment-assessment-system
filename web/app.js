@@ -10,9 +10,11 @@ const state = {
   assessments: [],
   assessmentOptions: [],
   assessmentQuestionPool: [],
+  answerSession: null,
   currentCampaign: null,
   currentQuestions: [],
   currentSubmission: null,
+  currentSubmissionProctoring: null,
   activeView: null,
   assessmentDraft: {
     mode: "create",
@@ -89,6 +91,17 @@ const authShell = document.getElementById("authShell");
 const appShell = document.getElementById("appShell");
 const modalOverlay = document.getElementById("modalOverlay");
 let feedbackTimer = null;
+const PROCTORING_SNAPSHOT_INTERVAL = 60 * 1000;
+const ANSWER_DRAFT_STORAGE_PREFIX = "oas-answer-draft";
+const answerRuntime = {
+  countdownTimer: null,
+  snapshotTimer: null,
+  mediaStream: null,
+  videoElement: null,
+  listenersBound: false,
+  isSubmitting: false,
+  lastEventAt: new Map()
+};
 
 document.querySelectorAll(".menu-item").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -300,6 +313,7 @@ async function logout() {
 }
 
 function resetSessionState() {
+  teardownAnswerRuntime();
   state.user = null;
   state.users = [];
   state.questions = [];
@@ -308,9 +322,11 @@ function resetSessionState() {
   state.assessments = [];
   state.assessmentOptions = [];
   state.assessmentQuestionPool = [];
+  state.answerSession = null;
   state.currentCampaign = null;
   state.currentQuestions = [];
   state.currentSubmission = null;
+  state.currentSubmissionProctoring = null;
   state.submissions = [];
   state.activeView = null;
   state.assessmentDraft = {
@@ -344,10 +360,12 @@ function resetSessionState() {
 
 function clearDynamicPanels() {
   document.getElementById("submissionMeta").innerHTML = "";
+  document.getElementById("submissionProctoring").innerHTML = "";
   document.getElementById("submissionAnswers").innerHTML = "";
   document.getElementById("submissionList").innerHTML = "";
   document.getElementById("evaluationForm").innerHTML = "";
   document.getElementById("assessmentMeta").innerHTML = "";
+  document.getElementById("assessmentRuntimePanel").innerHTML = "";
   document.getElementById("assessmentForm").innerHTML = "";
 }
 
@@ -394,9 +412,6 @@ async function loadCampaigns(options = {}) {
   state.campaigns = result.data.items;
   renderCandidateWorkspace();
   syncCandidateCampaignSelector();
-  if (hasAnyRole(["candidate"]) && state.campaigns.length === 1 && !state.currentCampaign) {
-    await loadCampaignQuestions({ silent: true });
-  }
   renderSubmissionList();
   return true;
 }
@@ -1609,9 +1624,63 @@ async function loadCampaignQuestions(options = {}) {
 
   state.currentCampaign = result.data.campaign;
   state.currentQuestions = result.data.questions;
+  const sessionReady = await ensureAnswerSession();
+  if (!sessionReady) {
+    return;
+  }
   renderAssessment();
+  renderAssessmentRuntimePanel();
   if (!options.silent) {
     showFeedback(`已加载 ${state.currentQuestions.length} 道题目。`);
+  }
+}
+
+async function ensureAnswerSession() {
+  if (!state.currentCampaign) {
+    return false;
+  }
+  if (state.answerSession?.campaignId === state.currentCampaign.id) {
+    resumeAnswerRuntime();
+    return true;
+  }
+
+  teardownAnswerRuntime();
+  const result = await api("/api/submissions/session", {
+    method: "POST",
+    body: JSON.stringify({
+      campaignId: state.currentCampaign.id
+    })
+  });
+  if (!result.ok) {
+    showFeedback(result.message, true);
+    return false;
+  }
+
+  state.answerSession = {
+    submissionId: result.data.submission.id,
+    campaignId: result.data.submission.campaignId,
+    startedAt: Number(result.data.submission.startedAt || Date.now()),
+    durationMinutes: Number(result.data.submission.durationMinutes || state.currentCampaign.durationMinutes || 0),
+    expiresAt: Number(result.data.submission.expiresAt || 0) || null,
+    requireCamera: Boolean(state.currentCampaign.requireCamera),
+    requireFullscreen: Boolean(state.currentCampaign.requireFullscreen),
+    cameraGranted: false,
+    lastSnapshotAt: null,
+    autoSubmitted: false
+  };
+  resumeAnswerRuntime();
+  return true;
+}
+
+function resumeAnswerRuntime() {
+  bindAnswerRuntimeListeners();
+  restoreAnswerDrafts();
+  startAnswerCountdown();
+  if (state.answerSession?.requireCamera) {
+    void requestAssessmentCamera({ silent: true });
+  }
+  if (state.answerSession?.requireFullscreen) {
+    void requestAssessmentFullscreen({ silent: true });
   }
 }
 
@@ -1620,6 +1689,7 @@ function renderAssessment() {
   const form = document.getElementById("assessmentForm");
   if (!state.currentCampaign || state.currentQuestions.length === 0) {
     meta.innerHTML = "";
+    renderAssessmentRuntimePanel();
     form.innerHTML = `
       <article class="question-card">
         <h3>请选择你的笔试任务</h3>
@@ -1633,7 +1703,8 @@ function renderAssessment() {
     ["笔试任务", state.currentCampaign.title],
     ["试卷模板", state.currentCampaign.assessmentTitle],
     ["时长", `${state.currentCampaign.durationMinutes || "-"} 分钟`],
-    ["摄像头", state.currentCampaign.requireCamera ? "要求" : "不要求"]
+    ["摄像头", state.currentCampaign.requireCamera ? "要求" : "不要求"],
+    ["全屏", state.currentCampaign.requireFullscreen ? "要求" : "不要求"]
   ]);
 
   form.innerHTML = [
@@ -1647,6 +1718,9 @@ function renderAssessment() {
     `),
     `<button type="submit" class="primary-button">提交本次测评</button>`
   ].join("");
+  bindAnswerDraftInputs();
+  restoreAnswerDrafts();
+  renderAssessmentRuntimePanel();
 }
 
 function syncCandidateCampaignSelector() {
@@ -1674,39 +1748,448 @@ function syncCandidateCampaignSelector() {
   select.value = nextValue;
 }
 
-async function submitAssessment(event) {
-  event.preventDefault();
-  if (!state.currentCampaign) {
-    return showFeedback("请先加载笔试任务题目。", true);
+function renderAssessmentRuntimePanel() {
+  const panel = document.getElementById("assessmentRuntimePanel");
+  if (!state.currentCampaign || !state.answerSession) {
+    panel.innerHTML = "";
+    return;
   }
 
-  const answers = state.currentQuestions.map((question) => {
+  const cameraText = state.currentCampaign.requireCamera
+    ? (state.answerSession.cameraGranted ? "已授权" : "未授权")
+    : "非必需";
+  const fullscreenActive = Boolean(document.fullscreenElement);
+  const fullscreenText = state.currentCampaign.requireFullscreen
+    ? (fullscreenActive ? "已进入全屏" : "未进入全屏")
+    : "非必需";
+
+  panel.innerHTML = `
+    <article class="question-card runtime-card">
+      <h3>作答计时与监控</h3>
+      <div class="runtime-grid">
+        <div class="runtime-metric">
+          <span class="meta-label">剩余时间</span>
+          <strong id="assessmentRemainingTime">${escapeHtml(formatRemainingDuration(state.answerSession.expiresAt))}</strong>
+        </div>
+        <div class="runtime-metric">
+          <span class="meta-label">开始时间</span>
+          <strong>${escapeHtml(formatDateTime(state.answerSession.startedAt))}</strong>
+        </div>
+        <div class="runtime-metric">
+          <span class="meta-label">提交记录</span>
+          <strong>${escapeHtml(state.answerSession.submissionId)}</strong>
+        </div>
+        <div class="runtime-metric">
+          <span class="meta-label">最近抓拍</span>
+          <strong id="assessmentLastSnapshotTime">${escapeHtml(state.answerSession.lastSnapshotAt ? formatDateTime(state.answerSession.lastSnapshotAt) : "暂无")}</strong>
+        </div>
+      </div>
+      <div class="status-chip-row">
+        <span class="status-chip"><span class="status-dot ${state.answerSession.cameraGranted ? "active" : state.currentCampaign.requireCamera ? "error" : "warn"}"></span>摄像头：<span id="assessmentCameraStatus">${escapeHtml(cameraText)}</span></span>
+        <span class="status-chip"><span class="status-dot ${fullscreenActive ? "active" : state.currentCampaign.requireFullscreen ? "warn" : "active"}"></span>全屏：<span id="assessmentFullscreenStatus">${escapeHtml(fullscreenText)}</span></span>
+        <span class="status-chip"><span class="status-dot ${navigator.onLine ? "active" : "error"}"></span>网络：<span id="assessmentNetworkStatus">${navigator.onLine ? "在线" : "离线"}</span></span>
+      </div>
+      <div class="button-row runtime-actions">
+        <button type="button" id="requestCameraButton" class="ghost-button">${state.currentCampaign.requireCamera ? "重新申请摄像头" : "开启摄像头预览"}</button>
+        <button type="button" id="requestFullscreenButton" class="ghost-button">${state.currentCampaign.requireFullscreen ? "重新进入全屏" : "进入全屏"}</button>
+        <button type="button" id="manualSnapshotButton" class="ghost-button">立即抓拍</button>
+      </div>
+      <p class="hint">系统会按 60 秒周期抓拍，并记录离屏、退出全屏、离线等事件。刷新页面后会尝试恢复本地草稿和当前答题会话。</p>
+    </article>
+  `;
+
+  document.getElementById("requestCameraButton")?.addEventListener("click", () => {
+    void requestAssessmentCamera();
+  });
+  document.getElementById("requestFullscreenButton")?.addEventListener("click", () => {
+    void requestAssessmentFullscreen();
+  });
+  document.getElementById("manualSnapshotButton")?.addEventListener("click", () => {
+    void captureAssessmentSnapshot({ manual: true });
+  });
+}
+
+function startAnswerCountdown() {
+  if (answerRuntime.countdownTimer) {
+    clearInterval(answerRuntime.countdownTimer);
+  }
+  updateAnswerCountdown();
+  answerRuntime.countdownTimer = window.setInterval(() => {
+    updateAnswerCountdown();
+  }, 1000);
+}
+
+function updateAnswerCountdown() {
+  if (!state.answerSession) {
+    return;
+  }
+  const remainingText = formatRemainingDuration(state.answerSession.expiresAt);
+  const remainingNode = document.getElementById("assessmentRemainingTime");
+  if (remainingNode) {
+    remainingNode.textContent = remainingText;
+  }
+
+  const expiresAt = Number(state.answerSession.expiresAt || 0);
+  if (!expiresAt) {
+    return;
+  }
+  if (Date.now() >= expiresAt && !state.answerSession.autoSubmitted) {
+    state.answerSession.autoSubmitted = true;
+    void finishAssessment({
+      autoSubmitted: true,
+      reason: "timer_expired"
+    });
+  }
+}
+
+function bindAnswerRuntimeListeners() {
+  if (answerRuntime.listenersBound) {
+    return;
+  }
+  answerRuntime.listenersBound = true;
+
+  document.addEventListener("visibilitychange", () => {
+    if (!state.answerSession || document.visibilityState !== "hidden") {
+      return;
+    }
+    void reportProctoringEvent("page_blur", {
+      hiddenAt: Date.now()
+    });
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    if (!state.answerSession) {
+      return;
+    }
+    const fullscreenNode = document.getElementById("assessmentFullscreenStatus");
+    if (fullscreenNode) {
+      fullscreenNode.textContent = document.fullscreenElement ? "已进入全屏" : (state.currentCampaign?.requireFullscreen ? "未进入全屏" : "非必需");
+    }
+    if (state.answerSession.requireFullscreen && !document.fullscreenElement) {
+      void reportProctoringEvent("fullscreen_exit", {
+        exitedAt: Date.now()
+      });
+    }
+  });
+
+  window.addEventListener("offline", () => {
+    const networkNode = document.getElementById("assessmentNetworkStatus");
+    if (networkNode) {
+      networkNode.textContent = "离线";
+    }
+    if (state.answerSession) {
+      void reportProctoringEvent("network_offline", {
+        offlineAt: Date.now()
+      });
+    }
+  });
+
+  window.addEventListener("online", () => {
+    const networkNode = document.getElementById("assessmentNetworkStatus");
+    if (networkNode) {
+      networkNode.textContent = "在线";
+    }
+  });
+}
+
+async function requestAssessmentCamera(options = {}) {
+  if (!state.answerSession) {
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    if (!options.silent) {
+      showFeedback("当前浏览器不支持摄像头采集。", true);
+    }
+    return;
+  }
+  if (answerRuntime.mediaStream) {
+    state.answerSession.cameraGranted = true;
+    renderAssessmentRuntimePanel();
+    startSnapshotTimer();
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 360 },
+        facingMode: "user"
+      },
+      audio: false
+    });
+    answerRuntime.mediaStream = stream;
+    const video = document.createElement("video");
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    answerRuntime.videoElement = video;
+    state.answerSession.cameraGranted = true;
+    renderAssessmentRuntimePanel();
+    startSnapshotTimer();
+    await captureAssessmentSnapshot();
+    if (!options.silent) {
+      showFeedback("摄像头已授权，监控抓拍已开始。");
+    }
+  } catch (error) {
+    state.answerSession.cameraGranted = false;
+    renderAssessmentRuntimePanel();
+    await reportProctoringEvent("camera_denied", {
+      message: error instanceof Error ? error.message : "camera_denied"
+    });
+    if (!options.silent) {
+      showFeedback("摄像头授权失败，系统已记录该异常。", true);
+    }
+  }
+}
+
+function startSnapshotTimer() {
+  if (answerRuntime.snapshotTimer) {
+    clearInterval(answerRuntime.snapshotTimer);
+  }
+  answerRuntime.snapshotTimer = window.setInterval(() => {
+    void captureAssessmentSnapshot();
+  }, PROCTORING_SNAPSHOT_INTERVAL);
+}
+
+async function captureAssessmentSnapshot(options = {}) {
+  if (!state.answerSession || !answerRuntime.videoElement || !answerRuntime.mediaStream) {
+    if (options.manual) {
+      showFeedback("当前没有可用的摄像头画面。", true);
+    }
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 320;
+  canvas.height = 180;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return;
+  }
+  context.drawImage(answerRuntime.videoElement, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+  const imageBase64 = dataUrl.split(",")[1] || "";
+  if (!imageBase64) {
+    return;
+  }
+
+  const result = await api("/api/proctoring/snapshots", {
+    method: "POST",
+    body: JSON.stringify({
+      campaignId: state.answerSession.campaignId,
+      submissionId: state.answerSession.submissionId,
+      imageBase64,
+      contentType: "image/jpeg",
+      capturedAt: Date.now()
+    })
+  });
+  if (!result.ok) {
+    if (options.manual) {
+      showFeedback(result.message, true);
+    }
+    return;
+  }
+
+  state.answerSession.lastSnapshotAt = Number(result.data.snapshot?.capturedAt || Date.now());
+  const snapshotNode = document.getElementById("assessmentLastSnapshotTime");
+  if (snapshotNode) {
+    snapshotNode.textContent = formatDateTime(state.answerSession.lastSnapshotAt);
+  }
+  if (options.manual) {
+    showFeedback("抓拍上传成功。");
+  }
+}
+
+async function requestAssessmentFullscreen(options = {}) {
+  if (!document.documentElement.requestFullscreen) {
+    if (!options.silent) {
+      showFeedback("当前浏览器不支持全屏接口。", true);
+    }
+    return;
+  }
+  if (document.fullscreenElement) {
+    renderAssessmentRuntimePanel();
+    return;
+  }
+  try {
+    await document.documentElement.requestFullscreen();
+    renderAssessmentRuntimePanel();
+    if (!options.silent) {
+      showFeedback("已进入全屏模式。");
+    }
+  } catch (error) {
+    if (!options.silent) {
+      showFeedback("进入全屏失败。", true);
+    }
+    if (state.answerSession?.requireFullscreen) {
+      await reportProctoringEvent("fullscreen_exit", {
+        message: error instanceof Error ? error.message : "fullscreen_request_failed"
+      });
+    }
+  }
+}
+
+async function reportProctoringEvent(eventType, eventValue = null) {
+  if (!state.answerSession) {
+    return;
+  }
+  const lastAt = answerRuntime.lastEventAt.get(eventType) || 0;
+  const now = Date.now();
+  if (now - lastAt < 4000) {
+    return;
+  }
+  answerRuntime.lastEventAt.set(eventType, now);
+  await api("/api/proctoring/events", {
+    method: "POST",
+    body: JSON.stringify({
+      campaignId: state.answerSession.campaignId,
+      submissionId: state.answerSession.submissionId,
+      eventType,
+      eventValue
+    })
+  });
+}
+
+function collectCurrentAnswers() {
+  return state.currentQuestions.map((question) => {
     const field = document.querySelector(`[data-answer-id="${question.questionId}"]`);
     return {
       questionId: question.questionId,
       answer: field ? field.value : ""
     };
   });
+}
 
-  const result = await api("/api/submissions", {
-    method: "POST",
+function bindAnswerDraftInputs() {
+  document.querySelectorAll("[data-answer-id]").forEach((field) => {
+    field.addEventListener("input", () => {
+      saveAnswerDrafts();
+    });
+  });
+}
+
+function saveAnswerDrafts() {
+  if (!state.answerSession) {
+    return;
+  }
+  const payload = {
+    campaignId: state.answerSession.campaignId,
+    submissionId: state.answerSession.submissionId,
+    startedAt: state.answerSession.startedAt,
+    answers: collectCurrentAnswers()
+  };
+  localStorage.setItem(getAnswerDraftStorageKey(state.answerSession.submissionId), JSON.stringify(payload));
+}
+
+function restoreAnswerDrafts() {
+  if (!state.answerSession) {
+    return;
+  }
+  const raw = localStorage.getItem(getAnswerDraftStorageKey(state.answerSession.submissionId));
+  if (!raw) {
+    return;
+  }
+  try {
+    const data = JSON.parse(raw);
+    const answerMap = new Map((data.answers || []).map((item) => [item.questionId, item.answer]));
+    state.currentQuestions.forEach((question) => {
+      const field = document.querySelector(`[data-answer-id="${question.questionId}"]`);
+      if (field && answerMap.has(question.questionId)) {
+        field.value = answerMap.get(question.questionId);
+      }
+    });
+  } catch {
+    localStorage.removeItem(getAnswerDraftStorageKey(state.answerSession.submissionId));
+  }
+}
+
+function clearAnswerDrafts(submissionId) {
+  if (!submissionId) {
+    return;
+  }
+  localStorage.removeItem(getAnswerDraftStorageKey(submissionId));
+}
+
+function getAnswerDraftStorageKey(submissionId) {
+  return `${ANSWER_DRAFT_STORAGE_PREFIX}:${submissionId}`;
+}
+
+function teardownAnswerRuntime() {
+  if (answerRuntime.countdownTimer) {
+    clearInterval(answerRuntime.countdownTimer);
+    answerRuntime.countdownTimer = null;
+  }
+  if (answerRuntime.snapshotTimer) {
+    clearInterval(answerRuntime.snapshotTimer);
+    answerRuntime.snapshotTimer = null;
+  }
+  if (answerRuntime.videoElement) {
+    answerRuntime.videoElement.pause();
+    answerRuntime.videoElement.srcObject = null;
+    answerRuntime.videoElement = null;
+  }
+  if (answerRuntime.mediaStream) {
+    answerRuntime.mediaStream.getTracks().forEach((track) => track.stop());
+    answerRuntime.mediaStream = null;
+  }
+  answerRuntime.isSubmitting = false;
+  answerRuntime.lastEventAt.clear();
+}
+
+async function submitAssessment(event) {
+  event.preventDefault();
+  if (!state.currentCampaign || !state.answerSession) {
+    return showFeedback("请先加载笔试任务题目。", true);
+  }
+
+  await finishAssessment({
+    autoSubmitted: false
+  });
+}
+
+async function finishAssessment(options = {}) {
+  if (!state.currentCampaign || !state.answerSession) {
+    return;
+  }
+  if (answerRuntime.isSubmitting) {
+    return;
+  }
+
+  answerRuntime.isSubmitting = true;
+  const answers = collectCurrentAnswers();
+  const result = await api(`/api/submissions/${state.answerSession.submissionId}/complete`, {
+    method: "PUT",
     body: JSON.stringify({
-      campaignId: state.currentCampaign.id,
-      startedAt: Date.now(),
-      answers
+      answers,
+      autoSubmitted: Boolean(options.autoSubmitted),
+      autoSubmitReason: typeof options.reason === "string" ? options.reason : null
     })
   });
+  answerRuntime.isSubmitting = false;
 
   if (!result.ok) {
     return showFeedback(result.message, true);
   }
 
+  const completedSubmissionId = result.data.submission.id;
+  clearAnswerDrafts(completedSubmissionId);
+  teardownAnswerRuntime();
   state.currentSubmission = result.data.submission;
-  document.getElementById("submissionIdInput").value = state.currentSubmission.id;
-  renderSubmissionMeta(state.currentSubmission);
+  state.currentSubmissionProctoring = null;
+  state.answerSession = null;
+  state.currentCampaign = null;
+  state.currentQuestions = [];
+  renderAssessment();
+  document.getElementById("submissionIdInput").value = completedSubmissionId;
+  renderSubmissionMeta(result.data.submission);
+  await loadCampaigns({ silent: true });
   renderCandidateWorkspace();
-  showFeedback("答卷提交成功，已生成提交记录。");
+  showFeedback(options.autoSubmitted ? "作答时间已到，系统已自动交卷。" : "答卷提交成功，已生成提交记录。");
   switchView("submission");
+  await loadSubmissionDetail();
 }
 
 async function loadSubmissionDetail() {
@@ -1721,11 +2204,94 @@ async function loadSubmissionDetail() {
   }
 
   state.currentSubmission = result.data;
+  state.currentSubmissionProctoring = null;
   renderSubmissionMeta(result.data.submission);
   renderSubmissionAnswers(result.data.answers);
   renderEvaluationForm(result.data.answers, result.data.submission);
+  await loadSubmissionProctoring(submissionId);
   renderCandidateWorkspace();
   showFeedback("提交详情加载成功。");
+}
+
+async function loadSubmissionProctoring(submissionId) {
+  const result = await api(`/api/submissions/${submissionId}/proctoring`);
+  if (!result.ok) {
+    document.getElementById("submissionProctoring").innerHTML = `
+      <article class="question-card"><p>${escapeHtml(result.message)}</p></article>
+    `;
+    return;
+  }
+  state.currentSubmissionProctoring = result.data;
+  if (state.currentSubmission?.submission) {
+    renderSubmissionMeta(state.currentSubmission.submission);
+  }
+  renderSubmissionProctoring();
+}
+
+function renderSubmissionProctoring() {
+  const container = document.getElementById("submissionProctoring");
+  const proctoring = state.currentSubmissionProctoring;
+  if (!proctoring) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const events = proctoring.events || [];
+  const snapshots = proctoring.snapshots || [];
+  container.innerHTML = `
+    <article class="question-card">
+      <h3>监控留痕</h3>
+      <div class="proctoring-summary-grid">
+        <div class="runtime-metric">
+          <span class="meta-label">风险等级</span>
+          <strong>${escapeHtml(proctoring.summary.riskLevel || "正常")}</strong>
+        </div>
+        <div class="runtime-metric">
+          <span class="meta-label">风险分</span>
+          <strong>${escapeHtml(String(proctoring.summary.totalRiskScore || 0))}</strong>
+        </div>
+        <div class="runtime-metric">
+          <span class="meta-label">异常事件</span>
+          <strong>${escapeHtml(String(proctoring.summary.eventCount || 0))}</strong>
+        </div>
+        <div class="runtime-metric">
+          <span class="meta-label">抓拍数量</span>
+          <strong>${escapeHtml(String(proctoring.summary.snapshotCount || 0))}</strong>
+        </div>
+      </div>
+    </article>
+    <article class="question-card">
+      <h3>异常事件记录</h3>
+      ${events.length === 0 ? `<p>当前没有异常事件。</p>` : `
+        <div class="event-list">
+          ${events.map((item) => `
+            <div class="event-item">
+              <strong>${escapeHtml(formatProctoringEventType(item.event_type))}</strong>
+              <p>时间：${escapeHtml(formatDateTime(item.created_at))}</p>
+              <p>风险分：${escapeHtml(String(item.risk_score ?? 0))}</p>
+              <p>详情：${escapeHtml(formatProctoringEventValue(item.event_value))}</p>
+            </div>
+          `).join("")}
+        </div>
+      `}
+    </article>
+    <article class="question-card">
+      <h3>抓拍截图</h3>
+      ${snapshots.length === 0 ? `<p>当前没有抓拍记录。</p>` : `
+        <div class="proctoring-gallery">
+          ${snapshots.map((item) => `
+            <div class="snapshot-card">
+              <img src="${escapeHtml(item.url)}" alt="抓拍截图 ${escapeHtml(formatDateTime(item.captured_at))}" loading="lazy" />
+              <div class="snapshot-card-body">
+                <p>抓拍时间：${escapeHtml(formatDateTime(item.captured_at))}</p>
+                <p>文件大小：${escapeHtml(formatFileSize(item.file_size))}</p>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `}
+    </article>
+  `;
 }
 
 function renderSubmissionList() {
@@ -1782,7 +2348,8 @@ function renderSubmissionMeta(submission) {
     ["状态", formatSubmissionStatus(submission.status)],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
-    ["总分", `${submission.total_score ?? submission.totalScore ?? 0} 分`]
+    ["总分", `${submission.total_score ?? submission.totalScore ?? 0} 分`],
+    ["风险等级", state.currentSubmissionProctoring?.summary?.riskLevel || "待计算"]
   ]);
 }
 
@@ -1791,9 +2358,9 @@ function renderSubmissionAnswers(answers) {
   container.innerHTML = answers.map((item) => `
     <article class="question-card">
       <h3>${escapeHtml(item.stem)}</h3>
-      <p>题型：${escapeHtml(item.type)}</p>
+      <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
       <p>作答：${escapeHtml(item.answer_content)}</p>
-      <p><span class="answer-status">${escapeHtml(item.objective_result)}</span></p>
+      <p><span class="answer-status">${escapeHtml(formatObjectiveResult(item.objective_result))}</span></p>
       <p>客观题得分：${escapeHtml(String(item.objective_score))} 分</p>
       <p>主观题得分：${escapeHtml(String(item.subjective_score))} 分</p>
       <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
@@ -2171,11 +2738,71 @@ function formatSubmissionStatus(status) {
   }[status] || status;
 }
 
+function formatObjectiveResult(status) {
+  return {
+    correct: "判定正确",
+    incorrect: "判定错误",
+    partial: "部分正确",
+    pending: "待人工评阅",
+    reviewed: "已人工评阅"
+  }[status] || status;
+}
+
 function formatInvitationStatus(status) {
   return {
     invited: "已邀请",
     completed: "已完成"
   }[status] || status;
+}
+
+function formatProctoringEventType(eventType) {
+  return {
+    camera_denied: "摄像头授权失败",
+    fullscreen_exit: "退出全屏",
+    page_blur: "页面失焦",
+    network_offline: "网络离线",
+    network_online: "网络恢复",
+    snapshot_uploaded: "抓拍上传",
+    timeout_auto_submit: "超时自动交卷"
+  }[eventType] || eventType;
+}
+
+function formatProctoringEventValue(value) {
+  if (value == null) {
+    return "-";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "object") {
+    return Object.entries(value)
+      .map(([key, item]) => `${key}: ${item}`)
+      .join("；");
+  }
+  return String(value);
+}
+
+function formatRemainingDuration(expiresAt) {
+  const deadline = Number(expiresAt || 0);
+  if (!deadline) {
+    return "--:--";
+  }
+  const remainingMs = Math.max(0, deadline - Date.now());
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatFileSize(size) {
+  const bytes = Number(size || 0);
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatTargetLevel(level) {
@@ -2263,10 +2890,27 @@ function openUserModal(mode) {
   const [nextTitle, nextDesc, sectionId] = mapping[mode];
   title.textContent = nextTitle;
   desc.textContent = nextDesc;
-  document.getElementById(sectionId).classList.remove("hidden");
+  const section = document.getElementById(sectionId);
+  section.classList.remove("hidden");
+  resetPasswordFieldVisibility(section);
+  bindPasswordToggles(section);
   if (mode === "assignCampaign") {
     resetAssignCandidatePicker();
   }
+}
+
+function resetPasswordFieldVisibility(root = document) {
+  root.querySelectorAll(".password-field").forEach((field) => {
+    const input = field.querySelector("input");
+    const button = field.querySelector("[data-password-toggle]");
+    if (input) {
+      input.type = "password";
+    }
+    if (button) {
+      button.setAttribute("aria-label", "显示密码");
+      button.setAttribute("aria-pressed", "false");
+    }
+  });
 }
 
 function onAssignCandidateSearch(event) {
