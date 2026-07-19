@@ -3,44 +3,80 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Java 招聘测评系统</title>
+    <title>招聘测评系统</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <section id="authShell" class="auth-shell">
-      <div class="panel auth-panel auth-panel-simple">
-        <div class="auth-heading">
-          <div class="auth-heading-top">
-            <div class="brand-mark">昱</div>
-            <div>
-              <h1 class="auth-title">招聘测评系统</h1>
-              <div class="brand-subtitle">昱易昇（成都）科技有限公司</div>
+      <div class="auth-background">
+        <div class="auth-orb auth-orb-a"></div>
+        <div class="auth-orb auth-orb-b"></div>
+        <div class="auth-grid"></div>
+      </div>
+      <div class="auth-layout">
+        <section class="auth-showcase">
+          <div class="auth-company-badge">昱易昇（成都）科技有限公司</div>
+          <div class="auth-showcase-main">
+            <div class="auth-brand-lockup">
+              <div class="auth-brand-mark">昱</div>
+              <div>
+                <p class="auth-kicker">Enterprise Assessment Platform</p>
+                <h1 class="auth-title">招聘测评系统</h1>
+              </div>
             </div>
+            <p class="auth-lead">面向招聘专员、面试官与候选人的统一测评入口，覆盖场次发布、在线答题、提交评估与过程留痕。</p>
           </div>
-          <p class="hint">输入企业分配的账号和密码后登录系统。</p>
-        </div>
-        <form id="loginForm" class="stack-form">
-          <label>
-            <span>账号</span>
-            <input name="account" autocomplete="username" placeholder="请输入账号" />
-          </label>
-          <label>
-            <span>密码</span>
-            <div class="password-field">
-              <input id="loginPasswordInput" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
-              <button id="togglePasswordButton" type="button" class="password-toggle" aria-label="显示密码" aria-pressed="false">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 5C6.5 5 2.1 8.4 0 12c2.1 3.6 6.5 7 12 7s9.9-3.4 12-7c-2.1-3.6-6.5-7-12-7Zm0 11.2A4.2 4.2 0 1 1 12 7.8a4.2 4.2 0 0 1 0 8.4Zm0-6.6A2.4 2.4 0 1 0 12 14.4a2.4 2.4 0 0 0 0-4.8Z" />
-                </svg>
-              </button>
-            </div>
-          </label>
-          <button type="submit" class="primary-button">登录系统</button>
-        </form>
-        <section id="feedback" class="feedback hidden"></section>
-        <footer class="auth-footer">
-          <p>Copyright © 2026 昱易昇（成都）科技有限公司 版权所有</p>
-        </footer>
+          <div class="auth-feature-grid">
+            <article class="auth-feature-card">
+              <span class="auth-feature-index">01</span>
+              <h2>角色分区明确</h2>
+              <p>候选人进入专属答题流，企业侧统一管理用户、题库、场次与评估过程。</p>
+            </article>
+            <article class="auth-feature-card">
+              <span class="auth-feature-index">02</span>
+              <h2>招聘流程闭环</h2>
+              <p>从分配账号到提交详情查看，再到人工评估与 AI 建议判分，流程在同一平台完成。</p>
+            </article>
+            <article class="auth-feature-card">
+              <span class="auth-feature-index">03</span>
+              <h2>监控与留痕</h2>
+              <p>支持摄像头、全屏要求与抓拍留档，适合远程招聘测评场景的基础风控需求。</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="auth-card panel auth-panel">
+          <div class="auth-card-top">
+            <p class="auth-form-kicker">SIGN IN</p>
+            <h2 class="auth-form-title">欢迎登录</h2>
+            <p class="auth-form-desc">请输入企业分配的账号与密码，进入对应的求职者端或企业端工作区。</p>
+          </div>
+
+          <form id="loginForm" class="stack-form auth-form">
+            <label>
+              <span>账号</span>
+              <input name="account" autocomplete="username" placeholder="请输入账号" />
+            </label>
+            <label>
+              <span>密码</span>
+              <div class="password-field">
+                <input id="loginPasswordInput" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
+                <button id="togglePasswordButton" type="button" class="password-toggle" aria-label="显示密码" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5C6.5 5 2.1 8.4 0 12c2.1 3.6 6.5 7 12 7s9.9-3.4 12-7c-2.1-3.6-6.5-7-12-7Zm0 11.2A4.2 4.2 0 1 1 12 7.8a4.2 4.2 0 0 1 0 8.4Zm0-6.6A2.4 2.4 0 1 0 12 14.4a2.4 2.4 0 0 0 0-4.8Z" />
+                  </svg>
+                </button>
+              </div>
+            </label>
+            <button type="submit" class="primary-button auth-submit">登录系统</button>
+          </form>
+
+          <section id="feedback" class="feedback hidden"></section>
+
+          <footer class="auth-footer">
+            <p>Copyright © 2026 昱易昇（成都）科技有限公司 版权所有</p>
+          </footer>
+        </section>
       </div>
     </section>
 
