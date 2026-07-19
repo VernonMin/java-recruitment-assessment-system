@@ -157,6 +157,7 @@
                     <option value="locked">锁定</option>
                   </select>
                 </label>
+                <p class="hint">正常：可登录使用；禁用：管理员停用；锁定：账号受限制。</p>
                 <div class="button-row align-end">
                   <button type="submit" class="ghost-button">检索用户</button>
                   <button id="clearUserSearchButton" type="button" class="ghost-button">清空条件</button>
@@ -203,6 +204,7 @@
                     <option value="archived">已归档</option>
                   </select>
                 </label>
+                <p class="hint">草稿：仅内部准备；已发布：可分配候选人；进行中：已有候选人作答；已归档：历史任务。</p>
               </div>
               <div class="button-row">
                 <button type="submit" class="ghost-button">检索任务</button>
@@ -259,6 +261,7 @@
                     <option value="published">已发布</option>
                   </select>
                 </label>
+                <p class="hint">草稿：题目仍在编辑；已发布：可加入试卷模板。</p>
                 <div class="button-row align-end">
                   <button type="submit" class="ghost-button">检索题目</button>
                   <button id="clearQuestionSearchButton" type="button" class="ghost-button">清空条件</button>
@@ -301,6 +304,7 @@
                     <option value="archived">已归档</option>
                   </select>
                 </label>
+                <p class="hint">草稿：模板编辑中；已发布：可创建笔试任务；已归档：历史模板。</p>
               </div>
               <div class="button-row">
                 <button type="submit" class="ghost-button">检索模板</button>
@@ -353,6 +357,7 @@
                     <option value="reviewed">已评阅</option>
                   </select>
                 </label>
+                <p class="hint">已提交：候选人已交卷待查看；已评阅：已完成人工评估。</p>
               </div>
               <div class="form-columns">
                 <label>
@@ -484,6 +489,7 @@
                     <option value="locked">锁定</option>
                   </select>
                 </label>
+                <p class="hint">正常：账号可登录；禁用：账号停用；锁定：账号受限制。</p>
                 <label>
                   <span>邮箱</span>
                   <input name="email" placeholder="可选" />
@@ -542,6 +548,7 @@
                     <option value="completed">completed</option>
                   </select>
                 </label>
+                <p class="hint">invited：已分配待作答；completed：该候选人已完成当前笔试任务。</p>
               </div>
               <button type="submit" class="primary-button">分配笔试任务</button>
             </form>
@@ -568,6 +575,7 @@
                     <option value="completed">completed</option>
                   </select>
                 </label>
+                <p class="hint">invited：已分配待作答；completed：候选人已完成当前笔试任务。</p>
               </div>
               <button type="submit" class="primary-button">批量分配</button>
             </form>
@@ -603,6 +611,7 @@
                     <option value="published">已发布</option>
                   </select>
                 </label>
+                <p class="hint">草稿：题目继续编辑；已发布：可用于组卷。</p>
               </div>
               <label>
                 <span>题干</span>
@@ -658,6 +667,7 @@
                     <option value="published">已发布</option>
                   </select>
                 </label>
+                <p class="hint">草稿：题目继续编辑；已发布：可用于组卷。</p>
               </div>
               <label>
                 <span>题干</span>
@@ -749,6 +759,7 @@
                     <option value="archived">已归档</option>
                   </select>
                 </label>
+                <p class="hint">草稿：任务未发布；已发布：可分配候选人；进行中：已有候选人作答；已归档：历史任务。</p>
               </div>
               <label>
                 <span>任务说明</span>
@@ -811,6 +822,7 @@
                     <option value="archived">已归档</option>
                   </select>
                 </label>
+                <p class="hint">草稿：任务未发布；已发布：可分配候选人；进行中：已有候选人作答；已归档：历史任务。</p>
               </div>
               <label>
                 <span>任务说明</span>
@@ -874,6 +886,7 @@
                   <option value="archived">已归档</option>
                 </select>
               </label>
+              <p class="hint">草稿：模板继续编辑；已发布：可用于创建笔试任务；已归档：历史模板。</p>
               <label>
                 <span>题目总分</span>
                 <input id="assessmentTotalScoreInput" name="totalScore" value="0" readonly />
