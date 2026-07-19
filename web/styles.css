@@ -473,6 +473,12 @@ select {
   display: block;
 }
 
+.modal-overlay.hidden,
+.modal-card.hidden,
+.modal-section.hidden {
+  display: none;
+}
+
 .inline-form {
   display: flex;
   gap: 10px;
