@@ -2,6 +2,8 @@ const state = {
   user: null,
   users: [],
   candidateOptions: [],
+  assignCandidateFilter: "",
+  selectedAssignCandidates: [],
   questions: [],
   campaigns: [],
   adminCampaigns: [],
@@ -114,6 +116,9 @@ document.getElementById("resetPasswordForm").addEventListener("submit", resetUse
 document.getElementById("deleteUserForm").addEventListener("submit", deleteUser);
 document.getElementById("assignCampaignForm").addEventListener("submit", assignCampaign);
 document.getElementById("batchAssignCampaignForm").addEventListener("submit", batchAssignCampaigns);
+document.getElementById("assignCandidateSearchInput").addEventListener("input", onAssignCandidateSearch);
+document.getElementById("selectVisibleCandidatesButton").addEventListener("click", selectVisibleAssignCandidates);
+document.getElementById("clearSelectedCandidatesButton").addEventListener("click", clearSelectedAssignCandidates);
 document.getElementById("reloadUsersButton").addEventListener("click", () => loadUsers());
 document.getElementById("reloadAdminCampaignsButton").addEventListener("click", () => loadAdminCampaigns());
 document.getElementById("reloadAssessmentsButton").addEventListener("click", () => loadAssessmentOptions());
@@ -716,7 +721,6 @@ function renderUserManagement() {
   const list = document.getElementById("userList");
   const pagination = document.getElementById("userPagination") || null;
   const assignCampaignSelect = document.getElementById("assignCampaignSelect");
-  const assignCandidateAccounts = document.getElementById("assignCandidateAccounts");
   const batchAssignCampaignSelect = document.getElementById("batchAssignCampaignSelect");
   const updateUserSelect = document.getElementById("updateUserId");
   const resetPasswordUserSelect = document.getElementById("resetPasswordUserId");
@@ -731,19 +735,13 @@ function renderUserManagement() {
     : state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.id)})</option>
     `).join("");
-  const candidateOptions = state.candidateOptions.length === 0
-    ? `<option value="">当前没有可选候选人</option>`
-    : state.candidateOptions.map((item) => `
-      <option value="${escapeHtml(item.account)}">${escapeHtml(item.fullName || item.account)} (${escapeHtml(item.account)})</option>
-    `).join("");
-
   updateUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   resetPasswordUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   deleteUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   assignCampaignSelect.innerHTML = campaignOptions;
-  assignCandidateAccounts.innerHTML = candidateOptions;
   batchAssignCampaignSelect.innerHTML = campaignOptions;
   syncSelectedUserToForm();
+  renderAssignCandidatePicker();
 
   summary.innerHTML = renderMetaItems([
     ["当前页用户数", state.users.length],
@@ -1254,9 +1252,7 @@ async function assignCampaign(event) {
   clearFormFeedback(form);
   setFormLoading(form, true, "分配中...");
   const formData = new FormData(form);
-  const accounts = Array.from(form.querySelectorAll("#assignCandidateAccounts option:checked"))
-    .map((option) => option.value.trim())
-    .filter(Boolean);
+  const accounts = state.selectedAssignCandidates.slice();
   const campaignId = String(formData.get("campaignId") || "").trim();
   const attemptLimit = Number(formData.get("attemptLimit") || 1);
   const invitationStatus = String(formData.get("invitationStatus") || "invited").trim();
@@ -1288,6 +1284,7 @@ async function assignCampaign(event) {
   }
 
   form.reset();
+  resetAssignCandidatePicker();
   closeModal();
   showFeedback(`已为 ${accounts.length} 个候选人分配笔试任务。`);
   setFormLoading(form, false);
@@ -2142,6 +2139,122 @@ function openUserModal(mode) {
   title.textContent = nextTitle;
   desc.textContent = nextDesc;
   document.getElementById(sectionId).classList.remove("hidden");
+  if (mode === "assignCampaign") {
+    resetAssignCandidatePicker();
+  }
+}
+
+function onAssignCandidateSearch(event) {
+  state.assignCandidateFilter = event.currentTarget.value.trim();
+  renderAssignCandidatePicker();
+}
+
+function getFilteredAssignCandidates() {
+  const keyword = state.assignCandidateFilter.trim().toLowerCase();
+  if (!keyword) {
+    return state.candidateOptions;
+  }
+
+  return state.candidateOptions.filter((item) => {
+    const haystack = [
+      item.fullName,
+      item.account,
+      item.email,
+      item.mobile
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(keyword);
+  });
+}
+
+function renderAssignCandidatePicker() {
+  const selectedWrap = document.getElementById("assignCandidateSelectedList");
+  const listWrap = document.getElementById("assignCandidateOptionList");
+  const countNode = document.getElementById("assignCandidateSelectedCount");
+  if (!selectedWrap || !listWrap || !countNode) {
+    return;
+  }
+
+  const visibleCandidates = getFilteredAssignCandidates();
+  const selectedCandidates = state.candidateOptions.filter((item) => state.selectedAssignCandidates.includes(item.account));
+  countNode.textContent = `已选 ${selectedCandidates.length} 人`;
+
+  if (selectedCandidates.length === 0) {
+    selectedWrap.innerHTML = `<span class="picker-empty-text">暂未选择候选人</span>`;
+  } else {
+    selectedWrap.innerHTML = selectedCandidates.map((item) => `
+      <button type="button" class="picker-chip" data-remove-assign-candidate="${escapeHtml(item.account)}">
+        <span>${escapeHtml(item.fullName || item.account)}</span>
+        <span class="picker-chip-meta">${escapeHtml(item.account)}</span>
+      </button>
+    `).join("");
+
+    selectedWrap.querySelectorAll("[data-remove-assign-candidate]").forEach((button) => {
+      button.addEventListener("click", () => toggleAssignCandidate(button.dataset.removeAssignCandidate, false));
+    });
+  }
+
+  if (visibleCandidates.length === 0) {
+    listWrap.innerHTML = `<div class="picker-empty">没有匹配的候选人，请更换搜索条件。</div>`;
+    return;
+  }
+
+  listWrap.innerHTML = visibleCandidates.map((item) => {
+    const checked = state.selectedAssignCandidates.includes(item.account);
+    return `
+      <label class="candidate-picker-option">
+        <input type="checkbox" data-assign-candidate-account="${escapeHtml(item.account)}" ${checked ? "checked" : ""} />
+        <div class="candidate-picker-body">
+          <div class="candidate-picker-main">
+            <strong>${escapeHtml(item.fullName || item.account)}</strong>
+            <span class="candidate-picker-account">${escapeHtml(item.account)}</span>
+          </div>
+          <div class="candidate-picker-meta">
+            <span>邮箱：${escapeHtml(item.email || "-")}</span>
+            <span>手机号：${escapeHtml(item.mobile || "-")}</span>
+          </div>
+        </div>
+      </label>
+    `;
+  }).join("");
+
+  listWrap.querySelectorAll("[data-assign-candidate-account]").forEach((input) => {
+    input.addEventListener("change", (event) => {
+      toggleAssignCandidate(event.currentTarget.dataset.assignCandidateAccount, event.currentTarget.checked);
+    });
+  });
+}
+
+function toggleAssignCandidate(account, checked) {
+  const nextSelected = new Set(state.selectedAssignCandidates);
+  if (checked) {
+    nextSelected.add(account);
+  } else {
+    nextSelected.delete(account);
+  }
+  state.selectedAssignCandidates = Array.from(nextSelected);
+  renderAssignCandidatePicker();
+}
+
+function selectVisibleAssignCandidates() {
+  const nextSelected = new Set(state.selectedAssignCandidates);
+  getFilteredAssignCandidates().forEach((item) => nextSelected.add(item.account));
+  state.selectedAssignCandidates = Array.from(nextSelected);
+  renderAssignCandidatePicker();
+}
+
+function clearSelectedAssignCandidates() {
+  state.selectedAssignCandidates = [];
+  renderAssignCandidatePicker();
+}
+
+function resetAssignCandidatePicker() {
+  state.assignCandidateFilter = "";
+  state.selectedAssignCandidates = [];
+  const searchInput = document.getElementById("assignCandidateSearchInput");
+  if (searchInput) {
+    searchInput.value = "";
+  }
+  renderAssignCandidatePicker();
 }
 
 function openQuestionModal(mode, questionId = "") {

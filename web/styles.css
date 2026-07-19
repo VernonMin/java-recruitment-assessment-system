@@ -759,6 +759,123 @@ select {
   font-weight: 700;
 }
 
+.candidate-picker-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.candidate-picker-count {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.candidate-picker-actions {
+  margin-top: 0;
+}
+
+.candidate-picker-selected {
+  min-height: 52px;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.picker-empty-text {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.picker-chip {
+  border: 1px solid rgba(20, 83, 45, 0.16);
+  background: rgba(20, 83, 45, 0.08);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.picker-chip-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.candidate-picker-list {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.candidate-picker-option {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: rgba(248, 241, 223, 0.34);
+}
+
+.candidate-picker-option:hover {
+  border-color: rgba(20, 83, 45, 0.16);
+  background: rgba(20, 83, 45, 0.04);
+}
+
+.candidate-picker-option input {
+  width: 18px;
+  min-height: 18px;
+  margin: 4px 0 0;
+}
+
+.candidate-picker-body {
+  display: grid;
+  gap: 6px;
+}
+
+.candidate-picker-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.candidate-picker-account {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.candidate-picker-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.picker-empty {
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .answer-status {
   display: inline-flex;
   padding: 6px 10px;

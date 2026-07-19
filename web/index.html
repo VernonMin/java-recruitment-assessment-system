@@ -529,9 +529,18 @@
             <form id="assignCampaignForm" class="stack-form">
               <label>
                 <span>候选人账号</span>
-                <select id="assignCandidateAccounts" name="accounts" multiple size="8"></select>
+                <input id="assignCandidateSearchInput" type="text" placeholder="搜索姓名 / 账号 / 邮箱 / 手机号" />
               </label>
-              <p class="hint">显示当前可用候选人，可按住 Command / Ctrl 选择多个候选人。</p>
+              <div class="candidate-picker-toolbar">
+                <span id="assignCandidateSelectedCount" class="candidate-picker-count">已选 0 人</span>
+                <div class="button-row candidate-picker-actions">
+                  <button id="selectVisibleCandidatesButton" type="button" class="ghost-button">选择当前结果</button>
+                  <button id="clearSelectedCandidatesButton" type="button" class="ghost-button">清空已选</button>
+                </div>
+              </div>
+              <div id="assignCandidateSelectedList" class="candidate-picker-selected"></div>
+              <div id="assignCandidateOptionList" class="candidate-picker-list"></div>
+              <p class="hint">支持先搜索，再通过复选框勾选多个候选人进行分配。</p>
               <label>
                   <span>笔试任务</span>
                 <select id="assignCampaignSelect" name="campaignId"></select>
