@@ -70,6 +70,8 @@ const ROLE_NAME_MAP = {
 const authShell = document.getElementById("authShell");
 const appShell = document.getElementById("appShell");
 const modalOverlay = document.getElementById("modalOverlay");
+const loginPasswordInput = document.getElementById("loginPasswordInput");
+const togglePasswordButton = document.getElementById("togglePasswordButton");
 
 document.querySelectorAll(".menu-item").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -78,6 +80,7 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 document.getElementById("loadMeButton").addEventListener("click", loadCurrentUser);
 document.getElementById("logoutButton").addEventListener("click", logout);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
+togglePasswordButton.addEventListener("click", togglePasswordVisibility);
 document.getElementById("questionForm").addEventListener("submit", submitQuestion);
 document.getElementById("reloadQuestionBankButton").addEventListener("click", () => loadQuestions());
 document.getElementById("importPresetQuestionsButton").addEventListener("click", importPresetQuestions);
@@ -146,6 +149,14 @@ function setAuthenticated(isAuthenticated) {
   if (!isAuthenticated) {
     closeModal();
   }
+}
+
+function togglePasswordVisibility() {
+  const nextType = loginPasswordInput.type === "password" ? "text" : "password";
+  const isVisible = nextType === "text";
+  loginPasswordInput.type = nextType;
+  togglePasswordButton.setAttribute("aria-label", isVisible ? "隐藏密码" : "显示密码");
+  togglePasswordButton.setAttribute("aria-pressed", String(isVisible));
 }
 
 function switchView(view) {

@@ -67,6 +67,54 @@ select {
   margin-bottom: 22px;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 56px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+}
+
+.password-toggle:hover {
+  background: rgba(20, 83, 45, 0.08);
+  color: var(--accent);
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.auth-footer {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.auth-footer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .sidebar {
   padding: 28px 22px;
   background: rgba(31, 26, 20, 0.95);

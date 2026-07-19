@@ -26,11 +26,21 @@
           </label>
           <label>
             <span>密码</span>
-            <input name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
+            <div class="password-field">
+              <input id="loginPasswordInput" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
+              <button id="togglePasswordButton" type="button" class="password-toggle" aria-label="显示密码" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5C6.5 5 2.1 8.4 0 12c2.1 3.6 6.5 7 12 7s9.9-3.4 12-7c-2.1-3.6-6.5-7-12-7Zm0 11.2A4.2 4.2 0 1 1 12 7.8a4.2 4.2 0 0 1 0 8.4Zm0-6.6A2.4 2.4 0 1 0 12 14.4a2.4 2.4 0 0 0 0-4.8Z" />
+                </svg>
+              </button>
+            </div>
           </label>
           <button type="submit" class="primary-button">登录系统</button>
         </form>
         <section id="feedback" class="feedback hidden"></section>
+        <footer class="auth-footer">
+          <p>Copyright © 2026 昱易昇（成都）科技有限公司 版权所有</p>
+        </footer>
       </div>
     </section>
 
