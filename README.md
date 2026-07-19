@@ -30,4 +30,5 @@
 ## 前端配置
 
 - `web/config.js`：前端运行时配置
-- 当前默认后端地址已配置为正式 Worker 地址
+- 当前默认通过同源 `/api` 访问后端
+- `functions/api/[[path]].js`：Cloudflare Pages 同源 API 代理，会把 `/api/*` 请求转发到正式 Worker
