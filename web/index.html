@@ -78,8 +78,8 @@
           <button data-view="assessmentManagement" class="menu-item">试卷模板管理</button>
           <button data-view="campaignManagement" class="menu-item">笔试任务管理</button>
           <button data-view="assessment" class="menu-item">答题页</button>
-          <button data-view="submission" class="menu-item">提交详情</button>
-          <button data-view="review" class="menu-item">人工评估</button>
+          <button data-view="submission" class="menu-item">答卷详情</button>
+          <button data-view="review" class="menu-item">人工/AI 评分复核</button>
         </nav>
         <div class="sidebar-footer">
           <div id="sessionBadge" class="session-badge">未登录</div>
@@ -340,7 +340,7 @@
         <section id="submissionView" class="view">
           <div class="panel">
             <div class="panel-header">
-              <h2>提交详情</h2>
+              <h2>答卷详情</h2>
               <button id="reloadSubmissionListButton" class="ghost-button">刷新提交记录</button>
             </div>
             <form id="submissionSearchForm" class="stack-form panel-subsection">
@@ -376,7 +376,7 @@
             <div id="submissionPagination" class="pagination-bar"></div>
             <div class="divider"></div>
             <div class="panel-header">
-              <h3>提交详情面板</h3>
+              <h3>答卷详情面板</h3>
               <div class="inline-form">
                 <input id="submissionIdInput" placeholder="输入 submissionId 或从上方列表点击查看" />
                 <button id="loadSubmissionButton" class="ghost-button">查询提交</button>
@@ -391,8 +391,8 @@
         <section id="reviewView" class="view">
           <div class="panel">
             <div class="panel-header">
-              <h2>人工评估</h2>
-              <p class="hint">先在“提交详情”中加载记录，再切到本页评估主观题。</p>
+              <h2>人工/AI 评分复核</h2>
+              <p class="hint">先在“答卷详情”中加载记录，再切到本页复核主观题。</p>
             </div>
             <form id="evaluationForm" class="question-list"></form>
           </div>

@@ -77,8 +77,8 @@ const viewMeta = {
   campaignManagement: ["笔试任务管理", "招聘专员或管理员基于试卷模板创建笔试任务。"],
   questionBank: ["题库管理", "企业端中的题库能力，供面试官和管理员维护 Java 招聘题库。"],
   assessment: ["答题页", "求职者加载题目、填写答案并提交本次测评。"],
-  submission: ["提交详情", "查看提交记录、逐题作答、评分结果与评估意见。"],
-  review: ["人工评估", "企业端查看主观题答案并录入人工评分。"]
+  submission: ["答卷详情", "查看候选人答卷、评分结果、风险记录与抓拍留痕。"],
+  review: ["人工/AI 评分复核", "企业端结合 AI 建议与人工判断复核主观题并确认最终成绩。"]
 };
 
 const ROLE_NAME_MAP = {
@@ -721,9 +721,9 @@ function renderEnterpriseWorkspace() {
     cards.push(`
       <article class="card">
         <h3>结果查看</h3>
-        <p>通过提交详情查看候选人作答、评分结果和当前笔试状态。</p>
+        <p>通过答卷详情查看候选人作答、评分结果和当前笔试状态。</p>
         <div class="button-row">
-          <button class="ghost-button" data-nav-view="submission">查看提交详情</button>
+          <button class="ghost-button" data-nav-view="submission">查看答卷详情</button>
         </div>
       </article>
     `);
@@ -732,10 +732,10 @@ function renderEnterpriseWorkspace() {
   if (hasAnyRole(["interviewer", "recruiter", "admin"])) {
     cards.push(`
       <article class="card">
-        <h3>人工评估</h3>
-        <p>对简答题和场景分析题进行人工评分，补全最终结论。</p>
+        <h3>人工/AI 评分复核</h3>
+        <p>对主观题结合 AI 建议和人工判断完成最终定分。</p>
         <div class="button-row">
-          <button class="ghost-button" data-nav-view="review">进入人工评估</button>
+          <button class="ghost-button" data-nav-view="review">进入人工/AI 评分复核</button>
         </div>
       </article>
     `);
@@ -2236,7 +2236,7 @@ async function loadSubmissionDetail() {
   renderEvaluationForm(result.data.answers, result.data.submission);
   await loadSubmissionProctoring(submissionId);
   renderCandidateWorkspace();
-  showFeedback("提交详情加载成功。");
+  showFeedback("答卷详情加载成功。");
 }
 
 async function loadSubmissionProctoring(submissionId) {
@@ -2399,7 +2399,7 @@ function renderEvaluationForm(answers, submission) {
   const form = document.getElementById("evaluationForm");
   const subjectiveAnswers = answers.filter((item) => item.type === "short_answer" || item.type === "scenario_answer");
   if (subjectiveAnswers.length === 0) {
-    form.innerHTML = `<div class="question-card"><p>该提交没有需要人工评估的主观题。</p></div>`;
+    form.innerHTML = `<div class="question-card"><p>该答卷没有需要人工/AI 评分复核的主观题。</p></div>`;
     return;
   }
 
@@ -2467,7 +2467,7 @@ async function submitEvaluation(event) {
   const formData = new FormData(event.currentTarget);
   const submissionId = String(formData.get("submissionId") || "").trim();
   if (!submissionId) {
-    return showFeedback("请先加载提交详情。", true);
+    return showFeedback("请先加载答卷详情。", true);
   }
 
   const answers = [];
@@ -2496,7 +2496,7 @@ async function submitEvaluation(event) {
     return showFeedback(result.message, true);
   }
 
-  showFeedback("人工评估已提交。");
+  showFeedback("人工/AI 评分复核已提交。");
   document.getElementById("submissionIdInput").value = submissionId;
   switchView("submission");
   await loadSubmissionDetail();
