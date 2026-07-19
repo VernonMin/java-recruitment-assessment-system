@@ -8,45 +8,39 @@
   </head>
   <body>
     <section id="authShell" class="auth-shell">
-      <div class="auth-layout">
-        <div class="auth-hero">
+      <div class="panel auth-panel auth-panel-simple">
+        <div class="auth-heading">
           <div class="brand">
-            <div class="brand-mark">J</div>
+            <div class="brand-mark">昱</div>
             <div>
               <div class="brand-title">Java 招聘测评系统</div>
-              <div class="brand-subtitle">企业招聘 Java 开发岗位的在线测评与评估平台</div>
+              <div class="brand-subtitle">昱易昇（成都）科技有限公司</div>
             </div>
           </div>
-          <h1>登录后进入求职者端或企业端</h1>
-          <p>求职者只看到自己的测评流程。面试官、招聘专员、管理员进入统一企业端，按角色展示对应能力。</p>
+          <p class="hint">输入企业分配的账号和密码后登录系统。</p>
         </div>
-
-        <div class="panel auth-panel">
-          <h2>账号登录</h2>
-          <form id="loginForm" class="stack-form">
-            <label>
-              <span>账号</span>
-              <input name="account" value="admin" autocomplete="username" />
-            </label>
-            <label>
-              <span>密码</span>
-              <input name="password" type="password" value="Admin123456!" autocomplete="current-password" />
-            </label>
-            <button type="submit" class="primary-button">登录系统</button>
-          </form>
-          <p class="hint">演示账号：`admin`、`candidate_demo`、`interviewer_demo`、`recruiter_demo`</p>
-          <section id="feedback" class="feedback hidden"></section>
-        </div>
+        <form id="loginForm" class="stack-form">
+          <label>
+            <span>账号</span>
+            <input name="account" autocomplete="username" placeholder="请输入账号" />
+          </label>
+          <label>
+            <span>密码</span>
+            <input name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
+          </label>
+          <button type="submit" class="primary-button">登录系统</button>
+        </form>
+        <section id="feedback" class="feedback hidden"></section>
       </div>
     </section>
 
     <div id="appShell" class="shell hidden">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">J</div>
+          <div class="brand-mark">昱</div>
           <div>
             <div class="brand-title">Java 招聘测评系统</div>
-            <div class="brand-subtitle">Cloudflare 版 MVP · 求职者端 / 企业端</div>
+            <div class="brand-subtitle">昱易昇（成都）科技有限公司</div>
           </div>
         </div>
         <nav class="menu">
