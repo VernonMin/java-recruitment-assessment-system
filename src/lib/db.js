@@ -21,6 +21,29 @@ export function findUserByAccount(env, account) {
   ).bind(account).first();
 }
 
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} userId
+ */
+export function findUserById(env, userId) {
+  return env.DB.prepare(
+    `select
+      u.id,
+      u.account,
+      u.password_hash,
+      u.full_name,
+      u.email,
+      u.mobile,
+      u.status,
+      group_concat(r.code) as role_codes
+    from users u
+    left join user_roles ur on ur.user_id = u.id
+    left join roles r on r.id = ur.role_id
+    where u.id = ?
+    group by u.id`
+  ).bind(userId).first();
+}
+
 function normalizePagination(pagination = {}) {
   const page = Number(pagination.page ?? 1);
   const pageSize = Number(pagination.pageSize ?? 0);

@@ -27,6 +27,7 @@ import {
   findSubmissionById,
   findSubmissions,
   findUserByAccount,
+  findUserById,
   findUsers,
   insertCampaignCandidate,
   insertCampaign,
@@ -593,18 +594,38 @@ async function handleBatchCreateUsers(request, env, sessionUser, corsHeaders) {
       return json({ message: "批量创建数据格式不合法" }, 400, {}, corsHeaders);
     }
 
-    const existingUser = await findUserByAccount(env, item.account.trim());
+    const account = item.account.trim();
+    const fullName = item.fullName.trim();
+    const password = item.password;
+    const roleCode = item.role.trim();
+    const email = typeof item.email === "string" && item.email.trim() ? item.email.trim() : null;
+    const mobile = typeof item.mobile === "string" && item.mobile.trim() ? item.mobile.trim() : null;
+
+    if (!account || !/^[a-zA-Z0-9_@.-]{4,50}$/.test(account)) {
+      return json({ message: `账号格式不合法: ${item.account}` }, 400, {}, corsHeaders);
+    }
+    if (password.length < 8) {
+      return json({ message: `密码至少 8 位: ${item.account}` }, 400, {}, corsHeaders);
+    }
+    if (!fullName) {
+      return json({ message: `姓名不能为空: ${item.account}` }, 400, {}, corsHeaders);
+    }
+    if (!ALLOWED_USER_ROLES.has(roleCode)) {
+      return json({ message: `角色不支持: ${item.account}` }, 400, {}, corsHeaders);
+    }
+
+    const existingUser = await findUserByAccount(env, account);
     if (existingUser) {
-      return json({ message: `账号已存在: ${item.account}` }, 409, {}, corsHeaders);
+      return json({ message: `账号已存在: ${account}` }, 409, {}, corsHeaders);
     }
 
     const createdUser = await createUserRecord(env, {
-      account: item.account.trim(),
-      password: item.password,
-      fullName: item.fullName.trim(),
-      roleCode: item.role.trim(),
-      email: typeof item.email === "string" ? item.email.trim() : null,
-      mobile: typeof item.mobile === "string" ? item.mobile.trim() : null
+      account,
+      password,
+      fullName,
+      roleCode,
+      email,
+      mobile
     });
     created.push(createdUser);
   }
@@ -1114,8 +1135,7 @@ async function handleUpdateUser(request, env, sessionUser, userId, corsHeaders) 
     return json({ message: "请求参数不合法" }, 400, {}, corsHeaders);
   }
 
-  const currentUsers = await findUsers(env);
-  const user = (currentUsers.results ?? []).find((item) => item.id === userId);
+  const user = await findUserById(env, userId);
   if (!user) {
     return json({ message: "用户不存在" }, 404, {}, corsHeaders);
   }
@@ -1189,8 +1209,7 @@ async function handleResetUserPassword(request, env, sessionUser, userId, corsHe
     return json({ message: "新密码至少 8 位" }, 400, {}, corsHeaders);
   }
 
-  const currentUsers = await findUsers(env);
-  const user = (currentUsers.results ?? []).find((item) => item.id === userId);
+  const user = await findUserById(env, userId);
   if (!user) {
     return json({ message: "用户不存在" }, 404, {}, corsHeaders);
   }
@@ -1226,8 +1245,7 @@ async function handleDeleteUser(env, sessionUser, userId, corsHeaders) {
     return json({ message: "不能删除当前登录账号" }, 400, {}, corsHeaders);
   }
 
-  const currentUsers = await findUsers(env);
-  const user = (currentUsers.results ?? []).find((item) => item.id === userId);
+  const user = await findUserById(env, userId);
   if (!user) {
     return json({ message: "用户不存在" }, 404, {}, corsHeaders);
   }
@@ -1281,6 +1299,9 @@ async function handleCreateQuestion(request, env, sessionUser, corsHeaders) {
   if (!QUESTION_TYPES.has(type)) {
     return json({ message: "题型不支持" }, 400, {}, corsHeaders);
   }
+  if (!ASSESSMENT_STATUSES.has(status)) {
+    return json({ message: "题目状态不支持" }, 400, {}, corsHeaders);
+  }
 
   if (!Number.isFinite(score) || score < 0) {
     return json({ message: "分值不合法" }, 400, {}, corsHeaders);
@@ -1290,18 +1311,33 @@ async function handleCreateQuestion(request, env, sessionUser, corsHeaders) {
     return json({ message: "难度必须在 1 到 5 之间" }, 400, {}, corsHeaders);
   }
 
-  const createdQuestion = await createQuestionRecord(env, sessionUser.sub, {
-    type,
-    stem,
-    score,
-    difficulty,
-    status,
-    options: body.options,
-    answer: body.answer,
-    analysis: typeof body.analysis === "string" ? body.analysis : "",
-    tags: Array.isArray(body.tags) ? body.tags : [],
-    caseSensitive: Boolean(body.caseSensitive)
-  });
+  const normalizedOptions = normalizeQuestionOptions(body.options);
+  const normalizedAnswer = normalizeQuestionAnswer(type, body.answer);
+  const answerType = inferAnswerType(type);
+  if (requiresOptions(type) && normalizedOptions.length === 0) {
+    return json({ message: "当前题型至少需要一个选项" }, 400, {}, corsHeaders);
+  }
+  if (answerType !== "manual" && !normalizedAnswer) {
+    return json({ message: "当前题型必须提供标准答案" }, 400, {}, corsHeaders);
+  }
+
+  let createdQuestion;
+  try {
+    createdQuestion = await createQuestionRecord(env, sessionUser.sub, {
+      type,
+      stem,
+      score,
+      difficulty,
+      status,
+      options: body.options,
+      answer: body.answer,
+      analysis: typeof body.analysis === "string" ? body.analysis : "",
+      tags: Array.isArray(body.tags) ? body.tags : [],
+      caseSensitive: Boolean(body.caseSensitive)
+    });
+  } catch (error) {
+    return json({ message: error instanceof Error ? error.message : "题目创建失败" }, 400, {}, corsHeaders);
+  }
 
   return json({
     message: "题目创建成功",

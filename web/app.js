@@ -1788,14 +1788,25 @@ async function api(path, options = {}) {
     ...options
   }).catch((error) => ({
     ok: false,
-    json: async () => ({ message: error.message || "网络请求失败" })
+    status: 500,
+    text: async () => JSON.stringify({ message: error.message || "网络请求失败" })
   }));
 
-  const data = await response.json().catch(() => ({}));
+  const rawText = await response.text().catch(() => "");
+  let data = {};
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { message: rawText.trim() };
+    }
+  }
+
+  const fallbackMessage = rawText.trim() || `请求失败（HTTP ${response.status || 500}）`;
   return {
     ok: response.ok,
     status: response.status || 500,
-    message: data.message || "请求失败",
+    message: data.message || fallbackMessage,
     data
   };
 }
