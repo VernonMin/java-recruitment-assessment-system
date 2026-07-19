@@ -1641,7 +1641,7 @@ function renderAssessment() {
       <article class="question-card">
         <h3>${escapeHtml(question.sectionName || "未分组")} · 第 ${escapeHtml(String(question.sortOrder))} 题</h3>
         <p>${escapeHtml(question.stem)}</p>
-        <p class="score">${escapeHtml(String(question.score))} 分 · ${escapeHtml(question.type)}</p>
+        <p class="score">${escapeHtml(String(question.score))} 分 · ${escapeHtml(formatQuestionType(question.type))}</p>
         ${renderAnswerInput(question)}
       </article>
     `),
