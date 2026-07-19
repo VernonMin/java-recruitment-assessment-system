@@ -129,8 +129,8 @@ document.getElementById("batchAssignCampaignForm").addEventListener("submit", ba
 document.getElementById("assignCandidateSearchInput").addEventListener("input", onAssignCandidateSearch);
 document.getElementById("selectVisibleCandidatesButton").addEventListener("click", selectVisibleAssignCandidates);
 document.getElementById("clearSelectedCandidatesButton").addEventListener("click", clearSelectedAssignCandidates);
-document.getElementById("reloadUsersButton").addEventListener("click", () => loadUsers());
-document.getElementById("reloadAdminCampaignsButton").addEventListener("click", () => loadAdminCampaigns());
+document.getElementById("reloadUsersButton")?.addEventListener("click", () => loadUsers());
+document.getElementById("reloadAdminCampaignsButton")?.addEventListener("click", () => loadAdminCampaigns());
 document.getElementById("reloadAssessmentsButton").addEventListener("click", () => loadAssessmentOptions());
 document.getElementById("reloadAssessmentManagementButton").addEventListener("click", () => loadAssessments());
 document.getElementById("reloadAssessmentQuestionPoolButton").addEventListener("click", () => loadAssessmentQuestionPool());
@@ -846,21 +846,17 @@ function renderUserManagement() {
 
   list.querySelectorAll("[data-edit-user-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      updateUserSelect.value = button.dataset.editUserId;
-      syncSelectedUserToForm();
-      openUserModal("update");
+      openUserModal("update", button.dataset.editUserId || "");
     });
   });
   list.querySelectorAll("[data-reset-user-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      resetPasswordUserSelect.value = button.dataset.resetUserId;
-      openUserModal("resetPassword");
+      openUserModal("resetPassword", button.dataset.resetUserId || "");
     });
   });
   list.querySelectorAll("[data-delete-user-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      deleteUserSelect.value = button.dataset.deleteUserId;
-      openUserModal("delete");
+      openUserModal("delete", button.dataset.deleteUserId || "");
     });
   });
 
@@ -964,9 +960,7 @@ function renderCampaignManagement() {
 
   list.querySelectorAll("[data-edit-campaign-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      updateCampaignSelect.value = button.dataset.editCampaignId;
-      syncSelectedCampaignToForm();
-      openCampaignModal("update");
+      openCampaignModal("update", button.dataset.editCampaignId || "");
     });
   });
 
@@ -2969,7 +2963,7 @@ function syncDeleteQuestionToForm() {
   `;
 }
 
-function openUserModal(mode) {
+function openUserModal(mode, userId = "") {
   closeModalSections();
   document.getElementById("userModal").classList.remove("hidden");
   document.getElementById("modalOverlay").classList.remove("hidden");
@@ -2993,6 +2987,28 @@ function openUserModal(mode) {
   bindPasswordToggles(section);
   if (mode === "assignCampaign") {
     resetAssignCandidatePicker();
+  }
+
+  if (mode === "update") {
+    toggleModalSelectWrap("updateUserSelectWrap", "updateUserId", userId);
+    syncSelectedUserToForm();
+    if (userId) {
+      desc.textContent = `正在编辑：${getUserDisplayName(userId)}。`;
+    }
+  }
+
+  if (mode === "resetPassword") {
+    toggleModalSelectWrap("resetPasswordUserSelectWrap", "resetPasswordUserId", userId);
+    if (userId) {
+      desc.textContent = `正在为 ${getUserDisplayName(userId)} 重置登录密码。`;
+    }
+  }
+
+  if (mode === "delete") {
+    toggleModalSelectWrap("deleteUserSelectWrap", "deleteUserId", userId);
+    if (userId) {
+      desc.textContent = `正在处理：${getUserDisplayName(userId)}。如果该账号已有历史记录，将自动改为禁用并保留数据。`;
+    }
   }
 }
 
@@ -3123,6 +3139,28 @@ function resetAssignCandidatePicker() {
   renderAssignCandidatePicker();
 }
 
+function toggleModalSelectWrap(wrapId, selectId, selectedId = "") {
+  const wrap = document.getElementById(wrapId);
+  const select = document.getElementById(selectId);
+  if (!wrap || !select) {
+    return;
+  }
+  if (selectedId) {
+    select.value = selectedId;
+    wrap.classList.add("hidden");
+    return;
+  }
+  wrap.classList.remove("hidden");
+}
+
+function getUserDisplayName(userId) {
+  const user = state.users.find((item) => item.id === userId);
+  if (!user) {
+    return "当前用户";
+  }
+  return `${user.fullName || user.account}（${user.account}）`;
+}
+
 function openQuestionModal(mode, questionId = "") {
   closeModalSections();
   document.getElementById("questionModal").classList.remove("hidden");
@@ -3206,7 +3244,7 @@ async function openAssessmentTemplateModal(mode, assessmentId = "") {
   title.textContent = "修改试卷模板";
   desc.textContent = "修改试卷模板信息、题目结构和每题分值。";
   submitButton.textContent = "保存模板修改";
-  selectWrap.classList.remove("hidden");
+  toggleModalSelectWrap("assessmentTemplateSelectWrap", "assessmentTemplateSelect", assessmentId);
   syncAssessmentTemplateSelect();
 
   const nextId = assessmentId || state.assessmentOptions[0]?.id || "";
@@ -3221,7 +3259,7 @@ async function openAssessmentTemplateModal(mode, assessmentId = "") {
   }
 }
 
-function openCampaignModal(mode) {
+function openCampaignModal(mode, campaignId = "") {
   closeModalSections();
   document.getElementById("campaignModal").classList.remove("hidden");
   document.getElementById("modalOverlay").classList.remove("hidden");
@@ -3235,6 +3273,22 @@ function openCampaignModal(mode) {
   title.textContent = nextTitle;
   desc.textContent = nextDesc;
   document.getElementById(sectionId).classList.remove("hidden");
+
+  if (mode === "update") {
+    toggleModalSelectWrap("updateCampaignSelectWrap", "updateCampaignId", campaignId);
+    syncSelectedCampaignToForm();
+    if (campaignId) {
+      desc.textContent = `正在编辑：${getCampaignDisplayName(campaignId)}。`;
+    }
+  }
+}
+
+function getCampaignDisplayName(campaignId) {
+  const campaign = state.adminCampaigns.find((item) => item.id === campaignId);
+  if (!campaign) {
+    return "当前笔试任务";
+  }
+  return `${campaign.title}（${campaign.id}）`;
 }
 
 function syncAssessmentTemplateSelect() {

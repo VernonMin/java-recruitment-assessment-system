@@ -124,14 +124,8 @@
             <header class="management-overview">
               <div class="management-overview-main">
                 <p class="management-overview-eyebrow">账户中心</p>
-                <h2>用户管理</h2>
                 <p class="management-overview-lead">集中处理账号开通、候选人发放、历史账号治理与笔试分配，保持招聘流程干净、稳定、可追踪。</p>
               </div>
-              <aside class="management-overview-side">
-                <span class="management-overview-badge">当前模块</span>
-                <strong>账号与候选人中心</strong>
-                <p>先筛选目标用户，再执行账号创建、密码维护和笔试发放，避免重复操作。</p>
-              </aside>
             </header>
 
             <div id="userManagementSummary" class="meta-strip management-summary-strip"></div>
@@ -171,7 +165,7 @@
                 </div>
                 <div class="management-search-footer">
                   <p class="hint">状态说明：正常可登录；禁用表示停止继续使用但保留历史；锁定表示当前账号受限，需要管理员处理。</p>
-                  <div class="button-row">
+                  <div class="button-row management-search-actions">
                     <button type="submit" class="primary-button">开始筛选</button>
                     <button id="clearUserSearchButton" type="button" class="ghost-button">重置筛选</button>
                   </div>
@@ -183,10 +177,6 @@
                   <div>
                     <h3>常用操作</h3>
                     <p class="hint">把高频动作集中放在这里，适合日常批量维护与候选人发放。</p>
-                  </div>
-                  <div class="topbar-actions">
-                    <button id="reloadUsersButton" class="ghost-button">同步用户</button>
-                    <button id="reloadAdminCampaignsButton" class="ghost-button">同步任务</button>
                   </div>
                 </div>
                 <div class="management-action-note">
@@ -508,7 +498,7 @@
           </div>
           <div id="userModalUpdate" class="modal-section hidden">
             <form id="updateUserForm" class="stack-form">
-              <label>
+              <label id="updateUserSelectWrap">
                 <span>选择用户</span>
                 <select id="updateUserId" name="userId"></select>
               </label>
@@ -551,7 +541,7 @@
           </div>
           <div id="userModalResetPassword" class="modal-section hidden">
             <form id="resetPasswordForm" class="stack-form">
-              <label>
+              <label id="resetPasswordUserSelectWrap">
                 <span>选择用户</span>
                 <select id="resetPasswordUserId" name="userId"></select>
               </label>
@@ -571,7 +561,7 @@
           </div>
           <div id="userModalDelete" class="modal-section hidden">
             <form id="deleteUserForm" class="stack-form danger-panel">
-              <label>
+              <label id="deleteUserSelectWrap">
                 <span>选择用户</span>
                 <select id="deleteUserId" name="userId"></select>
               </label>
@@ -843,7 +833,7 @@
           </div>
           <div id="campaignModalUpdate" class="modal-section hidden">
             <form id="updateCampaignForm" class="stack-form">
-              <label>
+              <label id="updateCampaignSelectWrap">
                 <span>选择任务</span>
                 <select id="updateCampaignId" name="campaignId"></select>
               </label>
