@@ -115,7 +115,6 @@ document.getElementById("reloadQuestionBankButton").addEventListener("click", ()
 document.getElementById("importPresetQuestionsButton").addEventListener("click", importPresetQuestions);
 document.getElementById("loadCampaignsButton").addEventListener("click", () => loadCampaigns());
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
-document.getElementById("loadSubmissionButton").addEventListener("click", loadSubmissionDetail);
 document.getElementById("assessmentForm").addEventListener("submit", submitAssessment);
 document.getElementById("evaluationForm").addEventListener("submit", submitEvaluation);
 document.getElementById("createUserForm").addEventListener("submit", createUser);
@@ -786,29 +785,58 @@ function renderUserManagement() {
   ]);
 
   if (state.users.length === 0) {
-    list.innerHTML = `<div class="question-card"><p>当前还没有用户数据。</p></div>`;
+    list.innerHTML = `<div class="question-card user-directory-empty"><p>当前还没有用户数据。</p></div>`;
     if (pagination) {
       pagination.innerHTML = "";
     }
     return;
   }
 
-  list.innerHTML = state.users.map((item) => `
-    <article class="question-card">
-      <div class="card-header-actions">
-        <h3>${escapeHtml(item.fullName)} · ${escapeHtml(item.account)}</h3>
-        <div class="button-row compact-actions">
-          <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
-          <button class="ghost-button" data-reset-user-id="${escapeHtml(item.id)}">重置密码</button>
-          <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
-        </div>
+  list.innerHTML = `
+    <div class="user-directory">
+      <div class="user-directory-header">
+        <div class="user-directory-cell">用户信息</div>
+        <div class="user-directory-cell">角色</div>
+        <div class="user-directory-cell">状态</div>
+        <div class="user-directory-cell">联系方式</div>
+        <div class="user-directory-cell">业务说明</div>
+        <div class="user-directory-cell">操作</div>
       </div>
-      <p>角色：${escapeHtml(formatRoleNames(item.roles))}</p>
-      <p>状态：${escapeHtml(formatUserStatus(item.status))}</p>
-      <p>邮箱：${escapeHtml(item.email || "-")}</p>
-      <p>手机号：${escapeHtml(item.mobile || "-")}</p>
-    </article>
-  `).join("");
+      ${state.users.map((item) => `
+        <div class="user-directory-row">
+          <div class="user-directory-cell">
+            <strong>${escapeHtml(item.fullName || item.account)}</strong>
+            <div class="user-directory-subline">${escapeHtml(item.account)}</div>
+            <div class="user-directory-meta">用户 ID：${escapeHtml(item.id)}</div>
+          </div>
+          <div class="user-directory-cell">
+            <div class="user-role-badges">
+              ${(item.roles || []).map((role) => `
+                <span class="role-chip">${escapeHtml(ROLE_NAME_MAP[role] || role)}</span>
+              `).join("")}
+            </div>
+          </div>
+          <div class="user-directory-cell">
+            <span class="status-chip-light ${escapeHtml(item.status || "")}">${escapeHtml(formatUserStatus(item.status))}</span>
+          </div>
+          <div class="user-directory-cell">
+            <div class="user-directory-subline">邮箱：${escapeHtml(item.email || "-")}</div>
+            <div class="user-directory-subline">手机号：${escapeHtml(item.mobile || "-")}</div>
+          </div>
+          <div class="user-directory-cell">
+            <div class="user-directory-subline">${escapeHtml(getUserBusinessHint(item))}</div>
+          </div>
+          <div class="user-directory-cell">
+            <div class="user-directory-actions">
+              <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
+              <button class="ghost-button" data-reset-user-id="${escapeHtml(item.id)}">重置密码</button>
+              <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
+            </div>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 
   list.querySelectorAll("[data-edit-user-id]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -834,6 +862,24 @@ function renderUserManagement() {
     pagination.innerHTML = renderPagination("users", state.paginations.users);
     bindPagination("users", loadUsers);
   }
+}
+
+function getUserBusinessHint(user) {
+  if (Array.isArray(user.roles) && user.roles.includes("candidate")) {
+    return user.status === "disabled"
+      ? "候选人账号已停用，历史答卷与分配记录保留。"
+      : "候选人可被分配到笔试任务，并在答卷详情中追踪过程记录。";
+  }
+  if (Array.isArray(user.roles) && user.roles.includes("admin")) {
+    return "管理员负责账号治理、候选人分配与系统维护。";
+  }
+  if (Array.isArray(user.roles) && user.roles.includes("recruiter")) {
+    return "招聘专员关注任务分配、流程推进与结果跟踪。";
+  }
+  if (Array.isArray(user.roles) && user.roles.includes("interviewer")) {
+    return "面试官负责题库维护、答卷查看与评分复核。";
+  }
+  return "当前用户可在企业端按权限参与招聘测评流程。";
 }
 
 function renderCampaignManagement() {
@@ -2209,22 +2255,22 @@ async function finishAssessment(options = {}) {
   state.currentCampaign = null;
   state.currentQuestions = [];
   renderAssessment();
-  document.getElementById("submissionIdInput").value = completedSubmissionId;
   renderSubmissionMeta(result.data.submission);
   await loadCampaigns({ silent: true });
   renderCandidateWorkspace();
   showFeedback(options.autoSubmitted ? "作答时间已到，系统已自动交卷。" : "答卷提交成功，已生成提交记录。");
   switchView("submission");
-  await loadSubmissionDetail();
+  await loadSubmissionDetail(completedSubmissionId);
 }
 
-async function loadSubmissionDetail() {
-  const submissionId = document.getElementById("submissionIdInput").value.trim();
-  if (!submissionId) {
-    return showFeedback("请先输入 submissionId。", true);
+async function loadSubmissionDetail(submissionId = "") {
+  const resolvedSubmissionId = String(submissionId || "").trim();
+  const targetSubmissionId = resolvedSubmissionId;
+  if (!targetSubmissionId) {
+    return showFeedback("请先从答卷列表点击“查看详情”。", true);
   }
 
-  const result = await api(`/api/submissions/${submissionId}`);
+  const result = await api(`/api/submissions/${targetSubmissionId}`);
   if (!result.ok) {
     return showFeedback(result.message, true);
   }
@@ -2234,7 +2280,7 @@ async function loadSubmissionDetail() {
   renderSubmissionMeta(result.data.submission);
   renderSubmissionAnswers(result.data.answers);
   renderEvaluationForm(result.data.answers, result.data.submission);
-  await loadSubmissionProctoring(submissionId);
+  await loadSubmissionProctoring(targetSubmissionId);
   renderCandidateWorkspace();
   showFeedback("答卷详情加载成功。");
 }
@@ -2357,8 +2403,7 @@ function renderSubmissionList() {
 
   list.querySelectorAll("[data-view-submission-id]").forEach((button) => {
     button.addEventListener("click", async () => {
-      document.getElementById("submissionIdInput").value = button.dataset.viewSubmissionId;
-      await loadSubmissionDetail();
+      await loadSubmissionDetail(button.dataset.viewSubmissionId);
     });
   });
 
@@ -2467,7 +2512,7 @@ async function submitEvaluation(event) {
   const formData = new FormData(event.currentTarget);
   const submissionId = String(formData.get("submissionId") || "").trim();
   if (!submissionId) {
-    return showFeedback("请先加载答卷详情。", true);
+    return showFeedback("请先从答卷列表加载目标答卷。", true);
   }
 
   const answers = [];
@@ -2497,9 +2542,8 @@ async function submitEvaluation(event) {
   }
 
   showFeedback("人工/AI 评分复核已提交。");
-  document.getElementById("submissionIdInput").value = submissionId;
   switchView("submission");
-  await loadSubmissionDetail();
+  await loadSubmissionDetail(submissionId);
 }
 
 async function requestAiSuggestions(submissionId) {
