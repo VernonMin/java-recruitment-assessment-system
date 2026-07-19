@@ -53,6 +53,7 @@ const ROLE_NAME_MAP = {
 
 const authShell = document.getElementById("authShell");
 const appShell = document.getElementById("appShell");
+const modalOverlay = document.getElementById("modalOverlay");
 
 document.querySelectorAll(".menu-item").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -91,6 +92,22 @@ document.getElementById("clearQuestionSearchButton").addEventListener("click", c
 document.getElementById("updateQuestionForm").addEventListener("submit", updateQuestion);
 document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQuestion);
 document.getElementById("updateQuestionId").addEventListener("change", syncSelectedQuestionToForm);
+document.getElementById("openCreateUserModalButton").addEventListener("click", () => openUserModal("create"));
+document.getElementById("openBatchCreateUsersModalButton").addEventListener("click", () => openUserModal("batchCreate"));
+document.getElementById("openUpdateUserModalButton").addEventListener("click", () => openUserModal("update"));
+document.getElementById("openResetPasswordModalButton").addEventListener("click", () => openUserModal("resetPassword"));
+document.getElementById("openAssignCampaignModalButton").addEventListener("click", () => openUserModal("assignCampaign"));
+document.getElementById("openBatchAssignCampaignModalButton").addEventListener("click", () => openUserModal("batchAssignCampaign"));
+document.getElementById("openCreateQuestionModalButton").addEventListener("click", () => openQuestionModal("create"));
+document.getElementById("openUpdateQuestionModalButton").addEventListener("click", () => openQuestionModal("update"));
+document.querySelectorAll("[data-close-modal]").forEach((button) => {
+  button.addEventListener("click", closeModal);
+});
+modalOverlay.addEventListener("click", (event) => {
+  if (event.target === modalOverlay) {
+    closeModal();
+  }
+});
 
 setAuthenticated(false);
 renderCandidateWorkspace();
@@ -103,6 +120,9 @@ loadCurrentUser();
 function setAuthenticated(isAuthenticated) {
   authShell.classList.toggle("hidden", isAuthenticated);
   appShell.classList.toggle("hidden", !isAuthenticated);
+  if (!isAuthenticated) {
+    closeModal();
+  }
 }
 
 function switchView(view) {
@@ -222,6 +242,7 @@ function resetSessionState() {
   renderUserManagement();
   renderCampaignManagement();
   clearDynamicPanels();
+  closeModal();
 }
 
 function clearDynamicPanels() {
@@ -522,6 +543,7 @@ function renderUserManagement() {
       <p>手机号：${escapeHtml(item.mobile || "-")}</p>
       <div class="button-row">
         <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
+        <button class="ghost-button" data-reset-user-id="${escapeHtml(item.id)}">重置密码</button>
         <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
       </div>
     </article>
@@ -531,12 +553,19 @@ function renderUserManagement() {
     button.addEventListener("click", () => {
       updateUserSelect.value = button.dataset.editUserId;
       syncSelectedUserToForm();
+      openUserModal("update");
+    });
+  });
+  list.querySelectorAll("[data-reset-user-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      resetPasswordUserSelect.value = button.dataset.resetUserId;
+      openUserModal("resetPassword");
     });
   });
   list.querySelectorAll("[data-delete-user-id]").forEach((button) => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", () => {
       deleteUserSelect.value = button.dataset.deleteUserId;
-      await deleteUserById(button.dataset.deleteUserId);
+      openUserModal("delete");
     });
   });
 }
@@ -623,12 +652,15 @@ function renderQuestionBankList() {
     button.addEventListener("click", () => {
       updateQuestionSelect.value = button.dataset.editQuestionId;
       syncSelectedQuestionToForm();
+      openQuestionModal("update");
     });
   });
   container.querySelectorAll("[data-delete-question-id]").forEach((button) => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", () => {
+      updateQuestionSelect.value = button.dataset.deleteQuestionId;
+      syncSelectedQuestionToForm();
       deleteQuestionSelect.value = button.dataset.deleteQuestionId;
-      await deleteQuestionById(button.dataset.deleteQuestionId);
+      openQuestionModal("update");
     });
   });
 }
@@ -674,6 +706,7 @@ async function createUser(event) {
   event.currentTarget.reset();
   showFeedback(`用户 ${payload.account} 创建成功。`);
   await loadUsers({ silent: true });
+  closeModal();
 }
 
 async function batchCreateUsers(event) {
@@ -701,6 +734,7 @@ async function batchCreateUsers(event) {
   event.currentTarget.reset();
   showFeedback(result.message);
   await loadUsers({ silent: true });
+  closeModal();
 }
 
 async function updateUser(event) {
@@ -726,6 +760,7 @@ async function updateUser(event) {
 
   showFeedback("用户信息更新成功。");
   await loadUsers({ silent: true });
+  closeModal();
 }
 
 async function resetUserPassword(event) {
@@ -745,6 +780,7 @@ async function resetUserPassword(event) {
 
   event.currentTarget.reset();
   showFeedback("密码重置成功。");
+  closeModal();
 }
 
 async function deleteUser(event) {
@@ -766,6 +802,7 @@ async function deleteUserById(userId) {
   }
   showFeedback("用户删除成功。");
   await loadUsers({ silent: true });
+  closeModal();
 }
 
 async function assignCampaign(event) {
@@ -788,6 +825,7 @@ async function assignCampaign(event) {
   }
 
   showFeedback(`已将 ${payload.account} 分配到场次 ${payload.campaignId}。`);
+  closeModal();
 }
 
 async function batchAssignCampaigns(event) {
@@ -819,6 +857,7 @@ async function batchAssignCampaigns(event) {
 
   event.currentTarget.reset();
   showFeedback(result.message);
+  closeModal();
 }
 
 async function createCampaign(event) {
@@ -916,6 +955,7 @@ async function submitQuestion(event) {
   event.currentTarget.elements.difficulty.value = "3";
   showFeedback("题目创建成功。");
   await loadQuestions({ silent: true });
+  closeModal();
 }
 
 async function searchQuestions(event) {
@@ -964,6 +1004,7 @@ async function updateQuestion(event) {
 
   showFeedback("题目更新成功。");
   await loadQuestions({ silent: true });
+  closeModal();
 }
 
 async function deleteQuestion(event) {
@@ -985,6 +1026,7 @@ async function deleteQuestionById(questionId) {
   }
   showFeedback("题目删除成功。");
   await loadQuestions({ silent: true });
+  closeModal();
 }
 
 async function importPresetQuestions() {
@@ -1341,6 +1383,54 @@ function syncSelectedQuestionToForm() {
     : "";
   form.elements.answer.value = normalizeQuestionAnswerForForm(question);
   form.elements.analysis.value = question.analysis || "";
+}
+
+function openUserModal(mode) {
+  closeModalSections();
+  document.getElementById("userModal").classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+  const title = document.getElementById("userModalTitle");
+  const desc = document.getElementById("userModalDesc");
+  const mapping = {
+    create: ["创建账号", "新建单个用户账号。", "userModalCreate"],
+    batchCreate: ["批量导入", "通过文本批量导入用户账号。", "userModalBatchCreate"],
+    update: ["编辑账号", "修改用户资料、角色和状态。", "userModalUpdate"],
+    resetPassword: ["重置密码", "为指定用户重置登录密码。", "userModalResetPassword"],
+    delete: ["删除用户", "删除未被业务数据引用的账号。", "userModalDelete"],
+    assignCampaign: ["分配场次", "将单个候选人分配到招聘场次。", "userModalAssignCampaign"],
+    batchAssignCampaign: ["批量分配场次", "批量给候选人分配同一招聘场次。", "userModalBatchAssignCampaign"]
+  };
+  const [nextTitle, nextDesc, sectionId] = mapping[mode];
+  title.textContent = nextTitle;
+  desc.textContent = nextDesc;
+  document.getElementById(sectionId).classList.remove("hidden");
+}
+
+function openQuestionModal(mode) {
+  closeModalSections();
+  document.getElementById("questionModal").classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+  const title = document.getElementById("questionModalTitle");
+  const desc = document.getElementById("questionModalDesc");
+  const mapping = {
+    create: ["创建题目", "录入新题目并写入题库。", "questionModalCreate"],
+    update: ["修改题目", "编辑或删除当前选中的题目。", "questionModalUpdate"]
+  };
+  const [nextTitle, nextDesc, sectionId] = mapping[mode];
+  title.textContent = nextTitle;
+  desc.textContent = nextDesc;
+  document.getElementById(sectionId).classList.remove("hidden");
+}
+
+function closeModal() {
+  modalOverlay.classList.add("hidden");
+  closeModalSections();
+}
+
+function closeModalSections() {
+  document.querySelectorAll(".modal-card, .modal-section").forEach((item) => {
+    item.classList.add("hidden");
+  });
 }
 
 function syncSelectedCampaignToForm() {

@@ -142,184 +142,13 @@
                 </div>
               </div>
             </form>
-
-            <div class="split-layout">
-              <form id="createUserForm" class="stack-form panel-subsection">
-                <h3>创建账号</h3>
-                <div class="form-columns">
-                  <label>
-                    <span>账号</span>
-                    <input name="account" placeholder="例如 candidate_zhangsan" />
-                  </label>
-                  <label>
-                    <span>角色</span>
-                    <select name="role">
-                      <option value="candidate">求职者</option>
-                      <option value="interviewer">面试官</option>
-                      <option value="recruiter">招聘专员</option>
-                      <option value="admin">管理员</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="form-columns">
-                  <label>
-                    <span>姓名</span>
-                    <input name="fullName" placeholder="输入姓名" />
-                  </label>
-                  <label>
-                    <span>初始密码</span>
-                    <input name="password" type="password" placeholder="至少 8 位" />
-                  </label>
-                </div>
-                <div class="form-columns">
-                  <label>
-                    <span>邮箱</span>
-                    <input name="email" placeholder="可选" />
-                  </label>
-                  <label>
-                    <span>手机号</span>
-                    <input name="mobile" placeholder="可选" />
-                  </label>
-                </div>
-                <button type="submit" class="primary-button">创建账号</button>
-              </form>
-
-              <form id="batchCreateUsersForm" class="stack-form panel-subsection">
-                <h3>批量导入账号</h3>
-                <label>
-                  <span>导入格式</span>
-                  <textarea name="items" placeholder="每行一个账号：account|fullName|password|role|email|mobile"></textarea>
-                </label>
-                <p class="hint">角色支持：candidate / interviewer / recruiter / admin</p>
-                <button type="submit" class="primary-button">批量创建</button>
-              </form>
-            </div>
-
-            <div class="split-layout">
-              <form id="updateUserForm" class="stack-form panel-subsection">
-                <h3>编辑账号</h3>
-                <label>
-                  <span>选择用户</span>
-                  <select id="updateUserId" name="userId"></select>
-                </label>
-                <div class="form-columns">
-                  <label>
-                    <span>姓名</span>
-                    <input name="fullName" placeholder="输入姓名" />
-                  </label>
-                  <label>
-                    <span>角色</span>
-                    <select name="role">
-                      <option value="candidate">求职者</option>
-                      <option value="interviewer">面试官</option>
-                      <option value="recruiter">招聘专员</option>
-                      <option value="admin">管理员</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="form-columns">
-                  <label>
-                    <span>状态</span>
-                    <select name="status">
-                      <option value="active">active</option>
-                      <option value="disabled">disabled</option>
-                      <option value="locked">locked</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>邮箱</span>
-                    <input name="email" placeholder="可选" />
-                  </label>
-                </div>
-                <label>
-                  <span>手机号</span>
-                  <input name="mobile" placeholder="可选" />
-                </label>
-                <button type="submit" class="primary-button">保存用户信息</button>
-              </form>
-
-              <div class="stack-form panel-subsection">
-                <form id="resetPasswordForm" class="stack-form">
-                  <h3>重置密码</h3>
-                  <label>
-                    <span>选择用户</span>
-                    <select id="resetPasswordUserId" name="userId"></select>
-                  </label>
-                  <label>
-                    <span>新密码</span>
-                    <input name="password" type="password" placeholder="至少 8 位" />
-                  </label>
-                  <button type="submit" class="primary-button">重置密码</button>
-                </form>
-                <div class="divider"></div>
-                <form id="deleteUserForm" class="stack-form danger-panel">
-                  <h3>删除用户</h3>
-                  <label>
-                    <span>选择用户</span>
-                    <select id="deleteUserId" name="userId"></select>
-                  </label>
-                  <p class="hint">如果该账号已被分配场次或已有提交记录，系统会拒绝直接删除。</p>
-                  <button type="submit" class="danger-button">删除用户</button>
-                </form>
-              </div>
-            </div>
-
-            <div class="split-layout">
-              <form id="assignCampaignForm" class="stack-form panel-subsection">
-                <h3>分配招聘场次</h3>
-                <label>
-                  <span>候选人账号</span>
-                  <input name="account" placeholder="输入 candidate 账号" />
-                </label>
-                <label>
-                  <span>招聘场次</span>
-                  <select id="assignCampaignSelect" name="campaignId"></select>
-                </label>
-                <div class="form-columns">
-                  <label>
-                    <span>允许作答次数</span>
-                    <input name="attemptLimit" type="number" min="1" max="10" value="1" />
-                  </label>
-                  <label>
-                    <span>邀请状态</span>
-                    <select name="invitationStatus">
-                      <option value="invited">invited</option>
-                      <option value="accepted">accepted</option>
-                      <option value="completed">completed</option>
-                      <option value="expired">expired</option>
-                    </select>
-                  </label>
-                </div>
-                <button type="submit" class="primary-button">分配场次</button>
-              </form>
-
-              <form id="batchAssignCampaignForm" class="stack-form panel-subsection">
-                <h3>批量分配场次</h3>
-                <label>
-                  <span>招聘场次</span>
-                  <select id="batchAssignCampaignSelect" name="campaignId"></select>
-                </label>
-                <label>
-                  <span>候选人账号列表</span>
-                  <textarea name="accounts" placeholder="每行一个 candidate 账号"></textarea>
-                </label>
-                <div class="form-columns">
-                  <label>
-                    <span>允许作答次数</span>
-                    <input name="attemptLimit" type="number" min="1" max="10" value="1" />
-                  </label>
-                  <label>
-                    <span>邀请状态</span>
-                    <select name="invitationStatus">
-                      <option value="invited">invited</option>
-                      <option value="accepted">accepted</option>
-                      <option value="completed">completed</option>
-                      <option value="expired">expired</option>
-                    </select>
-                  </label>
-                </div>
-                <button type="submit" class="primary-button">批量分配</button>
-              </form>
+            <div class="action-toolbar">
+              <button id="openCreateUserModalButton" class="primary-button">创建账号</button>
+              <button id="openBatchCreateUsersModalButton" class="ghost-button">批量导入</button>
+              <button id="openUpdateUserModalButton" class="ghost-button">编辑账号</button>
+              <button id="openResetPasswordModalButton" class="ghost-button">重置密码</button>
+              <button id="openAssignCampaignModalButton" class="ghost-button">分配场次</button>
+              <button id="openBatchAssignCampaignModalButton" class="ghost-button">批量分配</button>
             </div>
 
             <div id="userManagementSummary" class="meta-strip"></div>
@@ -508,123 +337,9 @@
                 </div>
               </div>
             </form>
-            <div class="split-layout">
-              <form id="questionForm" class="stack-form panel-subsection">
-                <h3>创建题目</h3>
-                <div class="form-columns">
-                  <label>
-                    <span>题型</span>
-                    <select name="type">
-                      <option value="single_choice">单选题</option>
-                      <option value="multiple_choice">多选题</option>
-                      <option value="true_false">判断题</option>
-                      <option value="fill_blank">填空题</option>
-                      <option value="short_answer">简答题</option>
-                      <option value="scenario_answer">场景分析题</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>状态</span>
-                    <select name="status">
-                      <option value="draft">草稿</option>
-                      <option value="published">已发布</option>
-                    </select>
-                  </label>
-                </div>
-                <label>
-                  <span>题干</span>
-                  <textarea name="stem" placeholder="输入题干"></textarea>
-                </label>
-                <div class="form-columns">
-                  <label>
-                    <span>分值</span>
-                    <input name="score" type="number" value="10" min="0" />
-                  </label>
-                  <label>
-                    <span>难度</span>
-                    <input name="difficulty" type="number" value="3" min="1" max="5" />
-                  </label>
-                </div>
-                <label>
-                  <span>选项</span>
-                  <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
-                </label>
-                <label>
-                  <span>标准答案</span>
-                  <input name="answer" placeholder="例如：B 或 A,B" />
-                </label>
-                <label>
-                  <span>解析</span>
-                  <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
-                </label>
-                <button type="submit" class="primary-button">创建题目</button>
-              </form>
-              <div class="stack-form panel-subsection">
-                <form id="updateQuestionForm" class="stack-form">
-                  <h3>修改题目</h3>
-                  <label>
-                    <span>选择题目</span>
-                    <select id="updateQuestionId" name="questionId"></select>
-                  </label>
-                  <div class="form-columns">
-                    <label>
-                      <span>题型</span>
-                      <select name="type">
-                        <option value="single_choice">单选题</option>
-                        <option value="multiple_choice">多选题</option>
-                        <option value="true_false">判断题</option>
-                        <option value="fill_blank">填空题</option>
-                        <option value="short_answer">简答题</option>
-                        <option value="scenario_answer">场景分析题</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>状态</span>
-                      <select name="status">
-                        <option value="draft">草稿</option>
-                        <option value="published">已发布</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label>
-                    <span>题干</span>
-                    <textarea name="stem" placeholder="输入题干"></textarea>
-                  </label>
-                  <div class="form-columns">
-                    <label>
-                      <span>分值</span>
-                      <input name="score" type="number" value="10" min="0" />
-                    </label>
-                    <label>
-                      <span>难度</span>
-                      <input name="difficulty" type="number" value="3" min="1" max="5" />
-                    </label>
-                  </div>
-                  <label>
-                    <span>选项</span>
-                    <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
-                  </label>
-                  <label>
-                    <span>标准答案</span>
-                    <input name="answer" placeholder="例如：B 或 A,B" />
-                  </label>
-                  <label>
-                    <span>解析</span>
-                    <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
-                  </label>
-                  <button type="submit" class="primary-button">保存题目修改</button>
-                </form>
-                <div class="divider"></div>
-                <form id="deleteQuestionForm" class="stack-form danger-panel">
-                  <h3>删除题目</h3>
-                  <label>
-                    <span>选择题目</span>
-                    <select id="deleteQuestionId" name="questionId"></select>
-                  </label>
-                  <p class="hint">如果题目已被测评模板或提交记录引用，系统会拒绝直接删除。</p>
-                  <button type="submit" class="danger-button">删除题目</button>
-                </form>
-              </div>
+            <div class="action-toolbar">
+              <button id="openCreateQuestionModalButton" class="primary-button">创建题目</button>
+              <button id="openUpdateQuestionModalButton" class="ghost-button">修改题目</button>
             </div>
             <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
@@ -669,6 +384,316 @@
           </div>
         </section>
       </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay hidden">
+      <div class="modal-shell">
+        <section id="userModal" class="modal-card hidden">
+          <div class="modal-header">
+            <div>
+              <h3 id="userModalTitle">用户操作</h3>
+              <p id="userModalDesc" class="hint">按当前操作展示对应表单。</p>
+            </div>
+            <button type="button" class="ghost-button" data-close-modal>关闭</button>
+          </div>
+          <div id="userModalCreate" class="modal-section hidden">
+            <form id="createUserForm" class="stack-form">
+              <div class="form-columns">
+                <label>
+                  <span>账号</span>
+                  <input name="account" placeholder="例如 candidate_zhangsan" />
+                </label>
+                <label>
+                  <span>角色</span>
+                  <select name="role">
+                    <option value="candidate">求职者</option>
+                    <option value="interviewer">面试官</option>
+                    <option value="recruiter">招聘专员</option>
+                    <option value="admin">管理员</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>姓名</span>
+                  <input name="fullName" placeholder="输入姓名" />
+                </label>
+                <label>
+                  <span>初始密码</span>
+                  <input name="password" type="password" placeholder="至少 8 位" />
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>邮箱</span>
+                  <input name="email" placeholder="可选" />
+                </label>
+                <label>
+                  <span>手机号</span>
+                  <input name="mobile" placeholder="可选" />
+                </label>
+              </div>
+              <button type="submit" class="primary-button">创建账号</button>
+            </form>
+          </div>
+          <div id="userModalBatchCreate" class="modal-section hidden">
+            <form id="batchCreateUsersForm" class="stack-form">
+              <label>
+                <span>导入格式</span>
+                <textarea name="items" placeholder="每行一个账号：account|fullName|password|role|email|mobile"></textarea>
+              </label>
+              <p class="hint">角色支持：candidate / interviewer / recruiter / admin</p>
+              <button type="submit" class="primary-button">批量创建</button>
+            </form>
+          </div>
+          <div id="userModalUpdate" class="modal-section hidden">
+            <form id="updateUserForm" class="stack-form">
+              <label>
+                <span>选择用户</span>
+                <select id="updateUserId" name="userId"></select>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>姓名</span>
+                  <input name="fullName" placeholder="输入姓名" />
+                </label>
+                <label>
+                  <span>角色</span>
+                  <select name="role">
+                    <option value="candidate">求职者</option>
+                    <option value="interviewer">面试官</option>
+                    <option value="recruiter">招聘专员</option>
+                    <option value="admin">管理员</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="active">active</option>
+                    <option value="disabled">disabled</option>
+                    <option value="locked">locked</option>
+                  </select>
+                </label>
+                <label>
+                  <span>邮箱</span>
+                  <input name="email" placeholder="可选" />
+                </label>
+              </div>
+              <label>
+                <span>手机号</span>
+                <input name="mobile" placeholder="可选" />
+              </label>
+              <button type="submit" class="primary-button">保存用户信息</button>
+            </form>
+          </div>
+          <div id="userModalResetPassword" class="modal-section hidden">
+            <form id="resetPasswordForm" class="stack-form">
+              <label>
+                <span>选择用户</span>
+                <select id="resetPasswordUserId" name="userId"></select>
+              </label>
+              <label>
+                <span>新密码</span>
+                <input name="password" type="password" placeholder="至少 8 位" />
+              </label>
+              <button type="submit" class="primary-button">重置密码</button>
+            </form>
+          </div>
+          <div id="userModalDelete" class="modal-section hidden">
+            <form id="deleteUserForm" class="stack-form danger-panel">
+              <label>
+                <span>选择用户</span>
+                <select id="deleteUserId" name="userId"></select>
+              </label>
+              <p class="hint">如果该账号已被分配场次或已有提交记录，系统会拒绝直接删除。</p>
+              <button type="submit" class="danger-button">删除用户</button>
+            </form>
+          </div>
+          <div id="userModalAssignCampaign" class="modal-section hidden">
+            <form id="assignCampaignForm" class="stack-form">
+              <label>
+                <span>候选人账号</span>
+                <input name="account" placeholder="输入 candidate 账号" />
+              </label>
+              <label>
+                <span>招聘场次</span>
+                <select id="assignCampaignSelect" name="campaignId"></select>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>允许作答次数</span>
+                  <input name="attemptLimit" type="number" min="1" max="10" value="1" />
+                </label>
+                <label>
+                  <span>邀请状态</span>
+                  <select name="invitationStatus">
+                    <option value="invited">invited</option>
+                    <option value="accepted">accepted</option>
+                    <option value="completed">completed</option>
+                    <option value="expired">expired</option>
+                  </select>
+                </label>
+              </div>
+              <button type="submit" class="primary-button">分配场次</button>
+            </form>
+          </div>
+          <div id="userModalBatchAssignCampaign" class="modal-section hidden">
+            <form id="batchAssignCampaignForm" class="stack-form">
+              <label>
+                <span>招聘场次</span>
+                <select id="batchAssignCampaignSelect" name="campaignId"></select>
+              </label>
+              <label>
+                <span>候选人账号列表</span>
+                <textarea name="accounts" placeholder="每行一个 candidate 账号"></textarea>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>允许作答次数</span>
+                  <input name="attemptLimit" type="number" min="1" max="10" value="1" />
+                </label>
+                <label>
+                  <span>邀请状态</span>
+                  <select name="invitationStatus">
+                    <option value="invited">invited</option>
+                    <option value="accepted">accepted</option>
+                    <option value="completed">completed</option>
+                    <option value="expired">expired</option>
+                  </select>
+                </label>
+              </div>
+              <button type="submit" class="primary-button">批量分配</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="questionModal" class="modal-card hidden">
+          <div class="modal-header">
+            <div>
+              <h3 id="questionModalTitle">题目操作</h3>
+              <p id="questionModalDesc" class="hint">按当前操作展示对应表单。</p>
+            </div>
+            <button type="button" class="ghost-button" data-close-modal>关闭</button>
+          </div>
+          <div id="questionModalCreate" class="modal-section hidden">
+            <form id="questionForm" class="stack-form">
+              <div class="form-columns">
+                <label>
+                  <span>题型</span>
+                  <select name="type">
+                    <option value="single_choice">单选题</option>
+                    <option value="multiple_choice">多选题</option>
+                    <option value="true_false">判断题</option>
+                    <option value="fill_blank">填空题</option>
+                    <option value="short_answer">简答题</option>
+                    <option value="scenario_answer">场景分析题</option>
+                  </select>
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="draft">草稿</option>
+                    <option value="published">已发布</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>题干</span>
+                <textarea name="stem" placeholder="输入题干"></textarea>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>分值</span>
+                  <input name="score" type="number" value="10" min="0" />
+                </label>
+                <label>
+                  <span>难度</span>
+                  <input name="difficulty" type="number" value="3" min="1" max="5" />
+                </label>
+              </div>
+              <label>
+                <span>选项</span>
+                <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
+              </label>
+              <label>
+                <span>标准答案</span>
+                <input name="answer" placeholder="例如：B 或 A,B" />
+              </label>
+              <label>
+                <span>解析</span>
+                <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
+              </label>
+              <button type="submit" class="primary-button">创建题目</button>
+            </form>
+          </div>
+          <div id="questionModalUpdate" class="modal-section hidden">
+            <form id="updateQuestionForm" class="stack-form">
+              <label>
+                <span>选择题目</span>
+                <select id="updateQuestionId" name="questionId"></select>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>题型</span>
+                  <select name="type">
+                    <option value="single_choice">单选题</option>
+                    <option value="multiple_choice">多选题</option>
+                    <option value="true_false">判断题</option>
+                    <option value="fill_blank">填空题</option>
+                    <option value="short_answer">简答题</option>
+                    <option value="scenario_answer">场景分析题</option>
+                  </select>
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="draft">草稿</option>
+                    <option value="published">已发布</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>题干</span>
+                <textarea name="stem" placeholder="输入题干"></textarea>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>分值</span>
+                  <input name="score" type="number" value="10" min="0" />
+                </label>
+                <label>
+                  <span>难度</span>
+                  <input name="difficulty" type="number" value="3" min="1" max="5" />
+                </label>
+              </div>
+              <label>
+                <span>选项</span>
+                <textarea name="options" placeholder="每行一个选项，格式：A|选项内容"></textarea>
+              </label>
+              <label>
+                <span>标准答案</span>
+                <input name="answer" placeholder="例如：B 或 A,B" />
+              </label>
+              <label>
+                <span>解析</span>
+                <textarea name="analysis" placeholder="输入题目解析，可选"></textarea>
+              </label>
+              <button type="submit" class="primary-button">保存题目修改</button>
+            </form>
+            <div class="divider"></div>
+            <form id="deleteQuestionForm" class="stack-form danger-panel">
+              <label>
+                <span>选择题目</span>
+                <select id="deleteQuestionId" name="questionId"></select>
+              </label>
+              <p class="hint">如果题目已被测评模板或提交记录引用，系统会拒绝直接删除。</p>
+              <button type="submit" class="danger-button">删除题目</button>
+            </form>
+          </div>
+        </section>
+      </div>
     </div>
 
     <script src="./config.js"></script>
