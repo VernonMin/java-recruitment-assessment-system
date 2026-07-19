@@ -375,7 +375,7 @@ insert into assessments (
 ) values (
   'assessment_java_backend_mvp',
   'Java 后端基础测评',
-  '用于 Java 后端开发岗位的首轮基础筛选。',
+  '用于 Java 后端开发岗位的线上基础笔试筛选。',
   30,
   'mid',
   'published',
@@ -413,8 +413,8 @@ insert into recruitment_campaigns (
 ) values (
   'campaign_java_backend_20260717',
   'assessment_java_backend_mvp',
-  'Java 后端招聘首轮测评',
-  '用于 2026 年 7 月的首轮线上筛选。',
+  'Java 后端招聘试题',
+  '用于 2026 年 7 月的线上笔试筛选。',
   'java_backend',
   1752796800000,
   1784332800000,

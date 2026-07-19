@@ -50,10 +50,10 @@ const VIEW_ROLES = {
 };
 
 const viewMeta = {
-  candidateHome: ["求职者端", "查看你被分配的测评场次，并进入正式答题流程。"],
+  candidateHome: ["求职者端", "查看你被分配的招聘试题，并进入正式答题流程。"],
   enterpriseHome: ["企业端", "面试官、招聘专员、管理员在同一套企业工作台中使用各自模块。"],
-  userManagement: ["用户管理", "管理员创建、批量导入、编辑、禁用账号，并给候选人分配招聘场次。"],
-  campaignManagement: ["场次管理", "招聘专员或管理员基于测评模板创建招聘场次。"],
+  userManagement: ["用户管理", "管理员创建、批量导入、编辑、禁用账号，并给候选人分配招聘试题。"],
+  campaignManagement: ["招聘试题管理", "招聘专员或管理员基于测评模板创建招聘试题。"],
   questionBank: ["题库管理", "企业端中的题库能力，供面试官和管理员维护 Java 招聘题库。"],
   assessment: ["答题页", "求职者加载题目、填写答案并提交本次测评。"],
   submission: ["提交详情", "查看提交记录、逐题作答、评分结果与评估意见。"],
@@ -471,19 +471,19 @@ function renderCandidateWorkspace() {
 
   summary.innerHTML = renderMetaItems([
     ["当前端", "求职者端"],
-    ["我的测评场次", state.campaigns.length],
+    ["我的招聘试题", state.campaigns.length],
     ["最近提交", state.currentSubmission?.submission?.id || state.currentSubmission?.id || "暂无"]
   ]);
 
   if (state.campaigns.length === 0) {
-    list.innerHTML = `<article class="card"><h3>暂无测评</h3><p>当前没有分配给你的招聘测评场次。</p></article>`;
+    list.innerHTML = `<article class="card"><h3>暂无测评</h3><p>当前没有分配给你的招聘试题。</p></article>`;
     return;
   }
 
   list.innerHTML = state.campaigns.map((item) => `
     <article class="card">
       <h3>${escapeHtml(item.title)}</h3>
-      <p>场次 ID：${escapeHtml(item.id)}</p>
+      <p>试题 ID：${escapeHtml(item.id)}</p>
       <p>目标岗位：${escapeHtml(item.target_role || "-")}</p>
       <p>邀请状态：${escapeHtml(item.invitation_status || "-")}</p>
       <p>时长：${escapeHtml(String(item.duration_minutes || "-"))} 分钟</p>
@@ -537,7 +537,7 @@ function renderEnterpriseWorkspace() {
     cards.push(`
       <article class="card">
         <h3>用户管理</h3>
-        <p>管理员创建、批量导入、编辑、禁用账号，并给候选人分配场次。</p>
+        <p>管理员创建、批量导入、编辑、禁用账号，并给候选人分配试题。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="userManagement">进入用户管理</button>
         </div>
@@ -548,10 +548,10 @@ function renderEnterpriseWorkspace() {
   if (hasAnyRole(["recruiter", "admin"])) {
     cards.push(`
       <article class="card">
-        <h3>场次管理</h3>
-        <p>基于测评模板创建招聘场次，并查看当前可管理场次列表。</p>
+        <h3>招聘试题管理</h3>
+        <p>基于测评模板创建招聘试题，并查看当前可管理试题列表。</p>
         <div class="button-row">
-          <button class="ghost-button" data-nav-view="campaignManagement">进入场次管理</button>
+          <button class="ghost-button" data-nav-view="campaignManagement">进入试题管理</button>
         </div>
       </article>
     `);
@@ -606,7 +606,7 @@ function renderUserManagement() {
   `).join("");
 
   const campaignOptions = state.adminCampaigns.length === 0
-    ? `<option value="">当前没有可分配场次</option>`
+    ? `<option value="">当前没有可分配试题</option>`
     : state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.id)})</option>
     `).join("");
@@ -621,7 +621,7 @@ function renderUserManagement() {
   summary.innerHTML = renderMetaItems([
     ["当前页用户数", state.users.length],
     ["用户总数", state.paginations.users.total],
-    ["可分配场次数", state.adminCampaigns.length],
+    ["可分配试题数", state.adminCampaigns.length],
     ["候选人账号数", state.users.filter((item) => item.roles.includes("candidate")).length]
   ]);
 
@@ -688,7 +688,7 @@ function renderCampaignManagement() {
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `).join("");
   const campaignOptions = state.adminCampaigns.length === 0
-    ? `<option value="">当前没有招聘场次</option>`
+    ? `<option value="">当前没有招聘试题</option>`
     : state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `).join("");
@@ -700,13 +700,13 @@ function renderCampaignManagement() {
 
   summary.innerHTML = renderMetaItems([
     ["测评模板数", state.assessments.length],
-    ["当前页场次数", state.adminCampaigns.length],
-    ["场次总数", state.paginations.campaigns.total],
-    ["已发布场次", state.adminCampaigns.filter((item) => item.status === "published").length]
+    ["当前页试题数", state.adminCampaigns.length],
+    ["试题总数", state.paginations.campaigns.total],
+    ["已发布试题", state.adminCampaigns.filter((item) => item.status === "published").length]
   ]);
 
   if (state.adminCampaigns.length === 0) {
-    list.innerHTML = `<div class="question-card"><p>当前还没有招聘场次。</p></div>`;
+    list.innerHTML = `<div class="question-card"><p>当前还没有招聘试题。</p></div>`;
     pagination.innerHTML = "";
     return;
   }
@@ -714,7 +714,7 @@ function renderCampaignManagement() {
   list.innerHTML = state.adminCampaigns.map((item) => `
     <article class="question-card">
       <h3>${escapeHtml(item.title)}</h3>
-      <p>场次 ID：${escapeHtml(item.id)}</p>
+      <p>试题 ID：${escapeHtml(item.id)}</p>
       <p>模板：${escapeHtml(item.assessment_title || "-")}</p>
       <p>状态：${escapeHtml(item.status)}</p>
       <p>目标岗位：${escapeHtml(item.target_role || "-")}</p>
@@ -722,7 +722,7 @@ function renderCampaignManagement() {
       <p>开始：${escapeHtml(formatDateTime(item.start_time))}</p>
       <p>结束：${escapeHtml(formatDateTime(item.end_time))}</p>
       <div class="button-row">
-        <button class="ghost-button" data-edit-campaign-id="${escapeHtml(item.id)}">编辑场次</button>
+        <button class="ghost-button" data-edit-campaign-id="${escapeHtml(item.id)}">编辑试题</button>
       </div>
     </article>
   `).join("");
@@ -830,7 +830,10 @@ async function clearCampaignSearch() {
 
 async function createUser(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "创建中...");
+  const formData = new FormData(form);
   const payload = {
     account: String(formData.get("account") || "").trim(),
     password: String(formData.get("password") || ""),
@@ -846,18 +849,25 @@ async function createUser(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  event.currentTarget.reset();
+  form.reset();
+  closeModal();
   showFeedback(`用户 ${payload.account} 创建成功。`);
   await loadUsers({ silent: true });
-  closeModal();
+  setFormLoading(form, false);
 }
 
 async function batchCreateUsers(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "导入中...");
+  const formData = new FormData(form);
   const lines = String(formData.get("items") || "")
     .split("\n")
     .map((line) => line.trim())
@@ -874,18 +884,25 @@ async function batchCreateUsers(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  event.currentTarget.reset();
+  form.reset();
+  closeModal();
   showFeedback(result.message);
   await loadUsers({ silent: true });
-  closeModal();
+  setFormLoading(form, false);
 }
 
 async function updateUser(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "保存中...");
+  const formData = new FormData(form);
   const userId = String(formData.get("userId") || "").trim();
   const payload = {
     fullName: String(formData.get("fullName") || "").trim(),
@@ -901,17 +918,24 @@ async function updateUser(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
+  closeModal();
   showFeedback("用户信息更新成功。");
   await loadUsers({ silent: true });
-  closeModal();
+  setFormLoading(form, false);
 }
 
 async function resetUserPassword(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "重置中...");
+  const formData = new FormData(form);
   const userId = String(formData.get("userId") || "").trim();
   const password = String(formData.get("password") || "");
 
@@ -921,22 +945,33 @@ async function resetUserPassword(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  event.currentTarget.reset();
-  showFeedback("密码重置成功。");
+  form.reset();
   closeModal();
+  showFeedback("密码重置成功。");
+  setFormLoading(form, false);
 }
 
 async function deleteUser(event) {
   event.preventDefault();
-  const userId = String(new FormData(event.currentTarget).get("userId") || "").trim();
-  await deleteUserById(userId);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "删除中...");
+  const userId = String(new FormData(form).get("userId") || "").trim();
+  await deleteUserById(userId, form);
 }
 
-async function deleteUserById(userId) {
+async function deleteUserById(userId, form = null) {
   if (!userId) {
+    if (form) {
+      setFormFeedback(form, "请先选择用户。", true);
+      setFormLoading(form, false);
+    }
     return showFeedback("请先选择用户。", true);
   }
   const result = await api(`/api/admin/users/${userId}`, {
@@ -944,16 +979,26 @@ async function deleteUserById(userId) {
     body: JSON.stringify({})
   });
   if (!result.ok) {
+    if (form) {
+      setFormFeedback(form, result.message, true);
+      setFormLoading(form, false);
+    }
     return showFeedback(result.message, true);
   }
+  closeModal();
   showFeedback("用户删除成功。");
   await loadUsers({ silent: true });
-  closeModal();
+  if (form) {
+    setFormLoading(form, false);
+  }
 }
 
 async function assignCampaign(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "分配中...");
+  const formData = new FormData(form);
   const payload = {
     account: String(formData.get("account") || "").trim(),
     campaignId: String(formData.get("campaignId") || "").trim(),
@@ -967,16 +1012,23 @@ async function assignCampaign(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  showFeedback(`已将 ${payload.account} 分配到场次 ${payload.campaignId}。`);
   closeModal();
+  showFeedback(`已将 ${payload.account} 分配到试题 ${payload.campaignId}。`);
+  setFormLoading(form, false);
 }
 
 async function batchAssignCampaigns(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "分配中...");
+  const formData = new FormData(form);
   const campaignId = String(formData.get("campaignId") || "").trim();
   const attemptLimit = Number(formData.get("attemptLimit") || 1);
   const invitationStatus = String(formData.get("invitationStatus") || "invited").trim();
@@ -998,17 +1050,24 @@ async function batchAssignCampaigns(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  event.currentTarget.reset();
-  showFeedback(result.message);
+  form.reset();
   closeModal();
+  showFeedback(result.message);
+  setFormLoading(form, false);
 }
 
 async function createCampaign(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "创建中...");
+  const formData = new FormData(form);
   const startAt = new Date(String(formData.get("startAt") || "")).getTime();
   const endAt = new Date(String(formData.get("endAt") || "")).getTime();
   const payload = {
@@ -1030,17 +1089,25 @@ async function createCampaign(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  event.currentTarget.reset();
-  showFeedback(`招聘场次 ${payload.title} 创建成功。`);
+  form.reset();
+  closeModal();
+  showFeedback(`招聘试题 ${payload.title} 创建成功。`);
   await loadAdminCampaigns({ silent: true });
+  setFormLoading(form, false);
 }
 
 async function updateCampaign(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "保存中...");
+  const formData = new FormData(form);
   const campaignId = String(formData.get("campaignId") || "").trim();
   const startAt = new Date(String(formData.get("startAt") || "")).getTime();
   const endAt = new Date(String(formData.get("endAt") || "")).getTime();
@@ -1063,16 +1130,24 @@ async function updateCampaign(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  showFeedback(`招聘场次 ${payload.title} 更新成功。`);
+  closeModal();
+  showFeedback(`招聘试题 ${payload.title} 更新成功。`);
   await loadAdminCampaigns({ silent: true });
+  setFormLoading(form, false);
 }
 
 async function submitQuestion(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "创建中...");
+  const formData = new FormData(form);
   const type = String(formData.get("type") || "").trim();
   const payload = {
     type,
@@ -1093,15 +1168,19 @@ async function submitQuestion(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
-  event.currentTarget.reset();
-  event.currentTarget.elements.score.value = "10";
-  event.currentTarget.elements.difficulty.value = "3";
+  form.reset();
+  form.elements.score.value = "10";
+  form.elements.difficulty.value = "3";
+  closeModal();
   showFeedback("题目创建成功。");
   await loadQuestions({ silent: true });
-  closeModal();
+  setFormLoading(form, false);
 }
 
 async function searchQuestions(event) {
@@ -1144,7 +1223,10 @@ async function clearSubmissionSearch() {
 
 async function updateQuestion(event) {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "保存中...");
+  const formData = new FormData(form);
   const type = String(formData.get("type") || "").trim();
   const questionId = String(formData.get("questionId") || "").trim();
   const payload = {
@@ -1166,22 +1248,33 @@ async function updateQuestion(event) {
   });
 
   if (!result.ok) {
-    return showFeedback(result.message, true);
+    setFormFeedback(form, result.message, true);
+    showFeedback(result.message, true);
+    setFormLoading(form, false);
+    return;
   }
 
+  closeModal();
   showFeedback("题目更新成功。");
   await loadQuestions({ silent: true });
-  closeModal();
+  setFormLoading(form, false);
 }
 
 async function deleteQuestion(event) {
   event.preventDefault();
-  const questionId = String(new FormData(event.currentTarget).get("questionId") || "").trim();
-  await deleteQuestionById(questionId);
+  const form = event.currentTarget;
+  clearFormFeedback(form);
+  setFormLoading(form, true, "删除中...");
+  const questionId = String(new FormData(form).get("questionId") || "").trim();
+  await deleteQuestionById(questionId, form);
 }
 
-async function deleteQuestionById(questionId) {
+async function deleteQuestionById(questionId, form = null) {
   if (!questionId) {
+    if (form) {
+      setFormFeedback(form, "请先选择题目。", true);
+      setFormLoading(form, false);
+    }
     return showFeedback("请先选择题目。", true);
   }
   const result = await api(`/api/questions/${questionId}`, {
@@ -1189,11 +1282,18 @@ async function deleteQuestionById(questionId) {
     body: JSON.stringify({})
   });
   if (!result.ok) {
+    if (form) {
+      setFormFeedback(form, result.message, true);
+      setFormLoading(form, false);
+    }
     return showFeedback(result.message, true);
   }
+  closeModal();
   showFeedback("题目删除成功。");
   await loadQuestions({ silent: true });
-  closeModal();
+  if (form) {
+    setFormLoading(form, false);
+  }
 }
 
 async function importPresetQuestions() {
@@ -1230,7 +1330,7 @@ async function loadCampaignQuestions() {
 function renderAssessment() {
   const meta = document.getElementById("assessmentMeta");
   meta.innerHTML = renderMetaItems([
-    ["招聘场次", state.currentCampaign.title],
+    ["招聘试题", state.currentCampaign.title],
     ["模板", state.currentCampaign.assessmentTitle],
     ["时长", `${state.currentCampaign.durationMinutes || "-"} 分钟`],
     ["摄像头", state.currentCampaign.requireCamera ? "要求" : "不要求"]
@@ -1253,7 +1353,7 @@ function renderAssessment() {
 async function submitAssessment(event) {
   event.preventDefault();
   if (!state.currentCampaign) {
-    return showFeedback("请先加载招聘场次题目。", true);
+    return showFeedback("请先加载招聘试题题目。", true);
   }
 
   const answers = state.currentQuestions.map((question) => {
@@ -1309,10 +1409,10 @@ function renderSubmissionList() {
   const list = document.getElementById("submissionList");
   const pagination = document.getElementById("submissionPagination");
   const campaignOptions = hasAnyRole(["recruiter", "admin"])
-    ? [`<option value="">全部招聘场次</option>`, ...state.adminCampaigns.map((item) => `
+    ? [`<option value="">全部招聘试题</option>`, ...state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
     `)].join("")
-    : [`<option value="">全部招聘场次</option>`, ...state.campaigns.map((item) => `
+    : [`<option value="">全部招聘试题</option>`, ...state.campaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}</option>
     `)].join("");
 
@@ -1354,7 +1454,7 @@ function renderSubmissionMeta(submission) {
   const meta = document.getElementById("submissionMeta");
   meta.innerHTML = renderMetaItems([
     ["提交 ID", submission.id],
-    ["场次", submission.campaign_title || submission.campaignId],
+    ["试题", submission.campaign_title || submission.campaignId],
     ["状态", submission.status],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
@@ -1562,8 +1662,60 @@ function showFeedback(message, isError = false) {
     feedbackTimer = window.setTimeout(() => {
       feedback.classList.add("hidden");
       feedbackTimer = null;
-    }, 2400);
+    }, 3600);
   }
+}
+
+function ensureFormFeedback(form) {
+  let node = form.querySelector(".form-feedback");
+  if (!node) {
+    node = document.createElement("div");
+    node.className = "form-feedback hidden";
+    form.prepend(node);
+  }
+  return node;
+}
+
+function setFormFeedback(form, message, isError = false) {
+  if (!form) {
+    return;
+  }
+  const node = ensureFormFeedback(form);
+  node.textContent = message;
+  node.classList.remove("hidden");
+  node.classList.toggle("error", isError);
+}
+
+function clearFormFeedback(form) {
+  const node = form?.querySelector(".form-feedback");
+  if (!node) {
+    return;
+  }
+  node.textContent = "";
+  node.classList.add("hidden");
+  node.classList.remove("error");
+}
+
+function setFormLoading(form, isLoading, pendingText = "提交中...") {
+  if (!form) {
+    return;
+  }
+  form.querySelectorAll('button[type="submit"]').forEach((button) => {
+    if (isLoading) {
+      if (!button.dataset.originalText) {
+        button.dataset.originalText = button.textContent || "";
+      }
+      button.disabled = true;
+      button.classList.add("button-loading");
+      button.textContent = pendingText;
+      return;
+    }
+    button.disabled = false;
+    button.classList.remove("button-loading");
+    if (button.dataset.originalText) {
+      button.textContent = button.dataset.originalText;
+    }
+  });
 }
 
 function formatRoleNames(roles) {
@@ -1619,8 +1771,8 @@ function openUserModal(mode) {
     update: ["编辑账号", "修改用户资料、角色和状态。", "userModalUpdate"],
     resetPassword: ["重置密码", "为指定用户重置登录密码。", "userModalResetPassword"],
     delete: ["删除用户", "删除未被业务数据引用的账号。", "userModalDelete"],
-    assignCampaign: ["分配场次", "将单个候选人分配到招聘场次。", "userModalAssignCampaign"],
-    batchAssignCampaign: ["批量分配场次", "批量给候选人分配同一招聘场次。", "userModalBatchAssignCampaign"]
+    assignCampaign: ["分配试题", "将单个候选人分配到招聘试题。", "userModalAssignCampaign"],
+    batchAssignCampaign: ["批量分配试题", "批量给候选人分配同一招聘试题。", "userModalBatchAssignCampaign"]
   };
   const [nextTitle, nextDesc, sectionId] = mapping[mode];
   title.textContent = nextTitle;
@@ -1651,8 +1803,8 @@ function openCampaignModal(mode) {
   const title = document.getElementById("campaignModalTitle");
   const desc = document.getElementById("campaignModalDesc");
   const mapping = {
-    create: ["新增场次", "创建新的招聘场次并配置监控要求。", "campaignModalCreate"],
-    update: ["修改场次", "编辑当前页已检索到的招聘场次。", "campaignModalUpdate"]
+    create: ["新增试题", "创建新的招聘试题并配置监控要求。", "campaignModalCreate"],
+    update: ["修改试题", "编辑当前页已检索到的招聘试题。", "campaignModalUpdate"]
   };
   const [nextTitle, nextDesc, sectionId] = mapping[mode];
   title.textContent = nextTitle;
@@ -1666,6 +1818,10 @@ function closeModal() {
 }
 
 function closeModalSections() {
+  document.querySelectorAll("form").forEach((form) => {
+    clearFormFeedback(form);
+    setFormLoading(form, false);
+  });
   document.querySelectorAll(".modal-card, .modal-section").forEach((item) => {
     item.classList.add("hidden");
   });

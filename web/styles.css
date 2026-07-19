@@ -405,12 +405,32 @@ select {
 .feedback-toast {
   position: fixed;
   top: 24px;
-  right: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1200;
   margin: 0;
-  min-width: 260px;
+  min-width: 320px;
   max-width: min(420px, calc(100vw - 32px));
   box-shadow: 0 18px 38px rgba(33, 24, 15, 0.16);
+}
+
+.form-feedback {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #e8f5ec;
+  border: 1px solid #9ad0ae;
+}
+
+.form-feedback.error {
+  background: #fde8e8;
+  border-color: #f0a2a2;
+  color: var(--danger);
+}
+
+.button-loading {
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .hidden {
@@ -792,9 +812,11 @@ select {
 
   .feedback-toast {
     top: 16px;
-    right: 16px;
     left: 16px;
+    right: 16px;
+    transform: none;
     max-width: none;
+    min-width: 0;
   }
 
   .form-columns {

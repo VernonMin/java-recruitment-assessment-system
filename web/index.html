@@ -75,7 +75,7 @@
           <button data-view="enterpriseHome" class="menu-item">企业端</button>
           <button data-view="questionBank" class="menu-item">题库管理</button>
           <button data-view="userManagement" class="menu-item">用户管理</button>
-          <button data-view="campaignManagement" class="menu-item">招聘场次管理</button>
+          <button data-view="campaignManagement" class="menu-item">招聘试题管理</button>
           <button data-view="assessment" class="menu-item">答题页</button>
           <button data-view="submission" class="menu-item">提交详情</button>
           <button data-view="review" class="menu-item">人工评估</button>
@@ -125,7 +125,7 @@
               <h2>用户管理</h2>
               <div class="topbar-actions">
                 <button id="reloadUsersButton" class="ghost-button">刷新用户</button>
-                <button id="reloadAdminCampaignsButton" class="ghost-button">刷新场次</button>
+                <button id="reloadAdminCampaignsButton" class="ghost-button">刷新试题</button>
               </div>
             </div>
 
@@ -168,7 +168,7 @@
               <button id="openBatchCreateUsersModalButton" class="ghost-button">批量导入</button>
               <button id="openUpdateUserModalButton" class="ghost-button">编辑账号</button>
               <button id="openResetPasswordModalButton" class="ghost-button">重置密码</button>
-              <button id="openAssignCampaignModalButton" class="ghost-button">分配场次</button>
+              <button id="openAssignCampaignModalButton" class="ghost-button">分配试题</button>
               <button id="openBatchAssignCampaignModalButton" class="ghost-button">批量分配</button>
             </div>
 
@@ -181,19 +181,19 @@
         <section id="campaignManagementView" class="view">
           <div class="panel">
             <div class="panel-header">
-              <h2>招聘场次管理</h2>
+              <h2>招聘试题管理</h2>
               <div class="topbar-actions">
                 <button id="reloadAssessmentsButton" class="ghost-button">刷新模板</button>
-                <button id="reloadCampaignManagementButton" class="ghost-button">刷新场次</button>
+                <button id="reloadCampaignManagementButton" class="ghost-button">刷新试题</button>
               </div>
             </div>
 
             <form id="campaignSearchForm" class="stack-form panel-subsection">
-              <h3>检索招聘场次</h3>
+              <h3>检索招聘试题</h3>
               <div class="form-columns">
                 <label>
                   <span>关键词</span>
-                  <input name="q" placeholder="场次名称 / 岗位 / 场次说明 / 模板名称" />
+                  <input name="q" placeholder="试题名称 / 岗位 / 试题说明 / 模板名称" />
                 </label>
                 <label>
                   <span>状态</span>
@@ -207,14 +207,14 @@
                 </label>
               </div>
               <div class="button-row">
-                <button type="submit" class="ghost-button">检索场次</button>
+                <button type="submit" class="ghost-button">检索试题</button>
                 <button id="clearCampaignSearchButton" type="button" class="ghost-button">清空条件</button>
               </div>
             </form>
 
             <div class="action-toolbar">
-              <button id="openCreateCampaignModalButton" class="primary-button">新增场次</button>
-              <button id="openUpdateCampaignModalButton" class="ghost-button">修改场次</button>
+              <button id="openCreateCampaignModalButton" class="primary-button">新增试题</button>
+              <button id="openUpdateCampaignModalButton" class="ghost-button">修改试题</button>
             </div>
 
             <div id="campaignManagementSummary" class="meta-strip"></div>
@@ -282,7 +282,7 @@
             <div class="panel-header">
               <h2>答题页</h2>
               <div class="inline-form">
-                <input id="campaignIdInput" placeholder="输入 campaignId" />
+                <input id="campaignIdInput" placeholder="输入试题 ID" />
                 <button id="loadQuestionsButton" class="ghost-button">加载题目</button>
               </div>
             </div>
@@ -302,7 +302,7 @@
               <div class="form-columns">
                 <label>
                   <span>关键词</span>
-                  <input name="q" placeholder="提交 ID / 候选人账号 / 候选人姓名 / 场次名称" />
+                  <input name="q" placeholder="提交 ID / 候选人账号 / 候选人姓名 / 试题名称" />
                 </label>
                 <label>
                   <span>状态</span>
@@ -315,7 +315,7 @@
               </div>
               <div class="form-columns">
                 <label>
-                  <span>招聘场次</span>
+                  <span>招聘试题</span>
                   <select id="submissionCampaignId" name="campaignId"></select>
                 </label>
                 <div class="button-row align-end">
@@ -474,7 +474,7 @@
                 <span>选择用户</span>
                 <select id="deleteUserId" name="userId"></select>
               </label>
-              <p class="hint">如果该账号已被分配场次或已有提交记录，系统会拒绝直接删除。</p>
+              <p class="hint">如果该账号已被分配试题或已有提交记录，系统会拒绝直接删除。</p>
               <button type="submit" class="danger-button">删除用户</button>
             </form>
           </div>
@@ -485,7 +485,7 @@
                 <input name="account" placeholder="输入 candidate 账号" />
               </label>
               <label>
-                <span>招聘场次</span>
+                <span>招聘试题</span>
                 <select id="assignCampaignSelect" name="campaignId"></select>
               </label>
               <div class="form-columns">
@@ -503,13 +503,13 @@
                   </select>
                 </label>
               </div>
-              <button type="submit" class="primary-button">分配场次</button>
+              <button type="submit" class="primary-button">分配试题</button>
             </form>
           </div>
           <div id="userModalBatchAssignCampaign" class="modal-section hidden">
             <form id="batchAssignCampaignForm" class="stack-form">
               <label>
-                <span>招聘场次</span>
+                <span>招聘试题</span>
                 <select id="batchAssignCampaignSelect" name="campaignId"></select>
               </label>
               <label>
@@ -664,7 +664,7 @@
         <section id="campaignModal" class="modal-card hidden">
           <div class="modal-header">
             <div>
-              <h3 id="campaignModalTitle">场次操作</h3>
+              <h3 id="campaignModalTitle">试题操作</h3>
               <p id="campaignModalDesc" class="hint">按当前操作展示对应表单。</p>
             </div>
             <button type="button" class="ghost-button" data-close-modal>关闭</button>
@@ -677,8 +677,8 @@
               </label>
               <div class="form-columns">
                 <label>
-                  <span>场次名称</span>
-                  <input name="title" placeholder="例如 Java 后端一面笔试" />
+                  <span>试题名称</span>
+                  <input name="title" placeholder="例如 Java 后端笔试题（初级）" />
                 </label>
                 <label>
                   <span>目标岗位</span>
@@ -711,8 +711,8 @@
                 </label>
               </div>
               <label>
-                <span>场次说明</span>
-                <textarea name="description" placeholder="输入场次说明"></textarea>
+                <span>试题说明</span>
+                <textarea name="description" placeholder="输入试题说明"></textarea>
               </label>
               <div class="checkbox-row">
                 <label class="checkbox-item">
@@ -724,13 +724,13 @@
                   <span>要求全屏</span>
                 </label>
               </div>
-              <button type="submit" class="primary-button">创建场次</button>
+              <button type="submit" class="primary-button">创建试题</button>
             </form>
           </div>
           <div id="campaignModalUpdate" class="modal-section hidden">
             <form id="updateCampaignForm" class="stack-form">
               <label>
-                <span>选择场次</span>
+                <span>选择试题</span>
                 <select id="updateCampaignId" name="campaignId"></select>
               </label>
               <label>
@@ -739,8 +739,8 @@
               </label>
               <div class="form-columns">
                 <label>
-                  <span>场次名称</span>
-                  <input name="title" placeholder="例如 Java 后端一面笔试" />
+                  <span>试题名称</span>
+                  <input name="title" placeholder="例如 Java 后端笔试题（初级）" />
                 </label>
                 <label>
                   <span>目标岗位</span>
@@ -773,8 +773,8 @@
                 </label>
               </div>
               <label>
-                <span>场次说明</span>
-                <textarea name="description" placeholder="输入场次说明"></textarea>
+                <span>试题说明</span>
+                <textarea name="description" placeholder="输入试题说明"></textarea>
               </label>
               <div class="checkbox-row">
                 <label class="checkbox-item">
@@ -786,7 +786,7 @@
                   <span>要求全屏</span>
                 </label>
               </div>
-              <button type="submit" class="primary-button">保存场次修改</button>
+              <button type="submit" class="primary-button">保存试题修改</button>
             </form>
           </div>
         </section>

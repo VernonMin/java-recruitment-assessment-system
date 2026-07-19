@@ -594,7 +594,7 @@ async function handleBatchCreateUsers(request, env, sessionUser, corsHeaders) {
  */
 async function handleGetAdminCampaigns(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权查看招聘场次" }, 403, {}, corsHeaders);
+    return json({ message: "无权查看招聘试题" }, 403, {}, corsHeaders);
   }
 
   const url = new URL(request.url);
@@ -668,7 +668,7 @@ async function handleGetAssessments(env, sessionUser, corsHeaders) {
  */
 async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权创建招聘场次" }, 403, {}, corsHeaders);
+    return json({ message: "无权创建招聘试题" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -706,7 +706,7 @@ async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
   }
 
   if (!CAMPAIGN_STATUSES.has(status)) {
-    return json({ message: "场次状态不支持" }, 400, {}, corsHeaders);
+    return json({ message: "试题状态不支持" }, 400, {}, corsHeaders);
   }
 
   const assessments = await findAssessmentsForAdmin(env);
@@ -735,7 +735,7 @@ async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
   });
 
   return json({
-    message: "招聘场次创建成功",
+    message: "招聘试题创建成功",
     campaign: {
       id: campaignId,
       title,
@@ -754,12 +754,12 @@ async function handleCreateCampaign(request, env, sessionUser, corsHeaders) {
  */
 async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权修改招聘场次" }, 403, {}, corsHeaders);
+    return json({ message: "无权修改招聘试题" }, 403, {}, corsHeaders);
   }
 
   const currentCampaign = await findCampaignById(env, campaignId);
   if (!currentCampaign) {
-    return json({ message: "招聘场次不存在" }, 404, {}, corsHeaders);
+    return json({ message: "招聘试题不存在" }, 404, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -797,7 +797,7 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
   }
 
   if (!CAMPAIGN_STATUSES.has(status)) {
-    return json({ message: "场次状态不支持" }, 400, {}, corsHeaders);
+    return json({ message: "试题状态不支持" }, 400, {}, corsHeaders);
   }
 
   const assessments = await findAssessmentsForAdmin(env);
@@ -822,7 +822,7 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
   });
 
   return json({
-    message: "招聘场次更新成功",
+    message: "招聘试题更新成功",
     campaign: {
       id: campaignId,
       title,
@@ -841,7 +841,7 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
  */
 async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权分配招聘场次" }, 403, {}, corsHeaders);
+    return json({ message: "无权分配招聘试题" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -855,7 +855,7 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
   const invitationStatus = typeof body.invitationStatus === "string" ? body.invitationStatus.trim() : "invited";
 
   if (!account || !campaignId) {
-    return json({ message: "账号和场次不能为空" }, 400, {}, corsHeaders);
+    return json({ message: "账号和试题不能为空" }, 400, {}, corsHeaders);
   }
 
   if (!Number.isFinite(attemptLimit) || attemptLimit < 1 || attemptLimit > 10) {
@@ -878,7 +878,7 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
 
   const campaign = await findCampaignById(env, campaignId);
   if (!campaign) {
-    return json({ message: "招聘场次不存在" }, 404, {}, corsHeaders);
+    return json({ message: "招聘试题不存在" }, 404, {}, corsHeaders);
   }
 
   try {
@@ -893,7 +893,7 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("UNIQUE")) {
-      return json({ message: "该候选人已分配到当前场次" }, 409, {}, corsHeaders);
+      return json({ message: "该候选人已分配到当前试题" }, 409, {}, corsHeaders);
     }
     throw error;
   }
@@ -917,7 +917,7 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
  */
 async function handleBatchAssignCampaign(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
-    return json({ message: "无权批量分配招聘场次" }, 403, {}, corsHeaders);
+    return json({ message: "无权批量分配招聘试题" }, 403, {}, corsHeaders);
   }
 
   const body = await request.json().catch(() => null);
@@ -1084,7 +1084,7 @@ async function handleDeleteUser(env, sessionUser, userId, corsHeaders) {
   const campaignCount = Number(dependencies?.campaign_count ?? 0);
   const submissionCount = Number(dependencies?.submission_count ?? 0);
   if (campaignCount > 0 || submissionCount > 0) {
-    return json({ message: "该用户已有场次分配或提交记录，不能直接删除" }, 409, {}, corsHeaders);
+    return json({ message: "该用户已有试题分配或提交记录，不能直接删除" }, 409, {}, corsHeaders);
   }
 
   await deleteUserRolesByUserId(env, userId);
@@ -1346,11 +1346,11 @@ async function handleSubmission(request, env, sessionUser, corsHeaders) {
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到可提交的招聘场次" }, 404, {}, corsHeaders);
+    return json({ message: "未找到可提交的招聘试题" }, 404, {}, corsHeaders);
   }
 
   if (campaign.status !== "published" && campaign.status !== "in_progress") {
-    return json({ message: "当前招聘场次不可提交" }, 400, {}, corsHeaders);
+    return json({ message: "当前招聘试题不可提交" }, 400, {}, corsHeaders);
   }
 
   const now = Date.now();
@@ -1480,13 +1480,13 @@ async function handleProctoringEvent(request, env, sessionUser, corsHeaders) {
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到对应招聘场次" }, 404, {}, corsHeaders);
+    return json({ message: "未找到对应招聘试题" }, 404, {}, corsHeaders);
   }
 
   if (typeof body.submissionId === "string") {
     const submission = await findSubmissionById(env, body.submissionId);
     if (!submission || submission.user_id !== sessionUser.sub || submission.campaign_id !== body.campaignId) {
-      return json({ message: "提交记录与当前用户或场次不匹配" }, 400, {}, corsHeaders);
+      return json({ message: "提交记录与当前用户或试题不匹配" }, 400, {}, corsHeaders);
     }
   }
 
@@ -1546,7 +1546,7 @@ async function handleGetSubmission(env, sessionUser, submissionId, corsHeaders) 
 async function handleGetCampaignQuestions(env, sessionUser, campaignId, corsHeaders) {
   const campaign = await findCampaignAssignment(env, campaignId, sessionUser.sub);
   if (!campaign && !hasRole(sessionUser, ["interviewer", "recruiter", "admin"])) {
-    return json({ message: "未找到对应招聘场次" }, 404, {}, corsHeaders);
+    return json({ message: "未找到对应招聘试题" }, 404, {}, corsHeaders);
   }
 
   const result = await findCampaignQuestionsForCandidate(
@@ -1736,12 +1736,12 @@ async function handleProctoringSnapshot(request, env, sessionUser, corsHeaders) 
 
   const campaign = await findCampaignAssignment(env, body.campaignId, sessionUser.sub);
   if (!campaign) {
-    return json({ message: "未找到对应招聘场次" }, 404, {}, corsHeaders);
+    return json({ message: "未找到对应招聘试题" }, 404, {}, corsHeaders);
   }
 
   const submission = await findSubmissionById(env, body.submissionId);
   if (!submission || submission.user_id !== sessionUser.sub || submission.campaign_id !== body.campaignId) {
-    return json({ message: "提交记录与当前用户或场次不匹配" }, 400, {}, corsHeaders);
+    return json({ message: "提交记录与当前用户或试题不匹配" }, 400, {}, corsHeaders);
   }
 
   const contentType = typeof body.contentType === "string" ? body.contentType : "image/jpeg";

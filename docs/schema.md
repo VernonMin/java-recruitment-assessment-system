@@ -9,7 +9,7 @@
 - 账号与角色管理
 - 招聘题库
 - 测评模板组装
-- 招聘场次发布
+- 招聘试题发布
 - 答案提交
 - 评估与结论
 - 基础监控事件
@@ -153,7 +153,7 @@ erDiagram
 
 - `question_id`
 
-## 测评模板与招聘场次
+## 测评模板与招聘试题
 
 ### `assessments`
 
@@ -191,13 +191,13 @@ erDiagram
 
 ### `recruitment_campaigns`
 
-实际发布给候选人的招聘测评场次。
+实际发布给候选人的招聘试题。
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | id | text | 主键 |
 | assessment_id | text | 外键，指向 `assessments.id` |
-| title | text | 场次标题 |
+| title | text | 试题标题 |
 | description | text | 可空 |
 | target_role | text | 可空，如 `java_backend`、`java_fullstack` |
 | start_time | integer | 时间戳 |
@@ -218,7 +218,7 @@ erDiagram
 
 ### `campaign_candidates`
 
-招聘场次与候选人的分配关系。
+招聘试题与候选人的分配关系。
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
