@@ -1174,6 +1174,9 @@ async function deleteUserById(userId, form = null) {
     body: JSON.stringify({})
   });
   if (!result.ok) {
+    if (result.status === 409 && result.data?.recommendedAction === "disable") {
+      return disableUserWithHistory(userId, form, result.message);
+    }
     if (form) {
       setFormFeedback(form, result.message, true);
       setFormLoading(form, false);
@@ -1182,6 +1185,60 @@ async function deleteUserById(userId, form = null) {
   }
   closeModal();
   showFeedback("用户删除成功。");
+  await Promise.all([
+    loadUsers({ silent: true }),
+    loadCandidateOptions({ silent: true })
+  ]);
+  if (form) {
+    setFormLoading(form, false);
+  }
+}
+
+async function disableUserWithHistory(userId, form = null, fallbackMessage = "") {
+  const user = state.users.find((item) => item.id === userId);
+  if (!user) {
+    const message = fallbackMessage || "该账号已有历史记录，建议改为禁用。";
+    if (form) {
+      setFormFeedback(form, message, true);
+      setFormLoading(form, false);
+    }
+    return showFeedback(message, true);
+  }
+
+  if (user.status === "disabled") {
+    const message = "该账号已有历史记录，且当前已经是禁用状态。";
+    if (form) {
+      setFormFeedback(form, message);
+      setFormLoading(form, false);
+    }
+    showFeedback(message);
+    return;
+  }
+
+  const payload = {
+    fullName: user.fullName || "",
+    role: Array.isArray(user.roles) && user.roles[0] ? user.roles[0] : "candidate",
+    status: "disabled",
+    email: user.email || "",
+    mobile: user.mobile || ""
+  };
+
+  const result = await api(`/api/admin/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+
+  if (!result.ok) {
+    const message = result.message || fallbackMessage || "账号禁用失败，请稍后重试。";
+    if (form) {
+      setFormFeedback(form, message, true);
+      setFormLoading(form, false);
+    }
+    return showFeedback(message, true);
+  }
+
+  closeModal();
+  showFeedback("该账号已有笔试分配或提交记录，系统已自动改为禁用状态，历史数据已保留。");
   await Promise.all([
     loadUsers({ silent: true }),
     loadCandidateOptions({ silent: true })
@@ -2077,7 +2134,7 @@ function openUserModal(mode) {
     batchCreate: ["批量导入", "通过文本批量导入用户账号。", "userModalBatchCreate"],
     update: ["编辑账号", "修改用户资料、角色和状态。", "userModalUpdate"],
     resetPassword: ["重置密码", "为指定用户重置登录密码。", "userModalResetPassword"],
-    delete: ["删除用户", "删除未被业务数据引用的账号。", "userModalDelete"],
+    delete: ["删除账号", "没有历史记录时直接删除；已有历史记录时自动改为禁用并保留数据。", "userModalDelete"],
     assignCampaign: ["分配笔试任务", "将一个或多个候选人分配到笔试任务。", "userModalAssignCampaign"],
     batchAssignCampaign: ["批量分配笔试任务", "批量给候选人分配同一笔试任务。", "userModalBatchAssignCampaign"]
   };

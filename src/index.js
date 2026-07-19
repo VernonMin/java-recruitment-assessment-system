@@ -1254,7 +1254,14 @@ async function handleDeleteUser(env, sessionUser, userId, corsHeaders) {
   const campaignCount = Number(dependencies?.campaign_count ?? 0);
   const submissionCount = Number(dependencies?.submission_count ?? 0);
   if (campaignCount > 0 || submissionCount > 0) {
-    return json({ message: "该用户已有试题分配或提交记录，不能直接删除" }, 409, {}, corsHeaders);
+    return json({
+      message: "该用户已有笔试分配或提交记录，不能直接删除",
+      recommendedAction: "disable",
+      dependencies: {
+        campaignCount,
+        submissionCount
+      }
+    }, 409, {}, corsHeaders);
   }
 
   await deleteUserRolesByUserId(env, userId);

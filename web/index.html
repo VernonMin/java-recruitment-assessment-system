@@ -521,8 +521,8 @@
                 <span>选择用户</span>
                 <select id="deleteUserId" name="userId"></select>
               </label>
-              <p class="hint">如果该账号已被分配试题或已有提交记录，系统会拒绝直接删除。</p>
-              <button type="submit" class="danger-button">删除用户</button>
+              <p class="hint">如果该账号没有历史记录，会直接删除；如果已有笔试分配或提交记录，系统会自动改为禁用状态，并保留历史数据。</p>
+              <button type="submit" class="danger-button">删除或禁用账号</button>
             </form>
           </div>
           <div id="userModalAssignCampaign" class="modal-section hidden">

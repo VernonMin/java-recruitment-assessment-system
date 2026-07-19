@@ -143,7 +143,9 @@
 用途：
 
 - 管理员删除未被试题分配、且没有提交记录的账号
-- 如果账号已有试题分配或提交记录，会返回 `409`
+- 如果账号已有笔试分配或提交记录，会返回 `409`
+- 返回体会包含 `recommendedAction=disable`，用于提示前端改走禁用流程
+- 推荐后续调用 `PUT /api/admin/users/:id`，把 `status` 更新为 `disabled`，以保留历史数据和审计链路
 
 ### `POST /api/admin/users/:id/reset-password`
 
