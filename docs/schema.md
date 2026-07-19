@@ -226,7 +226,7 @@ erDiagram
 | campaign_id | text | 外键，指向 `recruitment_campaigns.id` |
 | user_id | text | 外键，指向 `users.id` |
 | attempt_limit | integer | 默认 1 |
-| invitation_status | text | `pending`、`sent`、`opened`、`completed`、`expired` |
+| invitation_status | text | `invited`、`completed` |
 | created_at | integer | 时间戳 |
 
 建议索引：

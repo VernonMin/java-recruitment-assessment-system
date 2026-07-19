@@ -523,8 +523,9 @@
             <form id="assignCampaignForm" class="stack-form">
               <label>
                 <span>候选人账号</span>
-                <input name="account" placeholder="输入 candidate 账号" />
+                <select id="assignCandidateAccounts" name="accounts" multiple size="8"></select>
               </label>
+              <p class="hint">显示当前可用候选人，可按住 Command / Ctrl 选择多个候选人。</p>
               <label>
                   <span>笔试任务</span>
                 <select id="assignCampaignSelect" name="campaignId"></select>
@@ -538,13 +539,11 @@
                   <span>邀请状态</span>
                   <select name="invitationStatus">
                     <option value="invited">invited</option>
-                    <option value="accepted">accepted</option>
                     <option value="completed">completed</option>
-                    <option value="expired">expired</option>
                   </select>
                 </label>
               </div>
-              <button type="submit" class="primary-button">分配试题</button>
+              <button type="submit" class="primary-button">分配笔试任务</button>
             </form>
           </div>
           <div id="userModalBatchAssignCampaign" class="modal-section hidden">
@@ -566,9 +565,7 @@
                   <span>邀请状态</span>
                   <select name="invitationStatus">
                     <option value="invited">invited</option>
-                    <option value="accepted">accepted</option>
                     <option value="completed">completed</option>
-                    <option value="expired">expired</option>
                   </select>
                 </label>
               </div>

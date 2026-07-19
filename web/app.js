@@ -1,6 +1,7 @@
 const state = {
   user: null,
   users: [],
+  candidateOptions: [],
   questions: [],
   campaigns: [],
   adminCampaigns: [],
@@ -343,6 +344,7 @@ async function warmupWorkspaceData() {
   }
   if (hasAnyRole(["admin"])) {
     jobs.push(loadUsers({ silent: true }));
+    jobs.push(loadCandidateOptions({ silent: true }));
   }
   if (hasAnyRole(["admin", "recruiter"])) {
     jobs.push(loadAdminCampaigns({ silent: true }));
@@ -431,6 +433,26 @@ async function loadUsers(options = {}) {
   state.paginations.users = normalizePaginationState(result.data.pagination, state.paginations.users);
   renderUserManagement();
   renderEnterpriseWorkspace();
+  return true;
+}
+
+async function loadCandidateOptions(options = {}) {
+  const search = new URLSearchParams({
+    role: "candidate",
+    status: "active",
+    page: "1",
+    pageSize: "100"
+  });
+  const result = await api(`/api/admin/users?${search.toString()}`);
+  if (!result.ok) {
+    if (!options.silent) {
+      showFeedback(result.message, true);
+    }
+    return false;
+  }
+
+  state.candidateOptions = result.data.items || [];
+  renderUserManagement();
   return true;
 }
 
@@ -694,6 +716,7 @@ function renderUserManagement() {
   const list = document.getElementById("userList");
   const pagination = document.getElementById("userPagination") || null;
   const assignCampaignSelect = document.getElementById("assignCampaignSelect");
+  const assignCandidateAccounts = document.getElementById("assignCandidateAccounts");
   const batchAssignCampaignSelect = document.getElementById("batchAssignCampaignSelect");
   const updateUserSelect = document.getElementById("updateUserId");
   const resetPasswordUserSelect = document.getElementById("resetPasswordUserId");
@@ -708,11 +731,17 @@ function renderUserManagement() {
     : state.adminCampaigns.map((item) => `
       <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.id)})</option>
     `).join("");
+  const candidateOptions = state.candidateOptions.length === 0
+    ? `<option value="">当前没有可选候选人</option>`
+    : state.candidateOptions.map((item) => `
+      <option value="${escapeHtml(item.account)}">${escapeHtml(item.fullName || item.account)} (${escapeHtml(item.account)})</option>
+    `).join("");
 
   updateUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   resetPasswordUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   deleteUserSelect.innerHTML = userOptions || `<option value="">当前没有用户</option>`;
   assignCampaignSelect.innerHTML = campaignOptions;
+  assignCandidateAccounts.innerHTML = candidateOptions;
   batchAssignCampaignSelect.innerHTML = campaignOptions;
   syncSelectedUserToForm();
 
@@ -902,10 +931,10 @@ function renderQuestionBankList() {
   container.innerHTML = state.questions.map((item) => `
     <article class="question-card">
       <h3>${escapeHtml(item.stem)}</h3>
-      <p>题型：${escapeHtml(item.type)}</p>
+      <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
       <p>分值：${escapeHtml(String(item.score))} 分</p>
       <p>难度：${escapeHtml(String(item.difficulty))}</p>
-      <p>状态：${escapeHtml(item.status)}</p>
+      <p>状态：${escapeHtml(formatQuestionStatus(item.status))}</p>
       <div class="button-row">
         <button class="ghost-button" data-edit-question-id="${escapeHtml(item.id)}">编辑</button>
         <button class="danger-button" data-delete-question-id="${escapeHtml(item.id)}">删除</button>
@@ -1013,7 +1042,10 @@ async function createUser(event) {
   form.reset();
   closeModal();
   showFeedback(`用户 ${payload.account} 创建成功。`);
-  await loadUsers({ silent: true });
+  await Promise.all([
+    loadUsers({ silent: true }),
+    loadCandidateOptions({ silent: true })
+  ]);
   setFormLoading(form, false);
 }
 
@@ -1048,7 +1080,10 @@ async function batchCreateUsers(event) {
   form.reset();
   closeModal();
   showFeedback(result.message);
-  await loadUsers({ silent: true });
+  await Promise.all([
+    loadUsers({ silent: true }),
+    loadCandidateOptions({ silent: true })
+  ]);
   setFormLoading(form, false);
 }
 
@@ -1081,7 +1116,10 @@ async function updateUser(event) {
 
   closeModal();
   showFeedback("用户信息更新成功。");
-  await loadUsers({ silent: true });
+  await Promise.all([
+    loadUsers({ silent: true }),
+    loadCandidateOptions({ silent: true })
+  ]);
   setFormLoading(form, false);
 }
 
@@ -1142,7 +1180,10 @@ async function deleteUserById(userId, form = null) {
   }
   closeModal();
   showFeedback("用户删除成功。");
-  await loadUsers({ silent: true });
+  await Promise.all([
+    loadUsers({ silent: true }),
+    loadCandidateOptions({ silent: true })
+  ]);
   if (form) {
     setFormLoading(form, false);
   }
@@ -1154,16 +1195,30 @@ async function assignCampaign(event) {
   clearFormFeedback(form);
   setFormLoading(form, true, "分配中...");
   const formData = new FormData(form);
-  const payload = {
-    account: String(formData.get("account") || "").trim(),
-    campaignId: String(formData.get("campaignId") || "").trim(),
-    attemptLimit: Number(formData.get("attemptLimit") || 1),
-    invitationStatus: String(formData.get("invitationStatus") || "invited").trim()
-  };
+  const accounts = Array.from(form.querySelectorAll("#assignCandidateAccounts option:checked"))
+    .map((option) => option.value.trim())
+    .filter(Boolean);
+  const campaignId = String(formData.get("campaignId") || "").trim();
+  const attemptLimit = Number(formData.get("attemptLimit") || 1);
+  const invitationStatus = String(formData.get("invitationStatus") || "invited").trim();
 
-  const result = await api("/api/admin/campaign-assignments", {
+  if (accounts.length === 0) {
+    setFormFeedback(form, "请至少选择一个候选人。", true);
+    showFeedback("请至少选择一个候选人。", true);
+    setFormLoading(form, false);
+    return;
+  }
+
+  const items = accounts.map((account) => ({
+    account,
+    campaignId,
+    attemptLimit,
+    invitationStatus
+  }));
+
+  const result = await api("/api/admin/campaign-assignments/batch", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ items })
   });
 
   if (!result.ok) {
@@ -1173,8 +1228,9 @@ async function assignCampaign(event) {
     return;
   }
 
+  form.reset();
   closeModal();
-  showFeedback(`已将 ${payload.account} 分配到笔试任务 ${payload.campaignId}。`);
+  showFeedback(`已为 ${accounts.length} 个候选人分配笔试任务。`);
   setFormLoading(form, false);
 }
 
@@ -1899,6 +1955,14 @@ function formatQuestionType(type) {
   }[type] || type;
 }
 
+function formatQuestionStatus(status) {
+  return {
+    draft: "草稿",
+    published: "已发布",
+    archived: "已归档"
+  }[status] || status;
+}
+
 function syncSelectedUserToForm() {
   const form = document.getElementById("updateUserForm");
   const select = document.getElementById("updateUserId");
@@ -1954,7 +2018,7 @@ function syncDeleteQuestionToForm() {
     <h4>${escapeHtml(question.stem || "未命名题目")}</h4>
     <p>题型：${escapeHtml(formatQuestionType(question.type))}</p>
     <p>分值：${escapeHtml(String(question.score || 0))} 分</p>
-    <p>状态：${escapeHtml(question.status || "-")}</p>
+    <p>状态：${escapeHtml(formatQuestionStatus(question.status || "-"))}</p>
   `;
 }
 
@@ -1970,7 +2034,7 @@ function openUserModal(mode) {
     update: ["编辑账号", "修改用户资料、角色和状态。", "userModalUpdate"],
     resetPassword: ["重置密码", "为指定用户重置登录密码。", "userModalResetPassword"],
     delete: ["删除用户", "删除未被业务数据引用的账号。", "userModalDelete"],
-    assignCampaign: ["分配笔试任务", "将单个候选人分配到笔试任务。", "userModalAssignCampaign"],
+    assignCampaign: ["分配笔试任务", "将一个或多个候选人分配到笔试任务。", "userModalAssignCampaign"],
     batchAssignCampaign: ["批量分配笔试任务", "批量给候选人分配同一笔试任务。", "userModalBatchAssignCampaign"]
   };
   const [nextTitle, nextDesc, sectionId] = mapping[mode];
@@ -2451,6 +2515,15 @@ function renderPagination(key, pagination) {
   return `
     <div class="pagination-inner">
       <span class="pagination-info">第 ${escapeHtml(String(pagination.page))} / ${escapeHtml(String(totalPages))} 页，共 ${escapeHtml(String(pagination.total))} 条</span>
+      <label class="pagination-size">
+        <span>每页</span>
+        <select data-pagination-size="${escapeHtml(key)}">
+          ${[10, 20, 50, 100].map((size) => `
+            <option value="${escapeHtml(String(size))}" ${pagination.pageSize === size ? "selected" : ""}>${escapeHtml(String(size))}</option>
+          `).join("")}
+        </select>
+        <span>条</span>
+      </label>
       <div class="button-row">
         <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.max(1, pagination.page - 1)))}" ${pagination.page <= 1 ? "disabled" : ""}>上一页</button>
         <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.min(totalPages, pagination.page + 1)))}" ${pagination.page >= totalPages ? "disabled" : ""}>下一页</button>
@@ -2468,6 +2541,18 @@ function bindPagination(key, loader) {
       }
       state.paginations[key].page = nextPage;
       await loader({ page: nextPage });
+    });
+  });
+
+  document.querySelectorAll(`[data-pagination-size="${key}"]`).forEach((select) => {
+    select.addEventListener("change", async () => {
+      const nextPageSize = Number(select.value || 10);
+      if (!Number.isFinite(nextPageSize) || nextPageSize <= 0) {
+        return;
+      }
+      state.paginations[key].page = 1;
+      state.paginations[key].pageSize = nextPageSize;
+      await loader({ page: 1 });
     });
   });
 }

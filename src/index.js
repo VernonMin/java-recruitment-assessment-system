@@ -2434,7 +2434,7 @@ const QUESTION_TYPES = new Set([
 
 const ASSESSMENT_STATUSES = new Set(["draft", "published", "archived"]);
 const ALLOWED_USER_ROLES = new Set(["candidate", "interviewer", "recruiter", "admin"]);
-const CAMPAIGN_INVITATION_STATUSES = new Set(["invited", "accepted", "completed", "expired"]);
+const CAMPAIGN_INVITATION_STATUSES = new Set(["invited", "completed"]);
 const CAMPAIGN_STATUSES = new Set(["draft", "published", "in_progress", "archived"]);
 const USER_STATUSES = new Set(["active", "disabled", "locked"]);
 
