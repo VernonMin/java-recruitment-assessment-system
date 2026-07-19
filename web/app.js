@@ -793,47 +793,46 @@ function renderUserManagement() {
   }
 
   list.innerHTML = `
-    <div class="user-directory">
-      <div class="user-directory-header">
-        <div class="user-directory-cell">用户信息</div>
-        <div class="user-directory-cell">角色</div>
-        <div class="user-directory-cell">状态</div>
-        <div class="user-directory-cell">联系方式</div>
-        <div class="user-directory-cell">业务说明</div>
-        <div class="user-directory-cell">操作</div>
-      </div>
+    <div class="user-cards">
       ${state.users.map((item) => `
-        <div class="user-directory-row">
-          <div class="user-directory-cell">
-            <strong>${escapeHtml(item.fullName || item.account)}</strong>
-            <div class="user-directory-subline">${escapeHtml(item.account)}</div>
-            <div class="user-directory-meta">用户 ID：${escapeHtml(item.id)}</div>
-          </div>
-          <div class="user-directory-cell">
+        <article class="user-card">
+          <div class="user-card-main">
+            <div class="user-card-head">
+              <div>
+                <strong>${escapeHtml(item.fullName || item.account)}</strong>
+                <div class="user-card-account">${escapeHtml(item.account)}</div>
+              </div>
+              <span class="status-chip-light ${escapeHtml(item.status || "")}">${escapeHtml(formatUserStatus(item.status))}</span>
+            </div>
             <div class="user-role-badges">
               ${(item.roles || []).map((role) => `
                 <span class="role-chip">${escapeHtml(ROLE_NAME_MAP[role] || role)}</span>
               `).join("")}
             </div>
+            <div class="user-card-info">
+              <div class="user-card-info-item">
+                <span class="user-card-info-label">邮箱</span>
+                <span class="user-card-info-value">${escapeHtml(item.email || "-")}</span>
+              </div>
+              <div class="user-card-info-item">
+                <span class="user-card-info-label">手机号</span>
+                <span class="user-card-info-value">${escapeHtml(item.mobile || "-")}</span>
+              </div>
+              <div class="user-card-info-item user-card-info-item-wide">
+                <span class="user-card-info-label">说明</span>
+                <span class="user-card-info-value">${escapeHtml(getUserBusinessHint(item))}</span>
+              </div>
+            </div>
           </div>
-          <div class="user-directory-cell">
-            <span class="status-chip-light ${escapeHtml(item.status || "")}">${escapeHtml(formatUserStatus(item.status))}</span>
-          </div>
-          <div class="user-directory-cell">
-            <div class="user-directory-subline">邮箱：${escapeHtml(item.email || "-")}</div>
-            <div class="user-directory-subline">手机号：${escapeHtml(item.mobile || "-")}</div>
-          </div>
-          <div class="user-directory-cell">
-            <div class="user-directory-subline">${escapeHtml(getUserBusinessHint(item))}</div>
-          </div>
-          <div class="user-directory-cell">
+          <div class="user-card-side">
+            <div class="user-card-meta">ID：${escapeHtml(item.id)}</div>
             <div class="user-directory-actions">
               <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
               <button class="ghost-button" data-reset-user-id="${escapeHtml(item.id)}">重置密码</button>
               <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
             </div>
           </div>
-        </div>
+        </article>
       `).join("")}
     </div>
   `;

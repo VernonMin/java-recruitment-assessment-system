@@ -290,11 +290,6 @@ select {
   .management-search-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .user-directory-header,
-  .user-directory-row {
-    grid-template-columns: minmax(220px, 1.2fr) minmax(140px, 0.7fr) minmax(120px, 0.55fr) minmax(180px, 0.9fr) minmax(180px, 0.9fr) minmax(220px, 0.95fr);
-  }
 }
 
 .sidebar {
@@ -464,91 +459,68 @@ select {
 
 .management-panel {
   display: grid;
-  gap: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 247, 240, 0.92)),
-    radial-gradient(circle at top right, rgba(20, 83, 45, 0.05), transparent 18rem);
-}
-
-.management-hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 16px;
-}
-
-.management-kicker {
-  margin: 0 0 8px;
-  color: #8b6c47;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.management-hero h2 {
-  margin: 0 0 6px;
-  font-size: 28px;
-  letter-spacing: -0.02em;
-}
-
-.management-desc {
-  margin: 0;
-  max-width: 620px;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.65;
+  background:
+    radial-gradient(circle at top left, rgba(255, 219, 173, 0.28), transparent 18rem),
+    radial-gradient(circle at bottom right, rgba(20, 83, 45, 0.08), transparent 24rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(249, 246, 238, 0.9));
+  border-color: rgba(223, 213, 194, 0.9);
 }
 
 .management-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.9fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.82fr);
+  gap: 12px;
   align-items: stretch;
 }
 
 .management-search-card,
 .management-action-card,
 .management-list-card {
-  background: rgba(255, 255, 255, 0.88);
-  border-color: rgba(214, 204, 185, 0.82);
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(224, 214, 197, 0.88);
+  box-shadow: 0 18px 44px rgba(60, 44, 26, 0.07);
+  backdrop-filter: blur(14px);
 }
 
 .management-card-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .management-card-head h3 {
-  margin: 0 0 4px;
-  font-size: 17px;
+  margin: 0 0 3px;
+  font-size: 15px;
+  letter-spacing: -0.01em;
 }
 
 .management-search-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .management-search-footer {
-  margin-top: 12px;
+  margin-top: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .management-action-card {
   display: grid;
   align-content: space-between;
+  gap: 12px;
 }
 
 .management-action-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .management-summary-strip {
@@ -556,10 +528,11 @@ select {
 }
 
 .management-summary-strip .meta-item {
-  background:
-    linear-gradient(180deg, rgba(248, 241, 223, 0.92), rgba(255, 255, 255, 0.86));
-  min-height: 84px;
-  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(255, 248, 232, 0.88), rgba(255, 255, 255, 0.82));
+  border: 1px solid rgba(228, 217, 196, 0.85);
+  min-height: 74px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 30px rgba(79, 58, 34, 0.05);
 }
 
 .management-list-card {
@@ -569,64 +542,59 @@ select {
 
 .management-list-card .management-card-head {
   margin: 0;
-  padding: 18px 18px 0;
+  padding: 16px 16px 0;
 }
 
-.user-directory {
+.user-cards {
   display: grid;
-}
-
-.user-directory-header,
-.user-directory-row {
-  display: grid;
-  grid-template-columns: minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(130px, 0.6fr) minmax(220px, 1fr) minmax(220px, 0.9fr) minmax(260px, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  align-items: center;
-  padding: 14px 18px;
+  padding: 0 16px 16px;
 }
 
-.user-directory-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: rgba(244, 237, 223, 0.96);
-  border-top: 1px solid rgba(214, 204, 185, 0.82);
-  border-bottom: 1px solid rgba(214, 204, 185, 0.82);
-  color: #665a4d;
-  font-size: 12px;
-  font-weight: 600;
+.user-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 188px;
+  gap: 12px;
+  padding: 15px;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(250, 247, 240, 0.92));
+  border: 1px solid rgba(228, 218, 199, 0.92);
+  box-shadow: 0 16px 36px rgba(75, 57, 35, 0.07);
 }
 
-.user-directory-row {
-  background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid rgba(214, 204, 185, 0.72);
-}
-
-.user-directory-row:hover {
-  background: rgba(255, 251, 242, 0.98);
-}
-
-.user-directory-cell {
+.user-card-main,
+.user-card-side {
   min-width: 0;
 }
 
-.user-directory-cell strong {
+.user-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.user-card-head strong {
   display: block;
-  font-size: 14px;
+  font-size: 17px;
+  line-height: 1.2;
   margin-bottom: 4px;
 }
 
-.user-directory-subline,
-.user-directory-meta {
+.user-card-account,
+.user-card-meta {
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .user-role-badges {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  margin-top: 10px;
 }
 
 .role-chip,
@@ -634,8 +602,8 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
-  padding: 0 10px;
+  min-height: 24px;
+  padding: 0 9px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
@@ -666,39 +634,81 @@ select {
   color: #b45309;
 }
 
+.user-card-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.user-card-info-item {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(252, 248, 239, 0.92);
+  border: 1px solid rgba(233, 224, 207, 0.85);
+}
+
+.user-card-info-item-wide {
+  grid-column: 1 / -1;
+}
+
+.user-card-info-label {
+  color: #8a7761;
+  font-size: 11px;
+}
+
+.user-card-info-value {
+  color: #34291f;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.user-card-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+}
+
 .user-directory-empty {
-  padding: 22px 18px;
+  padding: 18px 16px;
 }
 
 .user-directory-actions {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
   gap: 8px;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .user-directory-actions .ghost-button,
 .user-directory-actions .danger-button {
-  min-width: 72px;
+  width: 100%;
+  min-width: 0;
 }
 
 .management-panel .panel-subsection {
-  padding: 16px;
-  border-radius: 18px;
+  padding: 15px;
+  border-radius: 22px;
 }
 
 .management-panel input,
 .management-panel select {
-  min-height: 42px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-size: 14px;
+  min-height: 40px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  border-color: rgba(212, 201, 183, 0.92);
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .management-panel label span,
 .management-panel .field-label,
 .management-panel .hint {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .management-panel .topbar-actions .ghost-button,
@@ -708,24 +718,24 @@ select {
 .management-panel .management-action-grid .ghost-button,
 .management-panel .user-directory-actions .ghost-button,
 .management-panel .user-directory-actions .danger-button {
-  min-height: 40px;
-  padding: 9px 14px;
-  border-radius: 12px;
-  font-size: 14px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-size: 13px;
 }
 
 .management-panel .topbar-actions .ghost-button {
-  min-height: 38px;
-  padding: 8px 14px;
+  min-height: 34px;
+  padding: 7px 12px;
 }
 
 .management-panel .meta-label {
-  font-size: 12px;
-  margin-bottom: 4px;
+  font-size: 11px;
+  margin-bottom: 3px;
 }
 
 .management-panel .meta-item strong {
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1.05;
 }
 
@@ -1480,10 +1490,6 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .management-hero {
-    flex-direction: column;
-  }
-
   .management-search-grid {
     grid-template-columns: 1fr;
   }
@@ -1496,39 +1502,26 @@ select {
     grid-template-columns: 1fr 1fr;
   }
 
-  .management-hero h2 {
-    font-size: 24px;
-  }
-
   .management-panel .meta-item strong {
     font-size: 22px;
   }
 
-  .user-directory {
-    gap: 12px;
+  .user-cards {
+    grid-template-columns: 1fr;
     padding: 0 12px 12px;
   }
 
-  .user-directory-header {
-    display: none;
-  }
-
-  .user-directory-row {
+  .user-card {
     grid-template-columns: 1fr;
-    gap: 14px;
-    padding: 18px;
-    border: 1px solid rgba(214, 204, 185, 0.72);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.96);
+    padding: 14px;
   }
 
-  .user-directory-cell {
-    display: grid;
-    gap: 6px;
+  .user-card-side {
+    align-items: stretch;
   }
 
-  .user-directory-actions {
-    justify-content: flex-start;
+  .user-card-info {
+    grid-template-columns: 1fr;
   }
 }
 
