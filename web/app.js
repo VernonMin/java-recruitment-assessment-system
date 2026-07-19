@@ -72,6 +72,7 @@ const appShell = document.getElementById("appShell");
 const modalOverlay = document.getElementById("modalOverlay");
 const loginPasswordInput = document.getElementById("loginPasswordInput");
 const togglePasswordButton = document.getElementById("togglePasswordButton");
+let feedbackTimer = null;
 
 document.querySelectorAll(".menu-item").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -1554,6 +1555,15 @@ function showFeedback(message, isError = false) {
   feedback.textContent = message;
   feedback.classList.remove("hidden");
   feedback.classList.toggle("error", isError);
+  if (feedbackTimer) {
+    clearTimeout(feedbackTimer);
+  }
+  if (!isError) {
+    feedbackTimer = window.setTimeout(() => {
+      feedback.classList.add("hidden");
+      feedbackTimer = null;
+    }, 2400);
+  }
 }
 
 function formatRoleNames(roles) {
