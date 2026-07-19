@@ -119,8 +119,6 @@ document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQ
 document.getElementById("updateQuestionId").addEventListener("change", syncSelectedQuestionToForm);
 document.getElementById("openCreateUserModalButton").addEventListener("click", () => openUserModal("create"));
 document.getElementById("openBatchCreateUsersModalButton").addEventListener("click", () => openUserModal("batchCreate"));
-document.getElementById("openUpdateUserModalButton").addEventListener("click", () => openUserModal("update"));
-document.getElementById("openResetPasswordModalButton").addEventListener("click", () => openUserModal("resetPassword"));
 document.getElementById("openAssignCampaignModalButton").addEventListener("click", () => openUserModal("assignCampaign"));
 document.getElementById("openBatchAssignCampaignModalButton").addEventListener("click", () => openUserModal("batchAssignCampaign"));
 document.getElementById("openCreateCampaignModalButton").addEventListener("click", () => openCampaignModal("create"));
