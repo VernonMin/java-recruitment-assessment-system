@@ -165,6 +165,7 @@ renderCandidateWorkspace();
 renderEnterpriseWorkspace();
 renderQuestionBankList();
 renderAssessmentManagement();
+renderAssessment();
 renderUserManagement();
 renderCampaignManagement();
 bindPasswordToggles();
@@ -392,6 +393,10 @@ async function loadCampaigns(options = {}) {
 
   state.campaigns = result.data.items;
   renderCandidateWorkspace();
+  syncCandidateCampaignSelector();
+  if (hasAnyRole(["candidate"]) && state.campaigns.length === 1 && !state.currentCampaign) {
+    await loadCampaignQuestions({ silent: true });
+  }
   renderSubmissionList();
   return true;
 }
@@ -1591,10 +1596,10 @@ async function importPresetQuestions() {
   await loadQuestions({ silent: true });
 }
 
-async function loadCampaignQuestions() {
+async function loadCampaignQuestions(options = {}) {
   const campaignId = document.getElementById("campaignIdInput").value.trim();
   if (!campaignId) {
-    return showFeedback("请先输入笔试任务 ID。", true);
+    return showFeedback("请先选择笔试任务。", true);
   }
 
   const result = await api(`/api/campaigns/${campaignId}/questions`);
@@ -1605,11 +1610,25 @@ async function loadCampaignQuestions() {
   state.currentCampaign = result.data.campaign;
   state.currentQuestions = result.data.questions;
   renderAssessment();
-  showFeedback(`已加载 ${state.currentQuestions.length} 道题目。`);
+  if (!options.silent) {
+    showFeedback(`已加载 ${state.currentQuestions.length} 道题目。`);
+  }
 }
 
 function renderAssessment() {
   const meta = document.getElementById("assessmentMeta");
+  const form = document.getElementById("assessmentForm");
+  if (!state.currentCampaign || state.currentQuestions.length === 0) {
+    meta.innerHTML = "";
+    form.innerHTML = `
+      <article class="question-card">
+        <h3>请选择你的笔试任务</h3>
+        <p>请从上方下拉框中选择已分配给你的笔试任务，再点击“进入答题”。</p>
+      </article>
+    `;
+    return;
+  }
+
   meta.innerHTML = renderMetaItems([
     ["笔试任务", state.currentCampaign.title],
     ["试卷模板", state.currentCampaign.assessmentTitle],
@@ -1617,7 +1636,6 @@ function renderAssessment() {
     ["摄像头", state.currentCampaign.requireCamera ? "要求" : "不要求"]
   ]);
 
-  const form = document.getElementById("assessmentForm");
   form.innerHTML = [
     ...state.currentQuestions.map((question) => `
       <article class="question-card">
@@ -1629,6 +1647,31 @@ function renderAssessment() {
     `),
     `<button type="submit" class="primary-button">提交本次测评</button>`
   ].join("");
+}
+
+function syncCandidateCampaignSelector() {
+  const select = document.getElementById("campaignIdInput");
+  if (!select) {
+    return;
+  }
+
+  if (state.campaigns.length === 0) {
+    select.innerHTML = `<option value="">当前没有可作答的笔试任务</option>`;
+    state.currentCampaign = null;
+    state.currentQuestions = [];
+    renderAssessment();
+    return;
+  }
+
+  select.innerHTML = [
+    `<option value="">请选择笔试任务</option>`,
+    ...state.campaigns.map((item) => `
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}（${escapeHtml(formatInvitationStatus(item.invitation_status || "-"))}）</option>
+    `)
+  ].join("");
+
+  const nextValue = state.currentCampaign?.id || (state.campaigns.length === 1 ? state.campaigns[0].id : "");
+  select.value = nextValue;
 }
 
 async function submitAssessment(event) {
