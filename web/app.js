@@ -44,6 +44,7 @@ const state = {
   submissionFilters: {
     q: "",
     status: "",
+    reviewStatus: "",
     campaignId: ""
   },
   paginations: {
@@ -148,6 +149,7 @@ document.getElementById("clearQuestionSearchButton").addEventListener("click", c
 document.getElementById("submissionSearchForm").addEventListener("submit", searchSubmissions);
 document.getElementById("clearSubmissionSearchButton").addEventListener("click", clearSubmissionSearch);
 document.getElementById("reloadSubmissionListButton").addEventListener("click", () => loadSubmissionList());
+document.getElementById("openReviewFromSubmissionButton").addEventListener("click", openReviewFromSubmissionModal);
 document.getElementById("updateQuestionForm").addEventListener("submit", updateQuestion);
 document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQuestion);
 document.getElementById("updateQuestionId").addEventListener("change", syncSelectedQuestionToForm);
@@ -336,7 +338,7 @@ function resetSessionState() {
   };
   state.assessmentFilters = { q: "", status: "" };
   state.campaignFilters = { q: "", status: "" };
-  state.submissionFilters = { q: "", status: "", campaignId: "" };
+  state.submissionFilters = { q: "", status: "", reviewStatus: "", campaignId: "" };
   state.paginations = {
     users: { page: 1, pageSize: 10, total: 0 },
     questions: { page: 1, pageSize: 10, total: 0 },
@@ -358,9 +360,9 @@ function resetSessionState() {
 }
 
 function clearDynamicPanels() {
-  document.getElementById("submissionMeta").innerHTML = "";
-  document.getElementById("submissionProctoring").innerHTML = "";
-  document.getElementById("submissionAnswers").innerHTML = "";
+  document.getElementById("submissionModalMeta").innerHTML = "";
+  document.getElementById("submissionModalProctoring").innerHTML = "";
+  document.getElementById("submissionModalAnswers").innerHTML = "";
   document.getElementById("submissionList").innerHTML = "";
   document.getElementById("evaluationForm").innerHTML = "";
   document.getElementById("assessmentMeta").innerHTML = "";
@@ -527,6 +529,9 @@ async function loadSubmissionList(options = {}) {
   }
   if (state.submissionFilters.status) {
     search.set("status", state.submissionFilters.status);
+  }
+  if (state.submissionFilters.reviewStatus) {
+    search.set("reviewStatus", state.submissionFilters.reviewStatus);
   }
   if (state.submissionFilters.campaignId) {
     search.set("campaignId", state.submissionFilters.campaignId);
@@ -1576,6 +1581,7 @@ async function searchSubmissions(event) {
   state.submissionFilters = {
     q: String(formData.get("q") || "").trim(),
     status: String(formData.get("status") || "").trim(),
+    reviewStatus: String(formData.get("reviewStatus") || "").trim(),
     campaignId: String(formData.get("campaignId") || "").trim()
   };
   state.paginations.submissions.page = 1;
@@ -1584,7 +1590,7 @@ async function searchSubmissions(event) {
 
 async function clearSubmissionSearch() {
   document.getElementById("submissionSearchForm").reset();
-  state.submissionFilters = { q: "", status: "", campaignId: "" };
+  state.submissionFilters = { q: "", status: "", reviewStatus: "", campaignId: "" };
   state.paginations.submissions.page = 1;
   await loadSubmissionList();
 }
@@ -2296,10 +2302,11 @@ async function loadSubmissionDetail(submissionId = "") {
 
   state.currentSubmission = result.data;
   state.currentSubmissionProctoring = null;
-  renderSubmissionMeta(result.data.submission);
-  renderSubmissionAnswers(result.data.answers);
+  renderSubmissionMeta(result.data.submission, "submissionModalMeta");
+  renderSubmissionAnswers(result.data.answers, "submissionModalAnswers");
   renderEvaluationForm(result.data.answers, result.data.submission);
   await loadSubmissionProctoring(targetSubmissionId);
+  openSubmissionDetailModal();
   renderCandidateWorkspace();
   showFeedback("答卷详情加载成功。");
 }
@@ -2307,20 +2314,20 @@ async function loadSubmissionDetail(submissionId = "") {
 async function loadSubmissionProctoring(submissionId) {
   const result = await api(`/api/submissions/${submissionId}/proctoring`);
   if (!result.ok) {
-    document.getElementById("submissionProctoring").innerHTML = `
+    document.getElementById("submissionModalProctoring").innerHTML = `
       <article class="question-card"><p>${escapeHtml(result.message)}</p></article>
     `;
     return;
   }
   state.currentSubmissionProctoring = result.data;
   if (state.currentSubmission?.submission) {
-    renderSubmissionMeta(state.currentSubmission.submission);
+    renderSubmissionMeta(state.currentSubmission.submission, "submissionModalMeta");
   }
-  renderSubmissionProctoring();
+  renderSubmissionProctoring("submissionModalProctoring");
 }
 
-function renderSubmissionProctoring() {
-  const container = document.getElementById("submissionProctoring");
+function renderSubmissionProctoring(containerId = "submissionModalProctoring") {
+  const container = document.getElementById(containerId);
   const proctoring = state.currentSubmissionProctoring;
   if (!proctoring) {
     container.innerHTML = "";
@@ -2412,6 +2419,7 @@ function renderSubmissionList() {
       <p>提交 ID：${escapeHtml(item.id)}</p>
       <p>候选人账号：${escapeHtml(item.candidate_account || "-")}</p>
       <p>状态：${escapeHtml(formatSubmissionStatus(item.status || "-"))}</p>
+      <p>审核状态：${escapeHtml(formatSubmissionReviewStatus(item.review_status || item.status || "-"))}</p>
       <p>提交时间：${escapeHtml(formatDateTime(item.submitted_at || item.created_at))}</p>
       <p>总分：${escapeHtml(String(item.total_score ?? 0))} 分</p>
       <div class="button-row">
@@ -2430,12 +2438,13 @@ function renderSubmissionList() {
   bindPagination("submissions", loadSubmissionList);
 }
 
-function renderSubmissionMeta(submission) {
-  const meta = document.getElementById("submissionMeta");
+function renderSubmissionMeta(submission, targetId = "submissionModalMeta") {
+  const meta = document.getElementById(targetId);
   meta.innerHTML = renderMetaItems([
     ["提交 ID", submission.id],
     ["笔试任务", submission.campaign_title || submission.campaignId],
     ["状态", formatSubmissionStatus(submission.status)],
+    ["审核状态", formatSubmissionReviewStatus(submission.review_status || submission.status)],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
     ["总分", `${submission.total_score ?? submission.totalScore ?? 0} 分`],
@@ -2443,8 +2452,8 @@ function renderSubmissionMeta(submission) {
   ]);
 }
 
-function renderSubmissionAnswers(answers) {
-  const container = document.getElementById("submissionAnswers");
+function renderSubmissionAnswers(answers, targetId = "submissionModalAnswers") {
+  const container = document.getElementById(targetId);
   container.innerHTML = answers.map((item) => `
     <article class="question-card">
       <h3>${escapeHtml(item.stem)}</h3>
@@ -2563,6 +2572,23 @@ async function submitEvaluation(event) {
   showFeedback("人工/AI 评分复核已提交。");
   switchView("submission");
   await loadSubmissionDetail(submissionId);
+}
+
+function openSubmissionDetailModal() {
+  closeModalSections();
+  document.getElementById("submissionDetailModal").classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+  const reviewButton = document.getElementById("openReviewFromSubmissionButton");
+  reviewButton.classList.toggle("hidden", !hasAnyRole(["interviewer", "recruiter", "admin"]));
+}
+
+function openReviewFromSubmissionModal() {
+  if (!state.currentSubmission?.submission?.id) {
+    showFeedback("请先打开一份答卷详情。", true);
+    return;
+  }
+  closeModal();
+  switchView("review");
 }
 
 async function requestAiSuggestions(submissionId) {
@@ -2824,6 +2850,17 @@ function formatSubmissionStatus(status) {
     grading: "评阅中",
     graded: "已评分",
     in_progress: "进行中"
+  }[status] || status;
+}
+
+function formatSubmissionReviewStatus(status) {
+  return {
+    unsubmitted: "未提交",
+    pending_review: "待审核",
+    reviewed: "已审核",
+    in_progress: "未提交",
+    grading: "待审核",
+    graded: "已审核"
   }[status] || status;
 }
 

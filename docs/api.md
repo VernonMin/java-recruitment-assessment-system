@@ -249,8 +249,9 @@
 
 - 获取提交记录列表
 - 求职者只能看到自己的提交记录
-- 面试官、招聘专员、管理员可按 `q`、`status`、`campaignId` 检索
+- 面试官、招聘专员、管理员可按 `q`、`status`、`reviewStatus`、`campaignId` 检索
 - 支持按 `page`、`pageSize` 分页查询
+- 默认按提交时间倒序返回，未提交记录排在已提交记录后面
 
 ### `POST /api/questions`
 

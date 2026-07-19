@@ -349,13 +349,22 @@
                     <option value="graded">已评分</option>
                   </select>
                 </label>
-                <p class="hint">进行中：候选人正在作答；评阅中：已交卷且有主观题待处理；已评分：总成绩已生成。</p>
+                <label>
+                  <span>审核状态</span>
+                  <select name="reviewStatus">
+                    <option value="">全部审核状态</option>
+                    <option value="unsubmitted">未提交</option>
+                    <option value="pending_review">待审核</option>
+                    <option value="reviewed">已审核</option>
+                  </select>
+                </label>
               </div>
               <div class="form-columns">
                 <label>
                   <span>笔试任务</span>
                   <select id="submissionCampaignId" name="campaignId"></select>
                 </label>
+                <p class="hint">提交状态说明：进行中表示候选人正在作答；评阅中表示已交卷但主观题还未完成复核；已评分表示总成绩已生成。审核状态说明：未提交 / 待审核 / 已审核。</p>
                 <div class="button-row align-end">
                   <button type="submit" class="ghost-button">检索提交</button>
                   <button id="clearSubmissionSearchButton" type="button" class="ghost-button">清空条件</button>
@@ -365,14 +374,6 @@
             </form>
             <div id="submissionList" class="question-list question-list-compact"></div>
             <div id="submissionPagination" class="pagination-bar"></div>
-            <div class="divider"></div>
-            <div class="section-caption">
-              <h3>当前答卷</h3>
-              <p class="hint">从上方列表点击“查看详情”后，这里展示完整答卷、风险记录与作答内容。</p>
-            </div>
-            <div id="submissionMeta" class="meta-strip"></div>
-            <div id="submissionProctoring" class="question-list question-list-compact"></div>
-            <div id="submissionAnswers" class="question-list"></div>
           </div>
         </section>
 
@@ -934,6 +935,22 @@
 
             <button id="assessmentTemplateSubmitButton" type="submit" class="primary-button">保存试卷模板</button>
           </form>
+        </section>
+
+        <section id="submissionDetailModal" class="modal-card hidden submission-detail-modal">
+          <div class="modal-header">
+            <div>
+              <h3>答卷详情</h3>
+              <p class="hint">展示当前提交记录的答卷信息、风险留痕与逐题作答内容。若需要处理主观题，可直接进入人工/AI 评分复核。</p>
+            </div>
+            <div class="button-row modal-header-actions">
+              <button id="openReviewFromSubmissionButton" type="button" class="primary-button hidden">进入人工/AI评分复核</button>
+              <button type="button" class="ghost-button" data-close-modal>关闭</button>
+            </div>
+          </div>
+          <div id="submissionModalMeta" class="meta-strip"></div>
+          <div id="submissionModalProctoring" class="question-list question-list-compact"></div>
+          <div id="submissionModalAnswers" class="question-list"></div>
         </section>
       </div>
     </div>

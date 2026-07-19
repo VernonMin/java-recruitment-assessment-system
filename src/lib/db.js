@@ -1171,6 +1171,17 @@ export async function findSubmissions(env, filters = {}, pagination = null) {
     bindings.push(filters.status.trim());
   }
 
+  if (typeof filters.reviewStatus === "string" && filters.reviewStatus.trim()) {
+    const reviewStatus = filters.reviewStatus.trim();
+    if (reviewStatus === "unsubmitted") {
+      clauses.push("s.status = 'in_progress'");
+    } else if (reviewStatus === "pending_review") {
+      clauses.push("s.status = 'grading'");
+    } else if (reviewStatus === "reviewed") {
+      clauses.push("s.status = 'graded'");
+    }
+  }
+
   if (typeof filters.campaignId === "string" && filters.campaignId.trim()) {
     clauses.push("s.campaign_id = ?");
     bindings.push(filters.campaignId.trim());
@@ -1189,6 +1200,12 @@ export async function findSubmissions(env, filters = {}, pagination = null) {
       s.user_id,
       s.submit_no,
       s.status,
+      case
+        when s.status = 'in_progress' then 'unsubmitted'
+        when s.status = 'grading' then 'pending_review'
+        when s.status = 'graded' then 'reviewed'
+        else s.status
+      end as review_status,
       s.started_at,
       s.submitted_at,
       s.objective_score,
@@ -1206,7 +1223,11 @@ export async function findSubmissions(env, filters = {}, pagination = null) {
     inner join recruitment_campaigns rc on rc.id = s.campaign_id
     inner join users u on u.id = s.user_id
     ${whereSql}
-    order by coalesce(s.submitted_at, s.created_at) desc, s.id desc`;
+    order by
+      case when s.submitted_at is null then 1 else 0 end asc,
+      s.submitted_at desc,
+      s.created_at desc,
+      s.id desc`;
 
   if (!pager) {
     return env.DB.prepare(listSql).bind(...bindings).all();

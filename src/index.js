@@ -713,6 +713,7 @@ async function handleGetSubmissions(request, env, sessionUser, corsHeaders) {
   const result = await findSubmissions(env, {
     q: url.searchParams.get("q") || "",
     status: url.searchParams.get("status") || "",
+    reviewStatus: url.searchParams.get("reviewStatus") || "",
     campaignId: url.searchParams.get("campaignId") || "",
     userId: canReview ? "" : sessionUser.sub
   }, {
