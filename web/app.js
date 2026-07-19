@@ -161,9 +161,7 @@ document.getElementById("openAssignCampaignModalButton").addEventListener("click
 document.getElementById("openBatchAssignCampaignModalButton").addEventListener("click", () => openUserModal("batchAssignCampaign"));
 document.getElementById("openCreateAssessmentModalButton").addEventListener("click", () => openAssessmentTemplateModal("create"));
 document.getElementById("openCreateCampaignModalButton").addEventListener("click", () => openCampaignModal("create"));
-document.getElementById("openUpdateCampaignModalButton").addEventListener("click", () => openCampaignModal("update"));
 document.getElementById("openCreateQuestionModalButton").addEventListener("click", () => openQuestionModal("create"));
-document.getElementById("openUpdateQuestionModalButton").addEventListener("click", () => openQuestionModal("update"));
 document.querySelectorAll("[data-close-modal]").forEach((button) => {
   button.addEventListener("click", closeModal);
 });
@@ -2990,7 +2988,7 @@ function openUserModal(mode, userId = "") {
   }
 
   if (mode === "update") {
-    toggleModalSelectWrap("updateUserSelectWrap", "updateUserId", userId);
+    setSelectValueIfPresent("updateUserId", userId);
     syncSelectedUserToForm();
     if (userId) {
       desc.textContent = `正在编辑：${getUserDisplayName(userId)}。`;
@@ -2998,14 +2996,14 @@ function openUserModal(mode, userId = "") {
   }
 
   if (mode === "resetPassword") {
-    toggleModalSelectWrap("resetPasswordUserSelectWrap", "resetPasswordUserId", userId);
+    setSelectValueIfPresent("resetPasswordUserId", userId);
     if (userId) {
       desc.textContent = `正在为 ${getUserDisplayName(userId)} 重置登录密码。`;
     }
   }
 
   if (mode === "delete") {
-    toggleModalSelectWrap("deleteUserSelectWrap", "deleteUserId", userId);
+    setSelectValueIfPresent("deleteUserId", userId);
     if (userId) {
       desc.textContent = `正在处理：${getUserDisplayName(userId)}。如果该账号已有历史记录，将自动改为禁用并保留数据。`;
     }
@@ -3153,12 +3151,28 @@ function toggleModalSelectWrap(wrapId, selectId, selectedId = "") {
   wrap.classList.remove("hidden");
 }
 
+function setSelectValueIfPresent(selectId, selectedId = "") {
+  const select = document.getElementById(selectId);
+  if (!select || !selectedId) {
+    return;
+  }
+  select.value = selectedId;
+}
+
 function getUserDisplayName(userId) {
   const user = state.users.find((item) => item.id === userId);
   if (!user) {
     return "当前用户";
   }
   return `${user.fullName || user.account}（${user.account}）`;
+}
+
+function getQuestionDisplayName(questionId) {
+  const question = state.questions.find((item) => item.id === questionId);
+  if (!question) {
+    return "当前题目";
+  }
+  return question.stem || "当前题目";
 }
 
 function openQuestionModal(mode, questionId = "") {
@@ -3178,27 +3192,19 @@ function openQuestionModal(mode, questionId = "") {
   document.getElementById(sectionId).classList.remove("hidden");
 
   if (mode === "update") {
-    const selectWrap = document.getElementById("updateQuestionSelectWrap");
-    const select = document.getElementById("updateQuestionId");
-    if (questionId) {
-      select.value = questionId;
-      selectWrap.classList.add("hidden");
-    } else {
-      selectWrap.classList.remove("hidden");
-    }
+    setSelectValueIfPresent("updateQuestionId", questionId);
     syncSelectedQuestionToForm();
+    if (questionId) {
+      desc.textContent = `正在编辑：${getQuestionDisplayName(questionId)}。`;
+    }
   }
 
   if (mode === "delete") {
-    const selectWrap = document.getElementById("deleteQuestionSelectWrap");
-    const select = document.getElementById("deleteQuestionId");
-    if (questionId) {
-      select.value = questionId;
-      selectWrap.classList.add("hidden");
-    } else {
-      selectWrap.classList.remove("hidden");
-    }
+    setSelectValueIfPresent("deleteQuestionId", questionId);
     syncDeleteQuestionToForm();
+    if (questionId) {
+      desc.textContent = `正在删除：${getQuestionDisplayName(questionId)}。`;
+    }
   }
 }
 
@@ -3244,7 +3250,7 @@ async function openAssessmentTemplateModal(mode, assessmentId = "") {
   title.textContent = "修改试卷模板";
   desc.textContent = "修改试卷模板信息、题目结构和每题分值。";
   submitButton.textContent = "保存模板修改";
-  toggleModalSelectWrap("assessmentTemplateSelectWrap", "assessmentTemplateSelect", assessmentId);
+  setSelectValueIfPresent("assessmentTemplateSelect", assessmentId);
   syncAssessmentTemplateSelect();
 
   const nextId = assessmentId || state.assessmentOptions[0]?.id || "";
@@ -3275,7 +3281,7 @@ function openCampaignModal(mode, campaignId = "") {
   document.getElementById(sectionId).classList.remove("hidden");
 
   if (mode === "update") {
-    toggleModalSelectWrap("updateCampaignSelectWrap", "updateCampaignId", campaignId);
+    setSelectValueIfPresent("updateCampaignId", campaignId);
     syncSelectedCampaignToForm();
     if (campaignId) {
       desc.textContent = `正在编辑：${getCampaignDisplayName(campaignId)}。`;

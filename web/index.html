@@ -235,7 +235,6 @@
 
             <div class="action-toolbar">
               <button id="openCreateCampaignModalButton" class="primary-button">新增任务</button>
-              <button id="openUpdateCampaignModalButton" class="ghost-button">修改任务</button>
             </div>
 
             <div id="campaignManagementSummary" class="meta-strip"></div>
@@ -291,7 +290,6 @@
             </form>
             <div class="action-toolbar">
               <button id="openCreateQuestionModalButton" class="primary-button">创建题目</button>
-              <button id="openUpdateQuestionModalButton" class="ghost-button">修改题目</button>
             </div>
             <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
@@ -491,7 +489,7 @@
           </div>
           <div id="userModalUpdate" class="modal-section hidden">
             <form id="updateUserForm" class="stack-form">
-              <label id="updateUserSelectWrap">
+              <label id="updateUserSelectWrap" class="hidden">
                 <span>选择用户</span>
                 <select id="updateUserId" name="userId"></select>
               </label>
@@ -534,7 +532,7 @@
           </div>
           <div id="userModalResetPassword" class="modal-section hidden">
             <form id="resetPasswordForm" class="stack-form">
-              <label id="resetPasswordUserSelectWrap">
+              <label id="resetPasswordUserSelectWrap" class="hidden">
                 <span>选择用户</span>
                 <select id="resetPasswordUserId" name="userId"></select>
               </label>
@@ -554,7 +552,7 @@
           </div>
           <div id="userModalDelete" class="modal-section hidden">
             <form id="deleteUserForm" class="stack-form danger-panel">
-              <label id="deleteUserSelectWrap">
+              <label id="deleteUserSelectWrap" class="hidden">
                 <span>选择用户</span>
                 <select id="deleteUserId" name="userId"></select>
               </label>
@@ -690,7 +688,7 @@
           </div>
           <div id="questionModalUpdate" class="modal-section hidden">
             <form id="updateQuestionForm" class="stack-form">
-              <label id="updateQuestionSelectWrap">
+              <label id="updateQuestionSelectWrap" class="hidden">
                 <span>选择题目</span>
                 <select id="updateQuestionId" name="questionId"></select>
               </label>
@@ -746,7 +744,7 @@
           </div>
           <div id="questionModalDelete" class="modal-section hidden">
             <form id="deleteQuestionForm" class="stack-form danger-panel">
-              <label id="deleteQuestionSelectWrap">
+              <label id="deleteQuestionSelectWrap" class="hidden">
                 <span>选择题目</span>
                 <select id="deleteQuestionId" name="questionId"></select>
               </label>
@@ -826,7 +824,7 @@
           </div>
           <div id="campaignModalUpdate" class="modal-section hidden">
             <form id="updateCampaignForm" class="stack-form">
-              <label id="updateCampaignSelectWrap">
+              <label id="updateCampaignSelectWrap" class="hidden">
                 <span>选择任务</span>
                 <select id="updateCampaignId" name="campaignId"></select>
               </label>

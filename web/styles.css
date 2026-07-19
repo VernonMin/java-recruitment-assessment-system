@@ -603,8 +603,8 @@ select {
 }
 
 .user-card-top {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
   gap: 14px;
 }
@@ -654,10 +654,12 @@ select {
 }
 
 .user-card-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .user-role-badges {
@@ -779,9 +781,9 @@ select {
 .management-panel .user-card-actions .ghost-button,
 .management-panel .user-card-actions .danger-button {
   min-height: 38px;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: 14px;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .management-panel .management-action-grid .primary-button {
@@ -999,6 +1001,20 @@ select {
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 14px;
+}
+
+.question-list-compact .button-row,
+.question-list .button-row {
+  flex-wrap: nowrap;
+}
+
+.question-list-compact .button-row .ghost-button,
+.question-list-compact .button-row .danger-button,
+.question-list .button-row .ghost-button,
+.question-list .button-row .danger-button {
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .button-row.align-end {
