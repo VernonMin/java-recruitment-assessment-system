@@ -40,8 +40,8 @@ select {
 .auth-shell {
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: 32px;
+  place-items: start center;
+  padding: 72px 32px 32px;
 }
 
 .auth-layout {
@@ -65,6 +65,18 @@ select {
   display: grid;
   gap: 16px;
   margin-bottom: 22px;
+}
+
+.auth-heading-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.auth-title {
+  margin: 0 0 6px;
+  font-size: 36px;
+  line-height: 1.1;
 }
 
 .password-field {
