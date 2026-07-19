@@ -415,6 +415,7 @@
                 <label>
                   <span>账号</span>
                   <input name="account" placeholder="例如 candidate_zhangsan" />
+                  <p class="hint">账号仅支持 4-50 位英文、数字、下划线 `_`、`@`、`.`、`-`，不支持中文和空格。</p>
                 </label>
                 <label>
                   <span>角色</span>
@@ -462,6 +463,7 @@
                 <span>导入格式</span>
                 <textarea name="items" placeholder="每行一个账号：account|fullName|password|role|email|mobile"></textarea>
               </label>
+              <p class="hint">账号规则：仅支持 4-50 位英文、数字、下划线 `_`、`@`、`.`、`-`，不支持中文和空格。</p>
               <p class="hint">角色支持：candidate / interviewer / recruiter / admin</p>
               <button type="submit" class="primary-button">批量创建</button>
             </form>
