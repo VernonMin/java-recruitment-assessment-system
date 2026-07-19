@@ -11,6 +11,7 @@ const state = {
   assessmentOptions: [],
   assessmentQuestionPool: [],
   answerSession: null,
+  assessmentQuestionIndex: 0,
   currentCampaign: null,
   currentQuestions: [],
   currentSubmission: null,
@@ -323,6 +324,7 @@ function resetSessionState() {
   state.assessmentOptions = [];
   state.assessmentQuestionPool = [];
   state.answerSession = null;
+  state.assessmentQuestionIndex = 0;
   state.currentCampaign = null;
   state.currentQuestions = [];
   state.currentSubmission = null;
@@ -1624,6 +1626,7 @@ async function loadCampaignQuestions(options = {}) {
 
   state.currentCampaign = result.data.campaign;
   state.currentQuestions = result.data.questions;
+  state.assessmentQuestionIndex = 0;
   const sessionReady = await ensureAnswerSession();
   if (!sessionReady) {
     return;
@@ -1707,20 +1710,41 @@ function renderAssessment() {
     ["全屏", state.currentCampaign.requireFullscreen ? "要求" : "不要求"]
   ]);
 
-  form.innerHTML = [
-    ...state.currentQuestions.map((question) => `
-      <article class="question-card">
-        <h3>${escapeHtml(question.sectionName || "未分组")} · 第 ${escapeHtml(String(question.sortOrder))} 题</h3>
-        <p>${escapeHtml(question.stem)}</p>
-        <p class="score">${escapeHtml(String(question.score))} 分 · ${escapeHtml(formatQuestionType(question.type))}</p>
-        ${renderAnswerInput(question)}
-      </article>
-    `),
-    `<button type="submit" class="primary-button">提交本次测评</button>`
-  ].join("");
+  const questionCount = state.currentQuestions.length;
+  const questionIndex = Math.min(Math.max(state.assessmentQuestionIndex, 0), questionCount - 1);
+  state.assessmentQuestionIndex = questionIndex;
+  const question = state.currentQuestions[questionIndex];
+
+  form.innerHTML = `
+    <article class="question-card">
+      <h3>第 ${escapeHtml(String(questionIndex + 1))} 题</h3>
+      <p>${escapeHtml(question.stem)}</p>
+      <p class="score">${escapeHtml(String(question.score))} 分 · ${escapeHtml(formatQuestionType(question.type))}</p>
+      ${renderAnswerInput(question)}
+      <div class="button-row assessment-question-actions">
+        <button type="button" class="ghost-button" id="assessmentPrevButton" ${questionIndex <= 0 ? "disabled" : ""}>上一题</button>
+        <span class="assessment-question-progress">${escapeHtml(String(questionIndex + 1))} / ${escapeHtml(String(questionCount))}</span>
+        ${questionIndex >= questionCount - 1
+          ? `<button type="submit" class="primary-button">提交本次测评</button>`
+          : `<button type="button" class="ghost-button" id="assessmentNextButton">下一题</button>`}
+      </div>
+    </article>
+  `;
   bindAnswerDraftInputs();
   restoreAnswerDrafts();
+  document.getElementById("assessmentPrevButton")?.addEventListener("click", () => {
+    switchAssessmentQuestion(questionIndex - 1);
+  });
+  document.getElementById("assessmentNextButton")?.addEventListener("click", () => {
+    switchAssessmentQuestion(questionIndex + 1);
+  });
   renderAssessmentRuntimePanel();
+}
+
+function switchAssessmentQuestion(nextIndex) {
+  saveAnswerDrafts();
+  state.assessmentQuestionIndex = Math.min(Math.max(nextIndex, 0), Math.max(state.currentQuestions.length - 1, 0));
+  renderAssessment();
 }
 
 function syncCandidateCampaignSelector() {
@@ -1731,6 +1755,7 @@ function syncCandidateCampaignSelector() {
 
   if (state.campaigns.length === 0) {
     select.innerHTML = `<option value="">当前没有可作答的笔试任务</option>`;
+    state.assessmentQuestionIndex = 0;
     state.currentCampaign = null;
     state.currentQuestions = [];
     renderAssessment();
@@ -2180,6 +2205,7 @@ async function finishAssessment(options = {}) {
   state.currentSubmission = result.data.submission;
   state.currentSubmissionProctoring = null;
   state.answerSession = null;
+  state.assessmentQuestionIndex = 0;
   state.currentCampaign = null;
   state.currentQuestions = [];
   renderAssessment();

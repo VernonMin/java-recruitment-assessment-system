@@ -642,6 +642,17 @@ select {
   align-items: end;
 }
 
+.assessment-question-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.assessment-question-progress {
+  color: var(--muted);
+  font-size: 14px;
+  margin-left: auto;
+}
+
 .checkbox-row {
   display: flex;
   gap: 18px;
