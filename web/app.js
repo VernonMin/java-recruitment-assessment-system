@@ -778,10 +778,10 @@ function renderUserManagement() {
   renderAssignCandidatePicker();
 
   summary.innerHTML = renderMetaItems([
-    ["当前页用户数", state.users.length],
-    ["用户总数", state.paginations.users.total],
-    ["可分配笔试任务数", state.adminCampaigns.length],
-    ["候选人账号数", state.users.filter((item) => item.roles.includes("candidate")).length]
+    ["本页结果", state.users.length],
+    ["账号总量", state.paginations.users.total],
+    ["可分配笔试", state.adminCampaigns.length],
+    ["候选人账号", state.users.filter((item) => item.roles.includes("candidate")).length]
   ]);
 
   if (state.users.length === 0) {
@@ -796,41 +796,48 @@ function renderUserManagement() {
     <div class="user-cards">
       ${state.users.map((item) => `
         <article class="user-card">
-          <div class="user-card-main">
-            <div class="user-card-head">
+          <div class="user-card-top">
+            <div class="user-card-identity">
+              <div class="user-card-avatar">${escapeHtml(getUserAvatarText(item))}</div>
               <div>
-                <strong>${escapeHtml(item.fullName || item.account)}</strong>
+                <div class="user-card-head">
+                  <strong>${escapeHtml(item.fullName || item.account)}</strong>
+                  <span class="status-chip-light ${escapeHtml(item.status || "")}">${escapeHtml(formatUserStatus(item.status))}</span>
+                </div>
                 <div class="user-card-account">${escapeHtml(item.account)}</div>
               </div>
-              <span class="status-chip-light ${escapeHtml(item.status || "")}">${escapeHtml(formatUserStatus(item.status))}</span>
             </div>
-            <div class="user-role-badges">
-              ${(item.roles || []).map((role) => `
-                <span class="role-chip">${escapeHtml(ROLE_NAME_MAP[role] || role)}</span>
-              `).join("")}
-            </div>
-            <div class="user-card-info">
-              <div class="user-card-info-item">
-                <span class="user-card-info-label">邮箱</span>
-                <span class="user-card-info-value">${escapeHtml(item.email || "-")}</span>
-              </div>
-              <div class="user-card-info-item">
-                <span class="user-card-info-label">手机号</span>
-                <span class="user-card-info-value">${escapeHtml(item.mobile || "-")}</span>
-              </div>
-              <div class="user-card-info-item user-card-info-item-wide">
-                <span class="user-card-info-label">说明</span>
-                <span class="user-card-info-value">${escapeHtml(getUserBusinessHint(item))}</span>
-              </div>
-            </div>
-          </div>
-          <div class="user-card-side">
-            <div class="user-card-meta">ID：${escapeHtml(item.id)}</div>
-            <div class="user-directory-actions">
+            <div class="user-card-actions">
               <button class="ghost-button" data-edit-user-id="${escapeHtml(item.id)}">编辑</button>
               <button class="ghost-button" data-reset-user-id="${escapeHtml(item.id)}">重置密码</button>
               <button class="danger-button" data-delete-user-id="${escapeHtml(item.id)}">删除</button>
             </div>
+          </div>
+
+          <div class="user-role-badges">
+            ${(item.roles || []).map((role) => `
+              <span class="role-chip">${escapeHtml(ROLE_NAME_MAP[role] || role)}</span>
+            `).join("")}
+          </div>
+
+          <div class="user-card-info">
+            <div class="user-card-info-item">
+              <span class="user-card-info-label">邮箱</span>
+              <span class="user-card-info-value">${escapeHtml(item.email || "未填写")}</span>
+            </div>
+            <div class="user-card-info-item">
+              <span class="user-card-info-label">手机号</span>
+              <span class="user-card-info-value">${escapeHtml(item.mobile || "未填写")}</span>
+            </div>
+            <div class="user-card-info-item user-card-info-item-wide">
+              <span class="user-card-info-label">账号说明</span>
+              <span class="user-card-info-value">${escapeHtml(getUserBusinessHint(item))}</span>
+            </div>
+          </div>
+
+          <div class="user-card-footer">
+            <span class="user-card-meta">用户 ID：${escapeHtml(item.id)}</span>
+            <span class="user-card-meta">${escapeHtml(getUserCardFooterText(item))}</span>
           </div>
         </article>
       `).join("")}
@@ -866,19 +873,40 @@ function renderUserManagement() {
 function getUserBusinessHint(user) {
   if (Array.isArray(user.roles) && user.roles.includes("candidate")) {
     return user.status === "disabled"
-      ? "候选人账号已停用，历史答卷与分配记录保留。"
-      : "候选人可被分配到笔试任务，并在答卷详情中追踪过程记录。";
+      ? "该候选人账号已禁用，历史答卷与分配记录仍然保留。"
+      : "该候选人可继续接收笔试任务，并在答卷详情中追踪作答过程。";
   }
   if (Array.isArray(user.roles) && user.roles.includes("admin")) {
-    return "管理员负责账号治理、候选人分配与系统维护。";
+    return "管理员负责账号治理、候选人分配与系统配置维护。";
   }
   if (Array.isArray(user.roles) && user.roles.includes("recruiter")) {
-    return "招聘专员关注任务分配、流程推进与结果跟踪。";
+    return "招聘专员关注候选人发放、流程推进与结果跟踪。";
   }
   if (Array.isArray(user.roles) && user.roles.includes("interviewer")) {
-    return "面试官负责题库维护、答卷查看与评分复核。";
+    return "面试官负责题库维护、答卷查看与人工/AI 评分复核。";
   }
-  return "当前用户可在企业端按权限参与招聘测评流程。";
+  return "该账号会按分配到的角色权限参与企业招聘测评流程。";
+}
+
+function getUserAvatarText(user) {
+  const source = String(user.fullName || user.account || "U").trim();
+  return source.slice(0, 1).toUpperCase();
+}
+
+function getUserCardFooterText(user) {
+  if (Array.isArray(user.roles) && user.roles.includes("candidate")) {
+    return user.status === "disabled" ? "该候选人已结束继续发放" : "可继续发放笔试";
+  }
+  if (Array.isArray(user.roles) && user.roles.includes("admin")) {
+    return "企业端全局权限";
+  }
+  if (Array.isArray(user.roles) && user.roles.includes("recruiter")) {
+    return "流程协同角色";
+  }
+  if (Array.isArray(user.roles) && user.roles.includes("interviewer")) {
+    return "评分与复核角色";
+  }
+  return "基础账号";
 }
 
 function renderCampaignManagement() {
