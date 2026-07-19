@@ -21,7 +21,23 @@ export function findUserByAccount(env, account) {
   ).bind(account).first();
 }
 
-export function findUsers(env, filters = {}) {
+function normalizePagination(pagination = {}) {
+  const page = Number(pagination.page ?? 1);
+  const pageSize = Number(pagination.pageSize ?? 0);
+  if (!Number.isFinite(page) || !Number.isFinite(pageSize) || pageSize <= 0) {
+    return null;
+  }
+
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  return {
+    page: safePage,
+    pageSize: safePageSize,
+    offset: (safePage - 1) * safePageSize
+  };
+}
+
+export async function findUsers(env, filters = {}, pagination = null) {
   const clauses = [];
   const bindings = [];
 
@@ -42,8 +58,9 @@ export function findUsers(env, filters = {}) {
   }
 
   const whereSql = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
-  return env.DB.prepare(
-    `select
+  const pager = normalizePagination(pagination);
+  const countSql = `select count(*) as total from users u ${whereSql}`;
+  const listSql = `select
       u.id,
       u.account,
       u.full_name,
@@ -57,8 +74,22 @@ export function findUsers(env, filters = {}) {
     left join roles r on r.id = ur.role_id
     ${whereSql}
     group by u.id
-    order by u.created_at desc, u.account asc`
-  ).bind(...bindings).all();
+    order by u.created_at desc, u.account asc`;
+
+  if (!pager) {
+    return env.DB.prepare(listSql).bind(...bindings).all();
+  }
+
+  const [countResult, listResult] = await Promise.all([
+    env.DB.prepare(countSql).bind(...bindings).first(),
+    env.DB.prepare(`${listSql} limit ? offset ?`).bind(...bindings, pager.pageSize, pager.offset).all()
+  ]);
+  return {
+    results: listResult.results ?? [],
+    total: Number(countResult?.total ?? 0),
+    page: pager.page,
+    pageSize: pager.pageSize
+  };
 }
 
 /**
@@ -71,9 +102,28 @@ export function findRoleByCode(env, code) {
   ).bind(code).first();
 }
 
-export function findCampaignsForAdmin(env) {
-  return env.DB.prepare(
-    `select
+export async function findCampaignsForAdmin(env, filters = {}, pagination = null) {
+  const clauses = [];
+  const bindings = [];
+
+  if (typeof filters.q === "string" && filters.q.trim()) {
+    const q = `%${filters.q.trim()}%`;
+    clauses.push("(rc.title like ? or coalesce(rc.description, '') like ? or coalesce(rc.target_role, '') like ? or coalesce(a.title, '') like ?)");
+    bindings.push(q, q, q, q);
+  }
+
+  if (typeof filters.status === "string" && filters.status.trim()) {
+    clauses.push("rc.status = ?");
+    bindings.push(filters.status.trim());
+  }
+
+  const whereSql = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
+  const pager = normalizePagination(pagination);
+  const countSql = `select count(*) as total
+    from recruitment_campaigns rc
+    left join assessments a on a.id = rc.assessment_id
+    ${whereSql}`;
+  const listSql = `select
       rc.id,
       rc.assessment_id,
       rc.title,
@@ -88,8 +138,24 @@ export function findCampaignsForAdmin(env) {
       a.title as assessment_title
     from recruitment_campaigns rc
     left join assessments a on a.id = rc.assessment_id
+    ${whereSql}
     order by rc.created_at desc, rc.title asc`
-  ).all();
+  ;
+
+  if (!pager) {
+    return env.DB.prepare(listSql).bind(...bindings).all();
+  }
+
+  const [countResult, listResult] = await Promise.all([
+    env.DB.prepare(countSql).bind(...bindings).first(),
+    env.DB.prepare(`${listSql} limit ? offset ?`).bind(...bindings, pager.pageSize, pager.offset).all()
+  ]);
+  return {
+    results: listResult.results ?? [],
+    total: Number(countResult?.total ?? 0),
+    page: pager.page,
+    pageSize: pager.pageSize
+  };
 }
 
 export function findAssessmentsForAdmin(env) {
@@ -148,7 +214,7 @@ export function findOpenCampaignsByUser(env, userId) {
   ).bind(userId).all();
 }
 
-export function findQuestions(env, filters = {}) {
+export async function findQuestions(env, filters = {}, pagination = null) {
   const clauses = [];
   const bindings = [];
 
@@ -169,8 +235,9 @@ export function findQuestions(env, filters = {}) {
   }
 
   const whereSql = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
-  return env.DB.prepare(
-    `select
+  const pager = normalizePagination(pagination);
+  const countSql = `select count(*) as total from questions q ${whereSql}`;
+  const listSql = `select
       q.id,
       q.type,
       q.stem,
@@ -188,8 +255,22 @@ export function findQuestions(env, filters = {}) {
     left join question_answers qa on qa.question_id = q.id
     ${whereSql}
     order by q.created_at desc
-    limit 100`
-  ).bind(...bindings).all();
+    `;
+
+  if (!pager) {
+    return env.DB.prepare(`${listSql} limit 100`).bind(...bindings).all();
+  }
+
+  const [countResult, listResult] = await Promise.all([
+    env.DB.prepare(countSql).bind(...bindings).first(),
+    env.DB.prepare(`${listSql} limit ? offset ?`).bind(...bindings, pager.pageSize, pager.offset).all()
+  ]);
+  return {
+    results: listResult.results ?? [],
+    total: Number(countResult?.total ?? 0),
+    page: pager.page,
+    pageSize: pager.pageSize
+  };
 }
 
 export function findQuestionById(env, questionId) {
@@ -851,6 +932,79 @@ export function findSubmissionById(env, submissionId) {
     inner join users u on u.id = s.user_id
     where s.id = ?`
   ).bind(submissionId).first();
+}
+
+export async function findSubmissions(env, filters = {}, pagination = null) {
+  const clauses = [];
+  const bindings = [];
+
+  if (typeof filters.userId === "string" && filters.userId.trim()) {
+    clauses.push("s.user_id = ?");
+    bindings.push(filters.userId.trim());
+  }
+
+  if (typeof filters.q === "string" && filters.q.trim()) {
+    const q = `%${filters.q.trim()}%`;
+    clauses.push("(s.id like ? or rc.title like ? or coalesce(u.account, '') like ? or coalesce(u.full_name, '') like ?)");
+    bindings.push(q, q, q, q);
+  }
+
+  if (typeof filters.status === "string" && filters.status.trim()) {
+    clauses.push("s.status = ?");
+    bindings.push(filters.status.trim());
+  }
+
+  if (typeof filters.campaignId === "string" && filters.campaignId.trim()) {
+    clauses.push("s.campaign_id = ?");
+    bindings.push(filters.campaignId.trim());
+  }
+
+  const whereSql = clauses.length > 0 ? `where ${clauses.join(" and ")}` : "";
+  const pager = normalizePagination(pagination);
+  const countSql = `select count(*) as total
+    from submissions s
+    inner join recruitment_campaigns rc on rc.id = s.campaign_id
+    inner join users u on u.id = s.user_id
+    ${whereSql}`;
+  const listSql = `select
+      s.id,
+      s.campaign_id,
+      s.user_id,
+      s.submit_no,
+      s.status,
+      s.started_at,
+      s.submitted_at,
+      s.objective_score,
+      s.subjective_score,
+      s.total_score,
+      s.anti_cheat_risk_level,
+      s.recommendation,
+      s.created_at,
+      s.updated_at,
+      rc.title as campaign_title,
+      rc.target_role,
+      u.account as candidate_account,
+      u.full_name as candidate_name
+    from submissions s
+    inner join recruitment_campaigns rc on rc.id = s.campaign_id
+    inner join users u on u.id = s.user_id
+    ${whereSql}
+    order by coalesce(s.submitted_at, s.created_at) desc, s.id desc`;
+
+  if (!pager) {
+    return env.DB.prepare(listSql).bind(...bindings).all();
+  }
+
+  const [countResult, listResult] = await Promise.all([
+    env.DB.prepare(countSql).bind(...bindings).first(),
+    env.DB.prepare(`${listSql} limit ? offset ?`).bind(...bindings, pager.pageSize, pager.offset).all()
+  ]);
+  return {
+    results: listResult.results ?? [],
+    total: Number(countResult?.total ?? 0),
+    page: pager.page,
+    pageSize: pager.pageSize
+  };
 }
 
 /**

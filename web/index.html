@@ -153,6 +153,7 @@
 
             <div id="userManagementSummary" class="meta-strip"></div>
             <div id="userList" class="question-list question-list-compact"></div>
+            <div id="userPagination" class="pagination-bar"></div>
           </div>
         </section>
 
@@ -166,130 +167,38 @@
               </div>
             </div>
 
-            <div class="split-layout">
-              <form id="createCampaignForm" class="stack-form panel-subsection">
-                <h3>新增招聘场次</h3>
+            <form id="campaignSearchForm" class="stack-form panel-subsection">
+              <h3>检索招聘场次</h3>
+              <div class="form-columns">
                 <label>
-                  <span>测评模板</span>
-                  <select id="createCampaignAssessmentId" name="assessmentId"></select>
+                  <span>关键词</span>
+                  <input name="q" placeholder="场次名称 / 岗位 / 场次说明 / 模板名称" />
                 </label>
-                <div class="form-columns">
-                  <label>
-                    <span>场次名称</span>
-                    <input name="title" placeholder="例如 Java 后端一面笔试" />
-                  </label>
-                  <label>
-                    <span>目标岗位</span>
-                    <input name="targetRole" placeholder="例如 Java 后端开发" />
-                  </label>
-                </div>
-                <div class="form-columns">
-                  <label>
-                    <span>开始时间</span>
-                    <input name="startAt" type="datetime-local" />
-                  </label>
-                  <label>
-                    <span>结束时间</span>
-                    <input name="endAt" type="datetime-local" />
-                  </label>
-                </div>
-                <div class="form-columns">
-                  <label>
-                    <span>时长（分钟）</span>
-                    <input name="durationMinutes" type="number" min="1" value="60" />
-                  </label>
-                  <label>
-                    <span>状态</span>
-                    <select name="status">
-                      <option value="draft">draft</option>
-                      <option value="published">published</option>
-                      <option value="in_progress">in_progress</option>
-                      <option value="archived">archived</option>
-                    </select>
-                  </label>
-                </div>
                 <label>
-                  <span>场次说明</span>
-                  <textarea name="description" placeholder="输入场次说明"></textarea>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="">全部状态</option>
+                    <option value="draft">draft</option>
+                    <option value="published">published</option>
+                    <option value="in_progress">in_progress</option>
+                    <option value="archived">archived</option>
+                  </select>
                 </label>
-                <div class="checkbox-row">
-                  <label class="checkbox-item">
-                    <input name="requireCamera" type="checkbox" />
-                    <span>要求摄像头</span>
-                  </label>
-                  <label class="checkbox-item">
-                    <input name="requireFullscreen" type="checkbox" />
-                    <span>要求全屏</span>
-                  </label>
-                </div>
-                <button type="submit" class="primary-button">创建场次</button>
-              </form>
+              </div>
+              <div class="button-row">
+                <button type="submit" class="ghost-button">检索场次</button>
+                <button id="clearCampaignSearchButton" type="button" class="ghost-button">清空条件</button>
+              </div>
+            </form>
 
-              <form id="updateCampaignForm" class="stack-form panel-subsection">
-                <h3>修改招聘场次</h3>
-                <label>
-                  <span>选择场次</span>
-                  <select id="updateCampaignId" name="campaignId"></select>
-                </label>
-                <label>
-                  <span>测评模板</span>
-                  <select id="updateCampaignAssessmentId" name="assessmentId"></select>
-                </label>
-                <div class="form-columns">
-                  <label>
-                    <span>场次名称</span>
-                    <input name="title" placeholder="例如 Java 后端一面笔试" />
-                  </label>
-                  <label>
-                    <span>目标岗位</span>
-                    <input name="targetRole" placeholder="例如 Java 后端开发" />
-                  </label>
-                </div>
-                <div class="form-columns">
-                  <label>
-                    <span>开始时间</span>
-                    <input name="startAt" type="datetime-local" />
-                  </label>
-                  <label>
-                    <span>结束时间</span>
-                    <input name="endAt" type="datetime-local" />
-                  </label>
-                </div>
-                <div class="form-columns">
-                  <label>
-                    <span>时长（分钟）</span>
-                    <input name="durationMinutes" type="number" min="1" value="60" />
-                  </label>
-                  <label>
-                    <span>状态</span>
-                    <select name="status">
-                      <option value="draft">draft</option>
-                      <option value="published">published</option>
-                      <option value="in_progress">in_progress</option>
-                      <option value="archived">archived</option>
-                    </select>
-                  </label>
-                </div>
-                <label>
-                  <span>场次说明</span>
-                  <textarea name="description" placeholder="输入场次说明"></textarea>
-                </label>
-                <div class="checkbox-row">
-                  <label class="checkbox-item">
-                    <input name="requireCamera" type="checkbox" />
-                    <span>要求摄像头</span>
-                  </label>
-                  <label class="checkbox-item">
-                    <input name="requireFullscreen" type="checkbox" />
-                    <span>要求全屏</span>
-                  </label>
-                </div>
-                <button type="submit" class="primary-button">保存场次修改</button>
-              </form>
+            <div class="action-toolbar">
+              <button id="openCreateCampaignModalButton" class="primary-button">新增场次</button>
+              <button id="openUpdateCampaignModalButton" class="ghost-button">修改场次</button>
             </div>
 
             <div id="campaignManagementSummary" class="meta-strip"></div>
             <div id="campaignManagementList" class="question-list question-list-compact"></div>
+            <div id="campaignPagination" class="pagination-bar"></div>
           </div>
         </section>
 
@@ -343,6 +252,7 @@
             </div>
             <p class="hint">示例题库基于 Oracle Java 官方文档与 Spring Framework 官方文档整理，适合先跑通企业 Java 招聘测评流程。</p>
             <div id="questionBankList" class="question-list question-list-compact"></div>
+            <div id="questionPagination" class="pagination-bar"></div>
           </div>
         </section>
 
@@ -364,8 +274,42 @@
           <div class="panel">
             <div class="panel-header">
               <h2>提交详情</h2>
+              <button id="reloadSubmissionListButton" class="ghost-button">刷新提交记录</button>
+            </div>
+            <form id="submissionSearchForm" class="stack-form panel-subsection">
+              <h3>检索提交记录</h3>
+              <div class="form-columns">
+                <label>
+                  <span>关键词</span>
+                  <input name="q" placeholder="提交 ID / 候选人账号 / 候选人姓名 / 场次名称" />
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="">全部状态</option>
+                    <option value="submitted">submitted</option>
+                    <option value="reviewed">reviewed</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>招聘场次</span>
+                  <select id="submissionCampaignId" name="campaignId"></select>
+                </label>
+                <div class="button-row align-end">
+                  <button type="submit" class="ghost-button">检索提交</button>
+                  <button id="clearSubmissionSearchButton" type="button" class="ghost-button">清空条件</button>
+                </div>
+              </div>
+            </form>
+            <div id="submissionList" class="question-list question-list-compact"></div>
+            <div id="submissionPagination" class="pagination-bar"></div>
+            <div class="divider"></div>
+            <div class="panel-header">
+              <h3>提交详情面板</h3>
               <div class="inline-form">
-                <input id="submissionIdInput" placeholder="输入 submissionId" />
+                <input id="submissionIdInput" placeholder="输入 submissionId 或从上方列表点击查看" />
                 <button id="loadSubmissionButton" class="ghost-button">查询提交</button>
               </div>
             </div>
@@ -690,6 +634,136 @@
               </label>
               <p class="hint">如果题目已被测评模板或提交记录引用，系统会拒绝直接删除。</p>
               <button type="submit" class="danger-button">删除题目</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="campaignModal" class="modal-card hidden">
+          <div class="modal-header">
+            <div>
+              <h3 id="campaignModalTitle">场次操作</h3>
+              <p id="campaignModalDesc" class="hint">按当前操作展示对应表单。</p>
+            </div>
+            <button type="button" class="ghost-button" data-close-modal>关闭</button>
+          </div>
+          <div id="campaignModalCreate" class="modal-section hidden">
+            <form id="createCampaignForm" class="stack-form">
+              <label>
+                <span>测评模板</span>
+                <select id="createCampaignAssessmentId" name="assessmentId"></select>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>场次名称</span>
+                  <input name="title" placeholder="例如 Java 后端一面笔试" />
+                </label>
+                <label>
+                  <span>目标岗位</span>
+                  <input name="targetRole" placeholder="例如 Java 后端开发" />
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>开始时间</span>
+                  <input name="startAt" type="datetime-local" />
+                </label>
+                <label>
+                  <span>结束时间</span>
+                  <input name="endAt" type="datetime-local" />
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>时长（分钟）</span>
+                  <input name="durationMinutes" type="number" min="1" value="60" />
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="draft">draft</option>
+                    <option value="published">published</option>
+                    <option value="in_progress">in_progress</option>
+                    <option value="archived">archived</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>场次说明</span>
+                <textarea name="description" placeholder="输入场次说明"></textarea>
+              </label>
+              <div class="checkbox-row">
+                <label class="checkbox-item">
+                  <input name="requireCamera" type="checkbox" />
+                  <span>要求摄像头</span>
+                </label>
+                <label class="checkbox-item">
+                  <input name="requireFullscreen" type="checkbox" />
+                  <span>要求全屏</span>
+                </label>
+              </div>
+              <button type="submit" class="primary-button">创建场次</button>
+            </form>
+          </div>
+          <div id="campaignModalUpdate" class="modal-section hidden">
+            <form id="updateCampaignForm" class="stack-form">
+              <label>
+                <span>选择场次</span>
+                <select id="updateCampaignId" name="campaignId"></select>
+              </label>
+              <label>
+                <span>测评模板</span>
+                <select id="updateCampaignAssessmentId" name="assessmentId"></select>
+              </label>
+              <div class="form-columns">
+                <label>
+                  <span>场次名称</span>
+                  <input name="title" placeholder="例如 Java 后端一面笔试" />
+                </label>
+                <label>
+                  <span>目标岗位</span>
+                  <input name="targetRole" placeholder="例如 Java 后端开发" />
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>开始时间</span>
+                  <input name="startAt" type="datetime-local" />
+                </label>
+                <label>
+                  <span>结束时间</span>
+                  <input name="endAt" type="datetime-local" />
+                </label>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>时长（分钟）</span>
+                  <input name="durationMinutes" type="number" min="1" value="60" />
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select name="status">
+                    <option value="draft">draft</option>
+                    <option value="published">published</option>
+                    <option value="in_progress">in_progress</option>
+                    <option value="archived">archived</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>场次说明</span>
+                <textarea name="description" placeholder="输入场次说明"></textarea>
+              </label>
+              <div class="checkbox-row">
+                <label class="checkbox-item">
+                  <input name="requireCamera" type="checkbox" />
+                  <span>要求摄像头</span>
+                </label>
+                <label class="checkbox-item">
+                  <input name="requireFullscreen" type="checkbox" />
+                  <span>要求全屏</span>
+                </label>
+              </div>
+              <button type="submit" class="primary-button">保存场次修改</button>
             </form>
           </div>
         </section>

@@ -14,11 +14,27 @@ const state = {
     role: "",
     status: ""
   },
+  campaignFilters: {
+    q: "",
+    status: ""
+  },
   questionFilters: {
     q: "",
     type: "",
     status: ""
   },
+  submissionFilters: {
+    q: "",
+    status: "",
+    campaignId: ""
+  },
+  paginations: {
+    users: { page: 1, pageSize: 10, total: 0 },
+    questions: { page: 1, pageSize: 10, total: 0 },
+    campaigns: { page: 1, pageSize: 10, total: 0 },
+    submissions: { page: 1, pageSize: 10, total: 0 }
+  },
+  submissions: [],
   apiBaseUrl: loadApiBaseUrl()
 };
 
@@ -87,8 +103,13 @@ document.getElementById("createCampaignForm").addEventListener("submit", createC
 document.getElementById("updateCampaignForm").addEventListener("submit", updateCampaign);
 document.getElementById("updateUserId").addEventListener("change", syncSelectedUserToForm);
 document.getElementById("updateCampaignId").addEventListener("change", syncSelectedCampaignToForm);
+document.getElementById("campaignSearchForm").addEventListener("submit", searchCampaigns);
+document.getElementById("clearCampaignSearchButton").addEventListener("click", clearCampaignSearch);
 document.getElementById("questionSearchForm").addEventListener("submit", searchQuestions);
 document.getElementById("clearQuestionSearchButton").addEventListener("click", clearQuestionSearch);
+document.getElementById("submissionSearchForm").addEventListener("submit", searchSubmissions);
+document.getElementById("clearSubmissionSearchButton").addEventListener("click", clearSubmissionSearch);
+document.getElementById("reloadSubmissionListButton").addEventListener("click", () => loadSubmissionList());
 document.getElementById("updateQuestionForm").addEventListener("submit", updateQuestion);
 document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQuestion);
 document.getElementById("updateQuestionId").addEventListener("change", syncSelectedQuestionToForm);
@@ -98,6 +119,8 @@ document.getElementById("openUpdateUserModalButton").addEventListener("click", (
 document.getElementById("openResetPasswordModalButton").addEventListener("click", () => openUserModal("resetPassword"));
 document.getElementById("openAssignCampaignModalButton").addEventListener("click", () => openUserModal("assignCampaign"));
 document.getElementById("openBatchAssignCampaignModalButton").addEventListener("click", () => openUserModal("batchAssignCampaign"));
+document.getElementById("openCreateCampaignModalButton").addEventListener("click", () => openCampaignModal("create"));
+document.getElementById("openUpdateCampaignModalButton").addEventListener("click", () => openCampaignModal("update"));
 document.getElementById("openCreateQuestionModalButton").addEventListener("click", () => openQuestionModal("create"));
 document.getElementById("openUpdateQuestionModalButton").addEventListener("click", () => openQuestionModal("update"));
 document.querySelectorAll("[data-close-modal]").forEach((button) => {
@@ -232,7 +255,16 @@ function resetSessionState() {
   state.currentCampaign = null;
   state.currentQuestions = [];
   state.currentSubmission = null;
+  state.submissions = [];
   state.activeView = null;
+  state.campaignFilters = { q: "", status: "" };
+  state.submissionFilters = { q: "", status: "", campaignId: "" };
+  state.paginations = {
+    users: { page: 1, pageSize: 10, total: 0 },
+    questions: { page: 1, pageSize: 10, total: 0 },
+    campaigns: { page: 1, pageSize: 10, total: 0 },
+    submissions: { page: 1, pageSize: 10, total: 0 }
+  };
   setAuthenticated(false);
   refreshSessionBadge();
   applyNavigation();
@@ -248,6 +280,7 @@ function resetSessionState() {
 function clearDynamicPanels() {
   document.getElementById("submissionMeta").innerHTML = "";
   document.getElementById("submissionAnswers").innerHTML = "";
+  document.getElementById("submissionList").innerHTML = "";
   document.getElementById("evaluationForm").innerHTML = "";
   document.getElementById("assessmentMeta").innerHTML = "";
   document.getElementById("assessmentForm").innerHTML = "";
@@ -268,6 +301,9 @@ async function warmupWorkspaceData() {
     jobs.push(loadAdminCampaigns({ silent: true }));
     jobs.push(loadAssessments({ silent: true }));
   }
+  if (hasAnyRole(["candidate", "interviewer", "recruiter", "admin"])) {
+    jobs.push(loadSubmissionList({ silent: true }));
+  }
   await Promise.all(jobs);
   renderCandidateWorkspace();
   renderEnterpriseWorkspace();
@@ -286,6 +322,7 @@ async function loadCampaigns(options = {}) {
 
   state.campaigns = result.data.items;
   renderCandidateWorkspace();
+  renderSubmissionList();
   return true;
 }
 
@@ -300,6 +337,8 @@ async function loadQuestions(options = {}) {
   if (state.questionFilters.status) {
     search.set("status", state.questionFilters.status);
   }
+  search.set("page", String(options.page || state.paginations.questions.page));
+  search.set("pageSize", String(state.paginations.questions.pageSize));
   const query = search.toString();
   const result = await api(`/api/questions${query ? `?${query}` : ""}`);
   if (!result.ok) {
@@ -310,6 +349,7 @@ async function loadQuestions(options = {}) {
   }
 
   state.questions = result.data.items;
+  state.paginations.questions = normalizePaginationState(result.data.pagination, state.paginations.questions);
   renderQuestionBankList();
   renderEnterpriseWorkspace();
   return true;
@@ -326,6 +366,8 @@ async function loadUsers(options = {}) {
   if (state.userFilters.status) {
     search.set("status", state.userFilters.status);
   }
+  search.set("page", String(options.page || state.paginations.users.page));
+  search.set("pageSize", String(state.paginations.users.pageSize));
   const query = search.toString();
   const result = await api(`/api/admin/users${query ? `?${query}` : ""}`);
   if (!result.ok) {
@@ -336,13 +378,23 @@ async function loadUsers(options = {}) {
   }
 
   state.users = result.data.items;
+  state.paginations.users = normalizePaginationState(result.data.pagination, state.paginations.users);
   renderUserManagement();
   renderEnterpriseWorkspace();
   return true;
 }
 
 async function loadAdminCampaigns(options = {}) {
-  const result = await api("/api/admin/campaigns");
+  const search = new URLSearchParams();
+  if (state.campaignFilters.q) {
+    search.set("q", state.campaignFilters.q);
+  }
+  if (state.campaignFilters.status) {
+    search.set("status", state.campaignFilters.status);
+  }
+  search.set("page", String(options.page || state.paginations.campaigns.page));
+  search.set("pageSize", String(state.paginations.campaigns.pageSize));
+  const result = await api(`/api/admin/campaigns?${search.toString()}`);
   if (!result.ok) {
     if (!options.silent) {
       showFeedback(result.message, true);
@@ -351,8 +403,38 @@ async function loadAdminCampaigns(options = {}) {
   }
 
   state.adminCampaigns = result.data.items;
+  state.paginations.campaigns = normalizePaginationState(result.data.pagination, state.paginations.campaigns);
   renderUserManagement();
   renderCampaignManagement();
+  renderSubmissionList();
+  renderEnterpriseWorkspace();
+  return true;
+}
+
+async function loadSubmissionList(options = {}) {
+  const search = new URLSearchParams();
+  if (state.submissionFilters.q) {
+    search.set("q", state.submissionFilters.q);
+  }
+  if (state.submissionFilters.status) {
+    search.set("status", state.submissionFilters.status);
+  }
+  if (state.submissionFilters.campaignId) {
+    search.set("campaignId", state.submissionFilters.campaignId);
+  }
+  search.set("page", String(options.page || state.paginations.submissions.page));
+  search.set("pageSize", String(state.paginations.submissions.pageSize));
+  const result = await api(`/api/submissions?${search.toString()}`);
+  if (!result.ok) {
+    if (!options.silent) {
+      showFeedback(result.message, true);
+    }
+    return false;
+  }
+
+  state.submissions = result.data.items;
+  state.paginations.submissions = normalizePaginationState(result.data.pagination, state.paginations.submissions);
+  renderSubmissionList();
   renderEnterpriseWorkspace();
   return true;
 }
@@ -500,6 +582,7 @@ function bindViewButtons(root) {
 function renderUserManagement() {
   const summary = document.getElementById("userManagementSummary");
   const list = document.getElementById("userList");
+  const pagination = document.getElementById("userPagination") || null;
   const assignCampaignSelect = document.getElementById("assignCampaignSelect");
   const batchAssignCampaignSelect = document.getElementById("batchAssignCampaignSelect");
   const updateUserSelect = document.getElementById("updateUserId");
@@ -524,13 +607,17 @@ function renderUserManagement() {
   syncSelectedUserToForm();
 
   summary.innerHTML = renderMetaItems([
-    ["当前用户数", state.users.length],
+    ["当前页用户数", state.users.length],
+    ["用户总数", state.paginations.users.total],
     ["可分配场次数", state.adminCampaigns.length],
     ["候选人账号数", state.users.filter((item) => item.roles.includes("candidate")).length]
   ]);
 
   if (state.users.length === 0) {
     list.innerHTML = `<div class="question-card"><p>当前还没有用户数据。</p></div>`;
+    if (pagination) {
+      pagination.innerHTML = "";
+    }
     return;
   }
 
@@ -568,11 +655,17 @@ function renderUserManagement() {
       openUserModal("delete");
     });
   });
+
+  if (pagination) {
+    pagination.innerHTML = renderPagination("users", state.paginations.users);
+    bindPagination("users", loadUsers);
+  }
 }
 
 function renderCampaignManagement() {
   const summary = document.getElementById("campaignManagementSummary");
   const list = document.getElementById("campaignManagementList");
+  const pagination = document.getElementById("campaignPagination");
   const createAssessmentSelect = document.getElementById("createCampaignAssessmentId");
   const updateAssessmentSelect = document.getElementById("updateCampaignAssessmentId");
   const updateCampaignSelect = document.getElementById("updateCampaignId");
@@ -595,12 +688,14 @@ function renderCampaignManagement() {
 
   summary.innerHTML = renderMetaItems([
     ["测评模板数", state.assessments.length],
-    ["招聘场次数", state.adminCampaigns.length],
+    ["当前页场次数", state.adminCampaigns.length],
+    ["场次总数", state.paginations.campaigns.total],
     ["已发布场次", state.adminCampaigns.filter((item) => item.status === "published").length]
   ]);
 
   if (state.adminCampaigns.length === 0) {
     list.innerHTML = `<div class="question-card"><p>当前还没有招聘场次。</p></div>`;
+    pagination.innerHTML = "";
     return;
   }
 
@@ -614,12 +709,27 @@ function renderCampaignManagement() {
       <p>时长：${escapeHtml(String(item.duration_minutes || "-"))} 分钟</p>
       <p>开始：${escapeHtml(formatDateTime(item.start_time))}</p>
       <p>结束：${escapeHtml(formatDateTime(item.end_time))}</p>
+      <div class="button-row">
+        <button class="ghost-button" data-edit-campaign-id="${escapeHtml(item.id)}">编辑场次</button>
+      </div>
     </article>
   `).join("");
+
+  list.querySelectorAll("[data-edit-campaign-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      updateCampaignSelect.value = button.dataset.editCampaignId;
+      syncSelectedCampaignToForm();
+      openCampaignModal("update");
+    });
+  });
+
+  pagination.innerHTML = renderPagination("campaigns", state.paginations.campaigns);
+  bindPagination("campaigns", loadAdminCampaigns);
 }
 
 function renderQuestionBankList() {
   const container = document.getElementById("questionBankList");
+  const pagination = document.getElementById("questionPagination");
   const updateQuestionSelect = document.getElementById("updateQuestionId");
   const deleteQuestionSelect = document.getElementById("deleteQuestionId");
   const questionOptions = state.questions.map((item) => `
@@ -631,6 +741,7 @@ function renderQuestionBankList() {
 
   if (state.questions.length === 0) {
     container.innerHTML = `<div class="question-card"><p>当前还没有题目。</p></div>`;
+    pagination.innerHTML = "";
     return;
   }
 
@@ -663,6 +774,9 @@ function renderQuestionBankList() {
       openQuestionModal("update");
     });
   });
+
+  pagination.innerHTML = renderPagination("questions", state.paginations.questions);
+  bindPagination("questions", loadQuestions);
 }
 
 async function searchUsers(event) {
@@ -673,13 +787,33 @@ async function searchUsers(event) {
     role: String(formData.get("role") || "").trim(),
     status: String(formData.get("status") || "").trim()
   };
+  state.paginations.users.page = 1;
   await loadUsers();
 }
 
 async function clearUserSearch() {
   document.getElementById("userSearchForm").reset();
   state.userFilters = { q: "", role: "", status: "" };
+  state.paginations.users.page = 1;
   await loadUsers();
+}
+
+async function searchCampaigns(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  state.campaignFilters = {
+    q: String(formData.get("q") || "").trim(),
+    status: String(formData.get("status") || "").trim()
+  };
+  state.paginations.campaigns.page = 1;
+  await loadAdminCampaigns();
+}
+
+async function clearCampaignSearch() {
+  document.getElementById("campaignSearchForm").reset();
+  state.campaignFilters = { q: "", status: "" };
+  state.paginations.campaigns.page = 1;
+  await loadAdminCampaigns();
 }
 
 async function createUser(event) {
@@ -966,13 +1100,34 @@ async function searchQuestions(event) {
     type: String(formData.get("type") || "").trim(),
     status: String(formData.get("status") || "").trim()
   };
+  state.paginations.questions.page = 1;
   await loadQuestions();
 }
 
 async function clearQuestionSearch() {
   document.getElementById("questionSearchForm").reset();
   state.questionFilters = { q: "", type: "", status: "" };
+  state.paginations.questions.page = 1;
   await loadQuestions();
+}
+
+async function searchSubmissions(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  state.submissionFilters = {
+    q: String(formData.get("q") || "").trim(),
+    status: String(formData.get("status") || "").trim(),
+    campaignId: String(formData.get("campaignId") || "").trim()
+  };
+  state.paginations.submissions.page = 1;
+  await loadSubmissionList();
+}
+
+async function clearSubmissionSearch() {
+  document.getElementById("submissionSearchForm").reset();
+  state.submissionFilters = { q: "", status: "", campaignId: "" };
+  state.paginations.submissions.page = 1;
+  await loadSubmissionList();
 }
 
 async function updateQuestion(event) {
@@ -1135,6 +1290,52 @@ async function loadSubmissionDetail() {
   renderEvaluationForm(result.data.answers, result.data.submission);
   renderCandidateWorkspace();
   showFeedback("提交详情加载成功。");
+}
+
+function renderSubmissionList() {
+  const select = document.getElementById("submissionCampaignId");
+  const list = document.getElementById("submissionList");
+  const pagination = document.getElementById("submissionPagination");
+  const campaignOptions = hasAnyRole(["recruiter", "admin"])
+    ? [`<option value="">全部招聘场次</option>`, ...state.adminCampaigns.map((item) => `
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)} (${escapeHtml(item.status)})</option>
+    `)].join("")
+    : [`<option value="">全部招聘场次</option>`, ...state.campaigns.map((item) => `
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}</option>
+    `)].join("");
+
+  select.innerHTML = campaignOptions;
+  select.value = state.submissionFilters.campaignId || "";
+
+  if (state.submissions.length === 0) {
+    list.innerHTML = `<div class="question-card"><p>当前没有匹配的提交记录。</p></div>`;
+    pagination.innerHTML = "";
+    return;
+  }
+
+  list.innerHTML = state.submissions.map((item) => `
+    <article class="question-card">
+      <h3>${escapeHtml(item.candidate_name || item.candidate_account || "提交记录")} · ${escapeHtml(item.campaign_title || "-")}</h3>
+      <p>提交 ID：${escapeHtml(item.id)}</p>
+      <p>候选人账号：${escapeHtml(item.candidate_account || "-")}</p>
+      <p>状态：${escapeHtml(item.status || "-")}</p>
+      <p>提交时间：${escapeHtml(formatDateTime(item.submitted_at || item.created_at))}</p>
+      <p>总分：${escapeHtml(String(item.total_score ?? 0))} 分</p>
+      <div class="button-row">
+        <button class="ghost-button" data-view-submission-id="${escapeHtml(item.id)}">查看详情</button>
+      </div>
+    </article>
+  `).join("");
+
+  list.querySelectorAll("[data-view-submission-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      document.getElementById("submissionIdInput").value = button.dataset.viewSubmissionId;
+      await loadSubmissionDetail();
+    });
+  });
+
+  pagination.innerHTML = renderPagination("submissions", state.paginations.submissions);
+  bindPagination("submissions", loadSubmissionList);
 }
 
 function renderSubmissionMeta(submission) {
@@ -1422,6 +1623,22 @@ function openQuestionModal(mode) {
   document.getElementById(sectionId).classList.remove("hidden");
 }
 
+function openCampaignModal(mode) {
+  closeModalSections();
+  document.getElementById("campaignModal").classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+  const title = document.getElementById("campaignModalTitle");
+  const desc = document.getElementById("campaignModalDesc");
+  const mapping = {
+    create: ["新增场次", "创建新的招聘场次并配置监控要求。", "campaignModalCreate"],
+    update: ["修改场次", "编辑当前页已检索到的招聘场次。", "campaignModalUpdate"]
+  };
+  const [nextTitle, nextDesc, sectionId] = mapping[mode];
+  title.textContent = nextTitle;
+  desc.textContent = nextDesc;
+  document.getElementById(sectionId).classList.remove("hidden");
+}
+
 function closeModal() {
   modalOverlay.classList.add("hidden");
   closeModalSections();
@@ -1498,6 +1715,40 @@ function renderMetaItems(items) {
       <strong>${escapeHtml(String(value ?? "-"))}</strong>
     </div>
   `).join("");
+}
+
+function normalizePaginationState(pagination, fallback) {
+  return {
+    page: Number(pagination?.page ?? fallback.page ?? 1),
+    pageSize: Number(pagination?.pageSize ?? fallback.pageSize ?? 10),
+    total: Number(pagination?.total ?? fallback.total ?? 0)
+  };
+}
+
+function renderPagination(key, pagination) {
+  const totalPages = Math.max(1, Math.ceil((pagination.total || 0) / pagination.pageSize));
+  return `
+    <div class="pagination-inner">
+      <span class="pagination-info">第 ${escapeHtml(String(pagination.page))} / ${escapeHtml(String(totalPages))} 页，共 ${escapeHtml(String(pagination.total))} 条</span>
+      <div class="button-row">
+        <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.max(1, pagination.page - 1)))}" ${pagination.page <= 1 ? "disabled" : ""}>上一页</button>
+        <button class="ghost-button" data-pagination="${escapeHtml(key)}" data-page="${escapeHtml(String(Math.min(totalPages, pagination.page + 1)))}" ${pagination.page >= totalPages ? "disabled" : ""}>下一页</button>
+      </div>
+    </div>
+  `;
+}
+
+function bindPagination(key, loader) {
+  document.querySelectorAll(`[data-pagination="${key}"]`).forEach((button) => {
+    button.addEventListener("click", async () => {
+      const nextPage = Number(button.dataset.page || 1);
+      if (!Number.isFinite(nextPage)) {
+        return;
+      }
+      state.paginations[key].page = nextPage;
+      await loader({ page: nextPage });
+    });
+  });
 }
 
 function formatDateTime(value) {

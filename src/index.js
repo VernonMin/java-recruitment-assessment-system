@@ -21,6 +21,7 @@ import {
   findRoleByCode,
   findSubmissionAnswersBySubmissionId,
   findSubmissionById,
+  findSubmissions,
   findUserByAccount,
   findUsers,
   insertCampaignCandidate,
@@ -118,6 +119,13 @@ export default {
       return handleImportPresetQuestions(env, sessionUser, corsHeaders);
     }
 
+    if (request.method === "GET" && url.pathname === "/api/submissions") {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleGetSubmissions(request, env, sessionUser, corsHeaders);
+    }
+
     if (request.method === "GET" && url.pathname === "/api/campaigns") {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
@@ -151,7 +159,7 @@ export default {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
-      return handleGetAdminCampaigns(env, sessionUser, corsHeaders);
+      return handleGetAdminCampaigns(request, env, sessionUser, corsHeaders);
     }
 
     if (request.method === "GET" && url.pathname === "/api/admin/assessments") {
@@ -381,6 +389,9 @@ async function handleGetUsers(request, env, sessionUser, corsHeaders) {
     q: url.searchParams.get("q") || "",
     role: url.searchParams.get("role") || "",
     status: url.searchParams.get("status") || ""
+  }, {
+    page: url.searchParams.get("page") || 1,
+    pageSize: url.searchParams.get("pageSize") || 10
   });
   return json({
     items: (result.results ?? []).map((item) => ({
@@ -394,7 +405,12 @@ async function handleGetUsers(request, env, sessionUser, corsHeaders) {
         ? item.role_codes.split(",")
         : [],
       createdAt: item.created_at
-    }))
+    })),
+    pagination: {
+      page: Number(result.page ?? 1),
+      pageSize: Number(result.pageSize ?? 10),
+      total: Number(result.total ?? 0)
+    }
   }, 200, {}, corsHeaders);
 }
 
@@ -414,6 +430,9 @@ async function handleGetQuestions(request, env, sessionUser, corsHeaders) {
     q: url.searchParams.get("q") || "",
     type: url.searchParams.get("type") || "",
     status: url.searchParams.get("status") || ""
+  }, {
+    page: url.searchParams.get("page") || 1,
+    pageSize: url.searchParams.get("pageSize") || 10
   });
 
   const items = await Promise.all((result.results ?? []).map(async (item) => {
@@ -438,7 +457,12 @@ async function handleGetQuestions(request, env, sessionUser, corsHeaders) {
   }));
 
   return json({
-    items
+    items,
+    pagination: {
+      page: Number(result.page ?? 1),
+      pageSize: Number(result.pageSize ?? 10),
+      total: Number(result.total ?? items.length)
+    }
   }, 200, {}, corsHeaders);
 }
 
@@ -568,14 +592,55 @@ async function handleBatchCreateUsers(request, env, sessionUser, corsHeaders) {
  * @param {SessionUser} sessionUser
  * @param {Record<string, string>} corsHeaders
  */
-async function handleGetAdminCampaigns(env, sessionUser, corsHeaders) {
+async function handleGetAdminCampaigns(request, env, sessionUser, corsHeaders) {
   if (!hasRole(sessionUser, ["admin", "recruiter"])) {
     return json({ message: "无权查看招聘场次" }, 403, {}, corsHeaders);
   }
 
-  const result = await findCampaignsForAdmin(env);
+  const url = new URL(request.url);
+  const result = await findCampaignsForAdmin(env, {
+    q: url.searchParams.get("q") || "",
+    status: url.searchParams.get("status") || ""
+  }, {
+    page: url.searchParams.get("page") || 1,
+    pageSize: url.searchParams.get("pageSize") || 10
+  });
   return json({
-    items: result.results ?? []
+    items: result.results ?? [],
+    pagination: {
+      page: Number(result.page ?? 1),
+      pageSize: Number(result.pageSize ?? 10),
+      total: Number(result.total ?? 0)
+    }
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {Request} request
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleGetSubmissions(request, env, sessionUser, corsHeaders) {
+  const canReview = hasRole(sessionUser, ["interviewer", "recruiter", "admin"]);
+  const url = new URL(request.url);
+  const result = await findSubmissions(env, {
+    q: url.searchParams.get("q") || "",
+    status: url.searchParams.get("status") || "",
+    campaignId: url.searchParams.get("campaignId") || "",
+    userId: canReview ? "" : sessionUser.sub
+  }, {
+    page: url.searchParams.get("page") || 1,
+    pageSize: url.searchParams.get("pageSize") || 10
+  });
+
+  return json({
+    items: result.results ?? [],
+    pagination: {
+      page: Number(result.page ?? 1),
+      pageSize: Number(result.pageSize ?? 10),
+      total: Number(result.total ?? 0)
+    }
   }, 200, {}, corsHeaders);
 }
 
@@ -2576,7 +2641,7 @@ function buildCorsHeaders(request) {
   return {
     "Access-Control-Allow-Origin": origin ?? "*",
     "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": requestHeaders ?? "Content-Type",
     "Vary": "Origin"
   };

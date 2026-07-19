@@ -400,6 +400,26 @@ select {
   background: white;
 }
 
+.pagination-bar {
+  margin-top: 20px;
+}
+
+.pagination-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.pagination-info {
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .divider {
   height: 1px;
   background: var(--line);
@@ -483,6 +503,7 @@ select {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .inline-form input {
@@ -518,6 +539,7 @@ select {
   .panel-header,
   .topbar,
   .inline-form,
+  .pagination-inner,
   .topbar-actions {
     flex-direction: column;
     align-items: stretch;

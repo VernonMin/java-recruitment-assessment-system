@@ -4,6 +4,13 @@
 
 定义当前后端骨架已提供的基础接口，以及后续扩展方向。
 
+## 通用约定
+
+- 所有接口返回 `application/json`
+- 登录态通过 `HttpOnly Cookie` 保存
+- 时间字段统一使用毫秒时间戳
+- 跨域预检已放行 `GET`、`POST`、`PUT`、`DELETE`、`OPTIONS`，前端可直接调用增删改查接口
+
 ## 已实现接口
 
 ### `GET /`
@@ -78,6 +85,7 @@
 - 管理员查看当前系统中的账号列表
 - 返回账号基础信息和角色
 - 支持按 `q`、`role`、`status` 查询过滤
+- 支持按 `page`、`pageSize` 分页查询
 
 ### `POST /api/admin/users`
 
@@ -150,6 +158,8 @@
 
 - 管理员或招聘专员查看招聘场次列表
 - 给候选人分配场次时作为下拉数据源
+- 支持按 `q`、`status` 检索
+- 支持按 `page`、`pageSize` 分页查询
 
 ### `GET /api/admin/assessments`
 
@@ -202,7 +212,17 @@
 
 - 获取题库列表
 - 支持按 `q`、`type`、`status` 查询过滤
-- 当前返回最多 100 条题目，并包含选项、答案等编辑所需字段
+- 支持按 `page`、`pageSize` 分页查询
+- 返回当前页题目，并包含选项、答案等编辑所需字段
+
+### `GET /api/submissions`
+
+用途：
+
+- 获取提交记录列表
+- 求职者只能看到自己的提交记录
+- 面试官、招聘专员、管理员可按 `q`、`status`、`campaignId` 检索
+- 支持按 `page`、`pageSize` 分页查询
 
 ### `POST /api/questions`
 
