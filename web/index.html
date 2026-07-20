@@ -775,13 +775,21 @@
                 <textarea name="description" placeholder="输入任务说明"></textarea>
               </label>
               <div class="checkbox-row">
-                <label class="checkbox-item">
+                <label class="checkbox-item monitor-toggle">
                   <input name="requireCamera" type="checkbox" />
-                  <span>要求摄像头</span>
+                  <span class="monitor-toggle-track" aria-hidden="true"></span>
+                  <span class="monitor-toggle-copy">
+                    <strong>摄像头监控</strong>
+                    <small>要求候选人开启摄像头作答</small>
+                  </span>
                 </label>
-                <label class="checkbox-item">
+                <label class="checkbox-item monitor-toggle">
                   <input name="requireFullscreen" type="checkbox" />
-                  <span>要求全屏</span>
+                  <span class="monitor-toggle-track" aria-hidden="true"></span>
+                  <span class="monitor-toggle-copy">
+                    <strong>全屏作答</strong>
+                    <small>要求答题时保持全屏状态</small>
+                  </span>
                 </label>
               </div>
               <button type="submit" class="primary-button">创建任务</button>
@@ -838,13 +846,21 @@
                 <textarea name="description" placeholder="输入任务说明"></textarea>
               </label>
               <div class="checkbox-row">
-                <label class="checkbox-item">
+                <label class="checkbox-item monitor-toggle">
                   <input name="requireCamera" type="checkbox" />
-                  <span>要求摄像头</span>
+                  <span class="monitor-toggle-track" aria-hidden="true"></span>
+                  <span class="monitor-toggle-copy">
+                    <strong>摄像头监控</strong>
+                    <small>要求候选人开启摄像头作答</small>
+                  </span>
                 </label>
-                <label class="checkbox-item">
+                <label class="checkbox-item monitor-toggle">
                   <input name="requireFullscreen" type="checkbox" />
-                  <span>要求全屏</span>
+                  <span class="monitor-toggle-track" aria-hidden="true"></span>
+                  <span class="monitor-toggle-copy">
+                    <strong>全屏作答</strong>
+                    <small>要求答题时保持全屏状态</small>
+                  </span>
                 </label>
               </div>
               <button type="submit" class="primary-button">保存任务修改</button>
@@ -897,8 +913,9 @@
               </label>
               <p class="hint">草稿：模板继续编辑；已发布：可用于创建笔试任务；已归档：历史模板。</p>
               <label>
-                <span>题目总分</span>
+                <span>试卷总分</span>
                 <input id="assessmentTotalScoreInput" name="totalScore" value="0" readonly />
+                <p class="hint">按已选题目分值自动汇总，不支持手工修改。</p>
               </label>
             </div>
 
