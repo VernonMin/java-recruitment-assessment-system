@@ -112,7 +112,6 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 document.getElementById("logoutButton").addEventListener("click", logout);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
 document.getElementById("questionForm").addEventListener("submit", submitQuestion);
-document.getElementById("reloadQuestionBankButton").addEventListener("click", () => loadQuestions());
 document.getElementById("importPresetQuestionsButton").addEventListener("click", importPresetQuestions);
 document.getElementById("loadCampaignsButton").addEventListener("click", () => loadCampaigns());
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
@@ -132,10 +131,6 @@ document.getElementById("selectVisibleCandidatesButton").addEventListener("click
 document.getElementById("clearSelectedCandidatesButton").addEventListener("click", clearSelectedAssignCandidates);
 document.getElementById("reloadUsersButton")?.addEventListener("click", () => loadUsers());
 document.getElementById("reloadAdminCampaignsButton")?.addEventListener("click", () => loadAdminCampaigns());
-document.getElementById("reloadAssessmentsButton").addEventListener("click", () => loadAssessmentOptions());
-document.getElementById("reloadAssessmentManagementButton").addEventListener("click", () => loadAssessments());
-document.getElementById("reloadAssessmentQuestionPoolButton").addEventListener("click", () => loadAssessmentQuestionPool());
-document.getElementById("reloadCampaignManagementButton").addEventListener("click", () => loadAdminCampaigns());
 document.getElementById("createCampaignForm").addEventListener("submit", createCampaign);
 document.getElementById("updateCampaignForm").addEventListener("submit", updateCampaign);
 document.getElementById("assessmentSearchForm").addEventListener("submit", searchAssessments);
@@ -148,7 +143,6 @@ document.getElementById("questionSearchForm").addEventListener("submit", searchQ
 document.getElementById("clearQuestionSearchButton").addEventListener("click", clearQuestionSearch);
 document.getElementById("submissionSearchForm").addEventListener("submit", searchSubmissions);
 document.getElementById("clearSubmissionSearchButton").addEventListener("click", clearSubmissionSearch);
-document.getElementById("reloadSubmissionListButton").addEventListener("click", () => loadSubmissionList());
 document.getElementById("openReviewFromSubmissionButton").addEventListener("click", openReviewFromSubmissionModal);
 document.getElementById("updateQuestionForm").addEventListener("submit", updateQuestion);
 document.getElementById("deleteQuestionForm").addEventListener("submit", deleteQuestion);
@@ -2445,6 +2439,7 @@ function renderSubmissionMeta(submission, targetId = "submissionModalMeta") {
     ["笔试任务", submission.campaign_title || submission.campaignId],
     ["状态", { html: renderSubmissionStatusBadge(submission.status) }],
     ["审核状态", { html: renderSubmissionReviewStatusBadge(submission.review_status || submission.status) }],
+    ["招聘建议", formatRecommendation(submission.recommendation || "hold")],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
     ["总分", `${submission.total_score ?? submission.totalScore ?? 0} 分`],
@@ -2516,8 +2511,13 @@ function renderEvaluationForm(answers, submission) {
       </article>
     `),
     `<label>
-      <span>推荐结论</span>
-      <input name="recommendation" value="${escapeHtml(submission.recommendation || "hold")}" />
+      <span>招聘建议</span>
+      <select name="recommendation">
+        <option value="strong_hire" ${(submission.recommendation || "hold") === "strong_hire" ? "selected" : ""}>强烈推荐</option>
+        <option value="hire" ${(submission.recommendation || "hold") === "hire" ? "selected" : ""}>推荐</option>
+        <option value="hold" ${(submission.recommendation || "hold") === "hold" ? "selected" : ""}>待定</option>
+        <option value="reject" ${(submission.recommendation || "hold") === "reject" ? "selected" : ""}>不推荐</option>
+      </select>
     </label>`,
     `<button type="submit" class="primary-button">确认并提交最终成绩</button>`
   ].join("");
@@ -2651,7 +2651,7 @@ function applyAiSuggestions(suggestion) {
     summaryPanel.classList.remove("hidden");
     summaryPanel.innerHTML = [
       suggestion.summary ? `<p><strong>AI 总结：</strong>${escapeHtml(suggestion.summary)}</p>` : "",
-      suggestion.recommendation ? `<p><strong>AI 推荐：</strong>${escapeHtml(suggestion.recommendation)}</p>` : ""
+      suggestion.recommendation ? `<p><strong>AI 推荐：</strong>${escapeHtml(formatRecommendation(suggestion.recommendation))}</p>` : ""
     ].filter(Boolean).join("");
   }
   const applyAllButton = document.getElementById("applyAllAiSuggestionsButton");
@@ -2862,6 +2862,15 @@ function formatSubmissionReviewStatus(status) {
     grading: "待审核",
     graded: "已审核"
   }[status] || status;
+}
+
+function formatRecommendation(value) {
+  return {
+    strong_hire: "强烈推荐",
+    hire: "推荐",
+    hold: "待定",
+    reject: "不推荐"
+  }[value] || value;
 }
 
 function renderSubmissionStatusBadge(status) {
