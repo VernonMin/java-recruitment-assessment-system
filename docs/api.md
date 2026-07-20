@@ -435,6 +435,32 @@
 - `submission`：提交主记录
 - `answers`：逐题作答、客观题结果、主观题分数、题目满分、评语
 
+### `DELETE /api/submissions/:id`
+
+用途：
+
+- 面试官、招聘专员、管理员删除一条答卷详情
+- 同时清理该提交对应的作答明细、评分记录、监控事件和抓拍元数据
+- 如果该候选人在当前笔试任务下已没有其他已提交答卷，邀请状态会回退为 `invited`
+
+访问规则：
+
+- 候选人不能删除答卷
+- 面试官、招聘专员、管理员可以删除任意提交
+
+成功响应示例：
+
+```json
+{
+  "message": "答卷详情删除成功",
+  "submission": {
+    "id": "submission-id",
+    "candidateAccount": "candidate_demo",
+    "campaignTitle": "Java 后端招聘首轮测评"
+  }
+}
+```
+
 ### `POST /api/evaluations/ai-suggestions`
 
 用途：

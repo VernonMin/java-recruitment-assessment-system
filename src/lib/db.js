@@ -1425,6 +1425,56 @@ export function findSnapshotFilesBySubmissionId(env, submissionId) {
 
 /**
  * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} submissionId
+ */
+export function deleteEvaluationRecordsBySubmissionId(env, submissionId) {
+  return env.DB.prepare(
+    "delete from evaluation_records where submission_id = ?"
+  ).bind(submissionId).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} submissionId
+ */
+export function deleteSubmissionAnswersBySubmissionId(env, submissionId) {
+  return env.DB.prepare(
+    "delete from submission_answers where submission_id = ?"
+  ).bind(submissionId).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} submissionId
+ */
+export function deleteProctoringEventsBySubmissionId(env, submissionId) {
+  return env.DB.prepare(
+    "delete from proctoring_events where submission_id = ?"
+  ).bind(submissionId).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} submissionId
+ */
+export function deleteSnapshotFilesBySubmissionId(env, submissionId) {
+  return env.DB.prepare(
+    "delete from snapshot_files where submission_id = ?"
+  ).bind(submissionId).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
+ * @param {string} submissionId
+ */
+export function deleteSubmissionById(env, submissionId) {
+  return env.DB.prepare(
+    "delete from submissions where id = ?"
+  ).bind(submissionId).run();
+}
+
+/**
+ * @param {import("../types").AppContext["Bindings"]} env
  * @param {string} snapshotId
  */
 export function findSnapshotFileById(env, snapshotId) {

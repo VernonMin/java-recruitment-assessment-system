@@ -1016,6 +1016,7 @@
               <p class="hint">展示当前提交记录的答卷信息、风险留痕与逐题作答内容。若需要处理主观题，可直接进入人工/AI 评分复核。</p>
             </div>
             <div class="button-row modal-header-actions">
+              <button id="openDeleteSubmissionButton" type="button" class="danger-button hidden">删除当前答卷</button>
               <button id="openReviewFromSubmissionButton" type="button" class="primary-button hidden">进入人工/AI评分复核</button>
               <button type="button" class="ghost-button" data-close-modal>关闭</button>
             </div>
@@ -1023,6 +1024,22 @@
           <div id="submissionModalMeta" class="meta-strip"></div>
           <div id="submissionModalProctoring" class="question-list question-list-compact"></div>
           <div id="submissionModalAnswers" class="question-list"></div>
+        </section>
+
+        <section id="submissionDeleteModal" class="modal-card hidden">
+          <div class="modal-header">
+            <div>
+              <h3>删除答卷</h3>
+              <p id="submissionDeleteModalDesc" class="hint">确认删除当前答卷详情。删除后会同时清理作答明细、评分记录、监控事件和抓拍元数据。</p>
+            </div>
+            <button type="button" class="ghost-button" data-close-modal>关闭</button>
+          </div>
+          <form id="deleteSubmissionForm" class="stack-form">
+            <input type="hidden" name="submissionId" />
+            <div id="deleteSubmissionSummary" class="danger-panel"></div>
+            <p class="hint">删除后不可恢复；如果该候选人在该笔试任务下已没有其他已提交答卷，邀请状态会回退为“已邀请”。</p>
+            <button type="submit" class="danger-button">确认删除答卷</button>
+          </form>
         </section>
       </div>
     </div>

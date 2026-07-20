@@ -2,10 +2,15 @@ import {
   countUserSubmissions,
   countQuestionDependencies,
   countUserDependencies,
+  deleteEvaluationRecordsBySubmissionId,
   deleteAssessmentQuestionsByAssessmentId,
+  deleteProctoringEventsBySubmissionId,
   deleteQuestionAnswersByQuestionId,
   deleteQuestionById,
   deleteQuestionOptionsByQuestionId,
+  deleteSnapshotFilesBySubmissionId,
+  deleteSubmissionAnswersBySubmissionId,
+  deleteSubmissionById,
   aggregateSubmissionScores,
   deleteUserRolesByUserId,
   deleteUserById,
@@ -290,6 +295,12 @@ export default {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
       }
       return handleGetSubmission(env, sessionUser, submissionMatch[1], corsHeaders);
+    }
+    if (request.method === "DELETE" && submissionMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleDeleteSubmission(env, sessionUser, submissionMatch[1], corsHeaders);
     }
 
     const completeSubmissionMatch = url.pathname.match(/^\/api\/submissions\/([^/]+)\/complete$/);
@@ -2047,6 +2058,57 @@ async function handleGetSubmissionProctoring(env, sessionUser, submissionId, cor
     },
     events,
     snapshots
+  }, 200, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} submissionId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleDeleteSubmission(env, sessionUser, submissionId, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "recruiter", "admin"])) {
+    return json({ message: "无权删除答卷详情" }, 403, {}, corsHeaders);
+  }
+
+  const submission = await findSubmissionById(env, submissionId);
+  if (!submission) {
+    return json({ message: "提交记录不存在" }, 404, {}, corsHeaders);
+  }
+
+  const snapshotsResult = await findSnapshotFilesBySubmissionId(env, submissionId);
+  const snapshots = snapshotsResult.results ?? [];
+  if (env.PROCTORING_BUCKET) {
+    for (const item of snapshots) {
+      if (item?.r2_key) {
+        await env.PROCTORING_BUCKET.delete(item.r2_key);
+      }
+    }
+  }
+
+  await deleteEvaluationRecordsBySubmissionId(env, submissionId);
+  await deleteSubmissionAnswersBySubmissionId(env, submissionId);
+  await deleteProctoringEventsBySubmissionId(env, submissionId);
+  await deleteSnapshotFilesBySubmissionId(env, submissionId);
+  await deleteSubmissionById(env, submissionId);
+
+  const remainingSubmissionCount = await countUserSubmissions(env, submission.campaign_id, submission.user_id);
+  const hasCompletedSubmission = Number(remainingSubmissionCount?.total ?? 0) > 0;
+  await updateCampaignCandidateInvitationStatus(
+    env,
+    submission.campaign_id,
+    submission.user_id,
+    hasCompletedSubmission ? "completed" : "invited"
+  );
+
+  return json({
+    message: "答卷详情删除成功",
+    submission: {
+      id: submissionId,
+      candidateAccount: submission.candidate_account,
+      campaignTitle: submission.campaign_title
+    }
   }, 200, {}, corsHeaders);
 }
 

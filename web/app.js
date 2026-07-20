@@ -116,6 +116,7 @@ document.getElementById("loadCampaignsButton").addEventListener("click", () => l
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
 document.getElementById("assessmentForm").addEventListener("submit", submitAssessment);
 document.getElementById("evaluationForm").addEventListener("submit", submitEvaluation);
+document.getElementById("deleteSubmissionForm").addEventListener("submit", deleteSubmission);
 document.getElementById("createUserForm").addEventListener("submit", createUser);
 document.getElementById("userSearchForm").addEventListener("submit", searchUsers);
 document.getElementById("clearUserSearchButton").addEventListener("click", clearUserSearch);
@@ -160,6 +161,13 @@ document.getElementById("openCreateCampaignModalButton").addEventListener("click
 document.getElementById("openCreateQuestionModalButton").addEventListener("click", () => openQuestionModal("create"));
 document.querySelectorAll("[data-close-modal]").forEach((button) => {
   button.addEventListener("click", closeModal);
+});
+document.getElementById("openDeleteSubmissionButton").addEventListener("click", () => {
+  if (!state.currentSubmission?.submission?.id) {
+    showFeedback("请先打开一条答卷详情。", true);
+    return;
+  }
+  openSubmissionDeleteModal(state.currentSubmission.submission.id);
 });
 modalOverlay.addEventListener("click", (event) => {
   if (event.target === modalOverlay) {
@@ -2449,6 +2457,7 @@ function renderSubmissionList() {
       <p>总分：${escapeHtml(String(item.total_score ?? 0))} 分</p>
       <div class="button-row">
         <button class="ghost-button" data-view-submission-id="${escapeHtml(item.id)}">查看详情</button>
+        ${hasAnyRole(["interviewer", "recruiter", "admin"]) ? `<button class="danger-button" data-delete-submission-id="${escapeHtml(item.id)}">删除</button>` : ""}
       </div>
     </article>
   `).join("");
@@ -2456,6 +2465,11 @@ function renderSubmissionList() {
   list.querySelectorAll("[data-view-submission-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       await loadSubmissionDetail(button.dataset.viewSubmissionId);
+    });
+  });
+  list.querySelectorAll("[data-delete-submission-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openSubmissionDeleteModal(button.dataset.deleteSubmissionId);
     });
   });
 
@@ -2615,7 +2629,81 @@ function openSubmissionDetailModal() {
   document.getElementById("submissionDetailModal").classList.remove("hidden");
   document.getElementById("modalOverlay").classList.remove("hidden");
   const reviewButton = document.getElementById("openReviewFromSubmissionButton");
+  const deleteButton = document.getElementById("openDeleteSubmissionButton");
   reviewButton.classList.toggle("hidden", !hasAnyRole(["interviewer", "recruiter", "admin"]));
+  deleteButton.classList.toggle("hidden", !hasAnyRole(["interviewer", "recruiter", "admin"]));
+}
+
+function getSubmissionDisplayName(submissionId) {
+  const current = state.currentSubmission?.submission;
+  if (current?.id === submissionId) {
+    return `${current.candidate_name || current.candidate_account || "候选人"} · ${current.campaign_title || submissionId}`;
+  }
+  const item = state.submissions.find((entry) => entry.id === submissionId);
+  if (item) {
+    return `${item.candidate_name || item.candidate_account || "候选人"} · ${item.campaign_title || submissionId}`;
+  }
+  return submissionId;
+}
+
+function openSubmissionDeleteModal(submissionId) {
+  closeModalSections();
+  document.getElementById("submissionDeleteModal").classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+
+  const form = document.getElementById("deleteSubmissionForm");
+  const summary = document.getElementById("deleteSubmissionSummary");
+  const desc = document.getElementById("submissionDeleteModalDesc");
+  const current = state.currentSubmission?.submission?.id === submissionId ? state.currentSubmission.submission : null;
+  const listItem = state.submissions.find((entry) => entry.id === submissionId) || null;
+  const item = current || listItem;
+
+  form.elements.submissionId.value = submissionId;
+  desc.textContent = `确认删除当前答卷。删除后会同时清理作答明细、评分记录、监控事件和抓拍元数据。`;
+  summary.innerHTML = item ? `
+    <h4>${escapeHtml(item.candidate_name || item.candidate_account || "提交记录")} · ${escapeHtml(item.campaign_title || "-")}</h4>
+    <p>提交 ID：${escapeHtml(item.id)}</p>
+    <p>候选人账号：${escapeHtml(item.candidate_account || "-")}</p>
+    <p>提交状态：${renderSubmissionStatusBadge(item.status || "-")}</p>
+    <p>审核状态：${renderSubmissionReviewStatusBadge(item.review_status || item.status || "-")}</p>
+  ` : `
+    <h4>${escapeHtml(getSubmissionDisplayName(submissionId))}</h4>
+    <p>提交 ID：${escapeHtml(submissionId)}</p>
+  `;
+}
+
+async function deleteSubmission(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const submissionId = String(new FormData(form).get("submissionId") || "").trim();
+  if (!submissionId) {
+    return showFeedback("缺少要删除的答卷记录。", true);
+  }
+
+  setFormLoading(form, true);
+  const result = await api(`/api/submissions/${submissionId}`, {
+    method: "DELETE"
+  });
+  setFormLoading(form, false);
+
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  if (state.currentSubmission?.submission?.id === submissionId) {
+    state.currentSubmission = null;
+    state.currentSubmissionProctoring = null;
+    document.getElementById("submissionModalMeta").innerHTML = "";
+    document.getElementById("submissionModalProctoring").innerHTML = "";
+    document.getElementById("submissionModalAnswers").innerHTML = "";
+  }
+
+  closeModal();
+  showFeedback("答卷详情删除成功。");
+  await loadSubmissionList({ silent: true });
+  if (state.activeView === "review") {
+    document.getElementById("evaluationForm").innerHTML = "";
+  }
 }
 
 function openReviewFromSubmissionModal() {
