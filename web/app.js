@@ -2477,6 +2477,7 @@ function renderSubmissionList() {
       <p>审核状态：${renderSubmissionReviewStatusBadge(item.review_status || item.status || "-")}</p>
       <p>提交时间：${escapeHtml(formatDateTime(item.submitted_at || item.created_at))}</p>
       <p>总分：${escapeHtml(String(item.total_score ?? 0))} 分</p>
+      <p>招聘建议：${escapeHtml(formatRecommendation(item.recommendation || "hold"))}</p>
       <div class="button-row">
         <button class="ghost-button" data-view-submission-id="${escapeHtml(item.id)}">查看详情</button>
         ${hasAnyRole(["interviewer", "recruiter", "admin"]) ? `<button class="danger-button" data-delete-submission-id="${escapeHtml(item.id)}">删除</button>` : ""}
