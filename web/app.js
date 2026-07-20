@@ -2538,6 +2538,10 @@ function renderSubmissionAnswers(answers, targetId = "submissionModalAnswers") {
 function renderEvaluationForm(answers, submission) {
   const form = document.getElementById("evaluationForm");
   const reviewableAnswers = Array.isArray(answers) ? answers : [];
+  const initialTotalScore = reviewableAnswers.reduce((sum, item) => {
+    const score = Number(item.final_score ?? (Number(item.objective_score ?? 0) + Number(item.subjective_score ?? 0)));
+    return sum + (Number.isFinite(score) ? score : 0);
+  }, 0);
   if (reviewableAnswers.length === 0) {
     form.innerHTML = `<div class="question-card"><p>该答卷当前没有可复核的作答记录。</p></div>`;
     return;
@@ -2551,6 +2555,10 @@ function renderEvaluationForm(answers, submission) {
         <button id="applyAllAiSuggestionsButton" type="button" class="ghost-button ai-action-button ai-action-button-secondary hidden">一键采纳 AI 建议</button>
       </div>
       <p class="hint">AI 会对整份答卷的全部题型生成建议分数与评语，不会直接写入最终成绩。请人工审核、修订后再提交。</p>
+      <div class="evaluation-total-card">
+        <span class="evaluation-total-label">复核总分</span>
+        <strong id="evaluationTotalScore">${escapeHtml(String(initialTotalScore))} 分</strong>
+      </div>
       <div id="aiSuggestionSummary" class="ai-suggestion-summary hidden"></div>
     </div>`,
     ...reviewableAnswers.map((item, index) => `
@@ -2608,6 +2616,10 @@ function renderEvaluationForm(answers, submission) {
   form.querySelectorAll("[data-apply-ai-answer]").forEach((button) => {
     button.addEventListener("click", () => applySingleAiSuggestion(button.dataset.applyAiAnswer));
   });
+  form.querySelectorAll('input[name^="score:"]').forEach((field) => {
+    field.addEventListener("input", updateEvaluationTotalScore);
+  });
+  updateEvaluationTotalScore();
 }
 
 async function submitEvaluation(event) {
@@ -2833,6 +2845,7 @@ function applySingleAiSuggestion(submissionAnswerId) {
   if (commentField && typeof card.dataset.suggestedComment === "string") {
     commentField.value = card.dataset.suggestedComment;
   }
+  updateEvaluationTotalScore();
 }
 
 function applyAllAiSuggestions() {
@@ -2842,6 +2855,18 @@ function applyAllAiSuggestions() {
     }
   });
   showFeedback("已将 AI 建议填入人工最终结果，请继续复核后提交。");
+}
+
+function updateEvaluationTotalScore() {
+  const totalNode = document.getElementById("evaluationTotalScore");
+  if (!totalNode) {
+    return;
+  }
+  const totalScore = [...document.querySelectorAll('#evaluationForm input[name^="score:"]')].reduce((sum, field) => {
+    const score = Number(field.value);
+    return sum + (Number.isFinite(score) ? score : 0);
+  }, 0);
+  totalNode.textContent = `${totalScore} 分`;
 }
 
 async function api(path, options = {}) {
