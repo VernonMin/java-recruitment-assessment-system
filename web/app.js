@@ -2436,17 +2436,22 @@ function renderSubmissionList() {
 
 function renderSubmissionMeta(submission, targetId = "submissionModalMeta") {
   const meta = document.getElementById(targetId);
-  meta.innerHTML = renderMetaItems([
+  const recommendation = String(submission.recommendation || "hold").trim();
+  meta.innerHTML = `
+    <div class="submission-recommendation-card submission-recommendation-${escapeHtml(recommendation || "hold")}">
+      <span class="submission-recommendation-label">招聘建议</span>
+      <strong>${escapeHtml(formatRecommendation(recommendation || "hold"))}</strong>
+    </div>
+    ${renderMetaItems([
     ["提交 ID", submission.id],
     ["笔试任务", submission.campaign_title || submission.campaignId],
     ["状态", { html: renderSubmissionStatusBadge(submission.status) }],
     ["审核状态", { html: renderSubmissionReviewStatusBadge(submission.review_status || submission.status) }],
-    ["招聘建议", formatRecommendation(submission.recommendation || "hold")],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
     ["总分", `${submission.total_score ?? submission.totalScore ?? 0} 分`],
     ["风险等级", state.currentSubmissionProctoring?.summary?.riskLevel || "待计算"]
-  ]);
+  ])}`;
 }
 
 function renderSubmissionAnswers(answers, targetId = "submissionModalAnswers") {
