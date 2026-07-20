@@ -326,6 +326,25 @@ export function deleteAssessmentQuestionsByAssessmentId(env, assessmentId) {
   ).bind(assessmentId).run();
 }
 
+export function countAssessmentDependencies(env, assessmentId) {
+  return env.DB.prepare(
+    `select
+      (select count(*) from recruitment_campaigns where assessment_id = ?) as campaign_count,
+      (
+        select count(*)
+        from submissions s
+        inner join recruitment_campaigns rc on rc.id = s.campaign_id
+        where rc.assessment_id = ?
+      ) as submission_count`
+  ).bind(assessmentId, assessmentId).first();
+}
+
+export function deleteAssessmentById(env, assessmentId) {
+  return env.DB.prepare(
+    "delete from assessments where id = ?"
+  ).bind(assessmentId).run();
+}
+
 export function insertAssessmentQuestion(env, item) {
   return env.DB.prepare(
     `insert into assessment_questions (
@@ -758,6 +777,26 @@ export function updateCampaign(env, campaign) {
     campaign.updatedAt,
     campaign.campaignId
   ).run();
+}
+
+export function countCampaignDependencies(env, campaignId) {
+  return env.DB.prepare(
+    `select
+      (select count(*) from campaign_candidates where campaign_id = ?) as candidate_count,
+      (select count(*) from submissions where campaign_id = ?) as submission_count`
+  ).bind(campaignId, campaignId).first();
+}
+
+export function deleteCampaignCandidatesByCampaignId(env, campaignId) {
+  return env.DB.prepare(
+    "delete from campaign_candidates where campaign_id = ?"
+  ).bind(campaignId).run();
+}
+
+export function deleteCampaignById(env, campaignId) {
+  return env.DB.prepare(
+    "delete from recruitment_campaigns where id = ?"
+  ).bind(campaignId).run();
 }
 
 export function updateQuestion(env, question) {

@@ -976,6 +976,7 @@ function renderCampaignManagement() {
       <p>结束：${escapeHtml(formatDateTime(item.end_time))}</p>
       <div class="button-row">
         <button class="ghost-button" data-edit-campaign-id="${escapeHtml(item.id)}">编辑任务</button>
+        <button class="danger-button" data-delete-campaign-id="${escapeHtml(item.id)}">删除任务</button>
       </div>
     </article>
   `).join("");
@@ -983,6 +984,11 @@ function renderCampaignManagement() {
   list.querySelectorAll("[data-edit-campaign-id]").forEach((button) => {
     button.addEventListener("click", () => {
       openCampaignModal("update", button.dataset.editCampaignId || "");
+    });
+  });
+  list.querySelectorAll("[data-delete-campaign-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await deleteCampaignById(button.dataset.deleteCampaignId || "");
     });
   });
 
@@ -1019,6 +1025,7 @@ function renderAssessmentManagement() {
       <p>说明：${escapeHtml(item.description || "-")}</p>
       <div class="button-row">
         <button class="ghost-button" data-edit-assessment-id="${escapeHtml(item.id)}">编辑试卷模板</button>
+        <button class="danger-button" data-delete-assessment-id="${escapeHtml(item.id)}">删除模板</button>
       </div>
     </article>
   `).join("");
@@ -1026,6 +1033,11 @@ function renderAssessmentManagement() {
   list.querySelectorAll("[data-edit-assessment-id]").forEach((button) => {
     button.addEventListener("click", () => {
       openAssessmentTemplateModal("update", button.dataset.editAssessmentId || "");
+    });
+  });
+  list.querySelectorAll("[data-delete-assessment-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await deleteAssessmentById(button.dataset.deleteAssessmentId || "");
     });
   });
 
@@ -1118,6 +1130,31 @@ async function clearAssessmentSearch() {
   await loadAssessments();
 }
 
+async function deleteAssessmentById(assessmentId) {
+  const normalizedAssessmentId = String(assessmentId || "").trim();
+  if (!normalizedAssessmentId) {
+    return showFeedback("缺少要删除的试卷模板。", true);
+  }
+
+  const assessment = state.assessments.find((item) => item.id === normalizedAssessmentId);
+  const displayName = assessment?.title || normalizedAssessmentId;
+  if (!window.confirm(`确认删除试卷模板“${displayName}”？\n\n若该模板已被笔试任务或提交记录引用，系统会阻止删除。`)) {
+    return;
+  }
+
+  const result = await api(`/api/admin/assessments/${normalizedAssessmentId}`, {
+    method: "DELETE"
+  });
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  showFeedback("试卷模板删除成功。");
+  await loadAssessments({ silent: true });
+  await loadAssessmentOptions({ silent: true });
+  await loadAdminCampaigns({ silent: true });
+}
+
 async function searchCampaigns(event) {
   event.preventDefault();
   const formData = new FormData(event.currentTarget);
@@ -1134,6 +1171,29 @@ async function clearCampaignSearch() {
   state.campaignFilters = { q: "", status: "" };
   state.paginations.campaigns.page = 1;
   await loadAdminCampaigns();
+}
+
+async function deleteCampaignById(campaignId) {
+  const normalizedCampaignId = String(campaignId || "").trim();
+  if (!normalizedCampaignId) {
+    return showFeedback("缺少要删除的笔试任务。", true);
+  }
+
+  const campaign = state.adminCampaigns.find((item) => item.id === normalizedCampaignId);
+  const displayName = campaign?.title || normalizedCampaignId;
+  if (!window.confirm(`确认删除笔试任务“${displayName}”？\n\n若该任务已有提交记录，系统会阻止删除。`)) {
+    return;
+  }
+
+  const result = await api(`/api/admin/campaigns/${normalizedCampaignId}`, {
+    method: "DELETE"
+  });
+  if (!result.ok) {
+    return showFeedback(result.message, true);
+  }
+
+  showFeedback("笔试任务删除成功。");
+  await loadAdminCampaigns({ silent: true });
 }
 
 async function createUser(event) {

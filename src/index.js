@@ -1,9 +1,14 @@
 import {
+  countAssessmentDependencies,
+  countCampaignDependencies,
   countUserSubmissions,
   countQuestionDependencies,
   countUserDependencies,
+  deleteAssessmentById,
   deleteEvaluationRecordsBySubmissionId,
   deleteAssessmentQuestionsByAssessmentId,
+  deleteCampaignById,
+  deleteCampaignCandidatesByCampaignId,
   deleteProctoringEventsBySubmissionId,
   deleteQuestionAnswersByQuestionId,
   deleteQuestionById,
@@ -216,8 +221,20 @@ export default {
       }
       return handleUpdateCampaign(request, env, sessionUser, adminCampaignMatch[1], corsHeaders);
     }
+    if (request.method === "DELETE" && adminCampaignMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleDeleteCampaign(env, sessionUser, adminCampaignMatch[1], corsHeaders);
+    }
 
     const adminAssessmentMatch = url.pathname.match(/^\/api\/admin\/assessments\/([^/]+)$/);
+    if (request.method === "DELETE" && adminAssessmentMatch) {
+      if (!sessionUser) {
+        return json({ message: "未登录" }, 401, {}, corsHeaders);
+      }
+      return handleDeleteAssessment(env, sessionUser, adminAssessmentMatch[1], corsHeaders);
+    }
     if (request.method === "GET" && adminAssessmentMatch) {
       if (!sessionUser) {
         return json({ message: "未登录" }, 401, {}, corsHeaders);
@@ -1049,6 +1066,46 @@ async function handleUpdateCampaign(request, env, sessionUser, campaignId, corsH
 }
 
 /**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} campaignId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleDeleteCampaign(env, sessionUser, campaignId, corsHeaders) {
+  if (!hasRole(sessionUser, ["admin", "recruiter"])) {
+    return json({ message: "无权删除笔试任务" }, 403, {}, corsHeaders);
+  }
+
+  const campaign = await findCampaignById(env, campaignId);
+  if (!campaign) {
+    return json({ message: "笔试任务不存在" }, 404, {}, corsHeaders);
+  }
+
+  const dependencies = await countCampaignDependencies(env, campaignId);
+  const submissionCount = Number(dependencies?.submission_count ?? 0);
+  if (submissionCount > 0) {
+    return json({
+      message: "该笔试任务已有提交记录，不能直接删除",
+      dependencies: {
+        candidateCount: Number(dependencies?.candidate_count ?? 0),
+        submissionCount
+      }
+    }, 409, {}, corsHeaders);
+  }
+
+  await deleteCampaignCandidatesByCampaignId(env, campaignId);
+  await deleteCampaignById(env, campaignId);
+
+  return json({
+    message: "笔试任务删除成功",
+    campaign: {
+      id: campaignId,
+      title: campaign.title
+    }
+  }, 200, {}, corsHeaders);
+}
+
+/**
  * @param {Request} request
  * @param {AppBindings} env
  * @param {SessionUser} sessionUser
@@ -1122,6 +1179,47 @@ async function handleAssignCampaign(request, env, sessionUser, corsHeaders) {
       invitationStatus
     }
   }, 201, {}, corsHeaders);
+}
+
+/**
+ * @param {AppBindings} env
+ * @param {SessionUser} sessionUser
+ * @param {string} assessmentId
+ * @param {Record<string, string>} corsHeaders
+ */
+async function handleDeleteAssessment(env, sessionUser, assessmentId, corsHeaders) {
+  if (!hasRole(sessionUser, ["interviewer", "admin"])) {
+    return json({ message: "无权删除试卷模板" }, 403, {}, corsHeaders);
+  }
+
+  const assessment = await findAssessmentById(env, assessmentId);
+  if (!assessment) {
+    return json({ message: "试卷模板不存在" }, 404, {}, corsHeaders);
+  }
+
+  const dependencies = await countAssessmentDependencies(env, assessmentId);
+  const campaignCount = Number(dependencies?.campaign_count ?? 0);
+  const submissionCount = Number(dependencies?.submission_count ?? 0);
+  if (campaignCount > 0 || submissionCount > 0) {
+    return json({
+      message: "该试卷模板已被笔试任务或提交记录引用，不能直接删除",
+      dependencies: {
+        campaignCount,
+        submissionCount
+      }
+    }, 409, {}, corsHeaders);
+  }
+
+  await deleteAssessmentQuestionsByAssessmentId(env, assessmentId);
+  await deleteAssessmentById(env, assessmentId);
+
+  return json({
+    message: "试卷模板删除成功",
+    assessment: {
+      id: assessmentId,
+      title: assessment.title
+    }
+  }, 200, {}, corsHeaders);
 }
 
 /**
