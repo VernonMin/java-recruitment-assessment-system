@@ -14,6 +14,7 @@ const state = {
   assessmentQuestionIndex: 0,
   currentCampaign: null,
   currentQuestions: [],
+  answerDrafts: {},
   currentSubmission: null,
   currentSubmissionProctoring: null,
   activeView: null,
@@ -1746,6 +1747,7 @@ async function ensureAnswerSession() {
     lastSnapshotAt: null,
     autoSubmitted: false
   };
+  state.answerDrafts = {};
   resumeAnswerRuntime();
   return true;
 }
@@ -2150,22 +2152,11 @@ async function reportProctoringEvent(eventType, eventValue = null) {
 }
 
 function collectCurrentAnswers() {
+  syncVisibleAnswerDrafts();
   return state.currentQuestions.map((question) => {
-    const field = document.querySelector(`[data-answer-id="${question.questionId}"]`);
-    const choiceFields = [...document.querySelectorAll(`[data-answer-choice="${question.questionId}"]`)];
-    let answer = "";
-    if (choiceFields.length > 0) {
-      if (question.type === "multiple_choice") {
-        answer = choiceFields.filter((item) => item.checked).map((item) => item.value).join(",");
-      } else {
-        answer = choiceFields.find((item) => item.checked)?.value || "";
-      }
-    } else {
-      answer = field ? field.value : "";
-    }
     return {
       questionId: question.questionId,
-      answer
+      answer: String(state.answerDrafts[question.questionId] || "")
     };
   });
 }
@@ -2182,11 +2173,15 @@ function saveAnswerDrafts() {
   if (!state.answerSession) {
     return;
   }
+  syncVisibleAnswerDrafts();
   const payload = {
     campaignId: state.answerSession.campaignId,
     submissionId: state.answerSession.submissionId,
     startedAt: state.answerSession.startedAt,
-    answers: collectCurrentAnswers()
+    answers: state.currentQuestions.map((question) => ({
+      questionId: question.questionId,
+      answer: String(state.answerDrafts[question.questionId] || "")
+    }))
   };
   localStorage.setItem(getAnswerDraftStorageKey(state.answerSession.submissionId), JSON.stringify(payload));
 }
@@ -2197,11 +2192,13 @@ function restoreAnswerDrafts() {
   }
   const raw = localStorage.getItem(getAnswerDraftStorageKey(state.answerSession.submissionId));
   if (!raw) {
+    state.answerDrafts = {};
     return;
   }
   try {
     const data = JSON.parse(raw);
-    const answerMap = new Map((data.answers || []).map((item) => [item.questionId, item.answer]));
+    const answerMap = new Map((data.answers || []).map((item) => [item.questionId, String(item.answer || "")]));
+    state.answerDrafts = Object.fromEntries(answerMap.entries());
     state.currentQuestions.forEach((question) => {
       const savedAnswer = answerMap.get(question.questionId);
       if (!answerMap.has(question.questionId)) {
@@ -2221,14 +2218,39 @@ function restoreAnswerDrafts() {
       }
     });
   } catch {
+    state.answerDrafts = {};
     localStorage.removeItem(getAnswerDraftStorageKey(state.answerSession.submissionId));
   }
+}
+
+function syncVisibleAnswerDrafts() {
+  const nextDrafts = { ...state.answerDrafts };
+  state.currentQuestions.forEach((question) => {
+    const field = document.querySelector(`[data-answer-id="${question.questionId}"]`);
+    const choiceFields = [...document.querySelectorAll(`[data-answer-choice="${question.questionId}"]`)];
+    if (choiceFields.length > 0) {
+      if (question.type === "multiple_choice") {
+        nextDrafts[question.questionId] = choiceFields
+          .filter((item) => item.checked)
+          .map((item) => item.value)
+          .join(",");
+      } else {
+        nextDrafts[question.questionId] = choiceFields.find((item) => item.checked)?.value || "";
+      }
+      return;
+    }
+    if (field) {
+      nextDrafts[question.questionId] = field.value || "";
+    }
+  });
+  state.answerDrafts = nextDrafts;
 }
 
 function clearAnswerDrafts(submissionId) {
   if (!submissionId) {
     return;
   }
+  state.answerDrafts = {};
   localStorage.removeItem(getAnswerDraftStorageKey(submissionId));
 }
 
