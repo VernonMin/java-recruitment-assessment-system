@@ -2418,7 +2418,7 @@ function renderSubmissionList() {
       <h3>${escapeHtml(item.candidate_name || item.candidate_account || "提交记录")} · ${escapeHtml(item.campaign_title || "-")}</h3>
       <p>提交 ID：${escapeHtml(item.id)}</p>
       <p>候选人账号：${escapeHtml(item.candidate_account || "-")}</p>
-      <p>状态：${escapeHtml(formatSubmissionStatus(item.status || "-"))}</p>
+      <p>状态：${renderSubmissionStatusBadge(item.status || "-")}</p>
       <p>审核状态：${renderSubmissionReviewStatusBadge(item.review_status || item.status || "-")}</p>
       <p>提交时间：${escapeHtml(formatDateTime(item.submitted_at || item.created_at))}</p>
       <p>总分：${escapeHtml(String(item.total_score ?? 0))} 分</p>
@@ -2443,7 +2443,7 @@ function renderSubmissionMeta(submission, targetId = "submissionModalMeta") {
   meta.innerHTML = renderMetaItems([
     ["提交 ID", submission.id],
     ["笔试任务", submission.campaign_title || submission.campaignId],
-    ["状态", formatSubmissionStatus(submission.status)],
+    ["状态", { html: renderSubmissionStatusBadge(submission.status) }],
     ["审核状态", { html: renderSubmissionReviewStatusBadge(submission.review_status || submission.status) }],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
@@ -2862,6 +2862,19 @@ function formatSubmissionReviewStatus(status) {
     grading: "待审核",
     graded: "已审核"
   }[status] || status;
+}
+
+function renderSubmissionStatusBadge(status) {
+  const normalized = String(status || "").trim();
+  const label = formatSubmissionStatus(normalized || "-");
+  const modifier = {
+    in_progress: "pending",
+    submitted: "pending",
+    reviewed: "warning",
+    grading: "warning",
+    graded: "success"
+  }[normalized] || "neutral";
+  return `<span class="review-status-badge review-status-badge-${modifier}">${escapeHtml(label)}</span>`;
 }
 
 function renderSubmissionReviewStatusBadge(status) {
