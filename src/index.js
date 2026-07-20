@@ -2035,13 +2035,15 @@ async function handleGetSubmissionProctoring(env, sessionUser, submissionId, cor
     url: `/api/proctoring/snapshots/${item.id}`
   }));
   const totalRiskScore = events.reduce((sum, item) => sum + Number(item.risk_score ?? 0), 0);
+  const riskReasons = inferRiskReasons(events);
 
   return json({
     summary: {
       eventCount: events.length,
       snapshotCount: snapshots.length,
       totalRiskScore,
-      riskLevel: inferRiskLevel(totalRiskScore)
+      riskLevel: inferRiskLevel(totalRiskScore, events),
+      reasons: riskReasons
     },
     events,
     snapshots
@@ -2536,9 +2538,9 @@ function normalizeTimestamp(value, fallback) {
 function inferRiskScore(eventType) {
   switch (eventType) {
     case "camera_denied":
-      return 40;
+      return 80;
     case "fullscreen_exit":
-      return 20;
+      return 80;
     case "page_blur":
       return 15;
     case "network_offline":
@@ -2554,8 +2556,15 @@ function inferRiskScore(eventType) {
 
 /**
  * @param {number} totalRiskScore
+ * @param {Array<{event_type?: string | null}>} [events]
  */
-function inferRiskLevel(totalRiskScore) {
+function inferRiskLevel(totalRiskScore, events = []) {
+  const hasHardRiskEvent = events.some((item) =>
+    item?.event_type === "camera_denied" || item?.event_type === "fullscreen_exit"
+  );
+  if (hasHardRiskEvent) {
+    return "高风险";
+  }
   if (totalRiskScore >= 80) {
     return "高风险";
   }
@@ -2566,6 +2575,26 @@ function inferRiskLevel(totalRiskScore) {
     return "低风险";
   }
   return "正常";
+}
+
+/**
+ * @param {Array<{event_type?: string | null}>} events
+ */
+function inferRiskReasons(events) {
+  const reasonMap = {
+    camera_denied: "候选人拒绝开启摄像头",
+    fullscreen_exit: "候选人退出全屏作答"
+  };
+  const reasons = [];
+  const seen = new Set();
+  for (const item of events) {
+    const reason = reasonMap[item?.event_type || ""];
+    if (reason && !seen.has(reason)) {
+      seen.add(reason);
+      reasons.push(reason);
+    }
+  }
+  return reasons;
 }
 
 /**

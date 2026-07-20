@@ -2372,6 +2372,16 @@ function renderSubmissionProctoring(containerId = "submissionModalProctoring") {
           <strong>${escapeHtml(String(proctoring.summary.snapshotCount || 0))}</strong>
         </div>
       </div>
+      ${(proctoring.summary.reasons || []).length ? `
+        <div class="proctoring-risk-panel">
+          <span class="proctoring-risk-label">高风险原因</span>
+          <div class="proctoring-risk-reasons">
+            ${(proctoring.summary.reasons || []).map((reason) => `
+              <span class="proctoring-risk-reason">${escapeHtml(reason)}</span>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
     </article>
     <article class="question-card">
       <h3>异常事件记录</h3>
@@ -2945,7 +2955,7 @@ function formatInvitationStatus(status) {
 
 function formatProctoringEventType(eventType) {
   return {
-    camera_denied: "摄像头授权失败",
+    camera_denied: "拒绝摄像头授权",
     fullscreen_exit: "退出全屏",
     page_blur: "页面失焦",
     network_offline: "网络离线",
