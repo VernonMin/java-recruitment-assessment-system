@@ -866,6 +866,33 @@ select {
   margin-bottom: 14px;
 }
 
+.auto-assemble-card {
+  display: grid;
+  gap: 16px;
+}
+
+.range-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.range-inline select {
+  flex: 1 1 0;
+}
+
+.range-divider {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.auto-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .template-search-input {
   width: 220px;
 }
@@ -1816,6 +1843,10 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .auto-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .evaluation-columns {
     grid-template-columns: 1fr;
   }
@@ -1855,6 +1886,11 @@ select {
   .user-card-identity {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .range-inline {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .user-card-info {

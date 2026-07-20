@@ -908,6 +908,69 @@
                 <textarea name="description" placeholder="输入试卷模板说明"></textarea>
             </label>
 
+            <section class="panel-subsection auto-assemble-card">
+              <div class="panel-header template-panel-header">
+                <div>
+                  <h3>自动组卷</h3>
+                  <p class="hint">按题型分值、目标总分和难度范围生成一版试卷，生成后仍可人工替换、调分和改顺序。</p>
+                </div>
+                <button id="autoGenerateAssessmentButton" type="button" class="ghost-button">生成试卷</button>
+              </div>
+              <div class="form-columns">
+                <label>
+                  <span>目标总分</span>
+                  <input id="autoAssessmentTotalScore" type="number" min="1" value="100" />
+                </label>
+                <label>
+                  <span>难度范围</span>
+                  <div class="range-inline">
+                    <select id="autoAssessmentDifficultyMin">
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                    <span class="range-divider">至</span>
+                    <select id="autoAssessmentDifficultyMax">
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5" selected>5</option>
+                    </select>
+                  </div>
+                </label>
+              </div>
+              <div class="auto-score-grid">
+                <label>
+                  <span>单选题分值</span>
+                  <input id="autoScoreSingleChoice" type="number" min="0" value="20" />
+                </label>
+                <label>
+                  <span>多选题分值</span>
+                  <input id="autoScoreMultipleChoice" type="number" min="0" value="20" />
+                </label>
+                <label>
+                  <span>判断题分值</span>
+                  <input id="autoScoreTrueFalse" type="number" min="0" value="10" />
+                </label>
+                <label>
+                  <span>填空题分值</span>
+                  <input id="autoScoreFillBlank" type="number" min="0" value="10" />
+                </label>
+                <label>
+                  <span>简答题分值</span>
+                  <input id="autoScoreShortAnswer" type="number" min="0" value="20" />
+                </label>
+                <label>
+                  <span>场景分析题分值</span>
+                  <input id="autoScoreScenarioAnswer" type="number" min="0" value="20" />
+                </label>
+              </div>
+              <p class="hint">各题型分值之和应等于目标总分。若某题型填 0，生成时会忽略该题型。</p>
+            </section>
+
             <div class="split-layout template-builder-layout">
               <div class="panel-subsection">
                 <div class="panel-header template-panel-header">

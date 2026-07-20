@@ -151,6 +151,7 @@ document.getElementById("deleteQuestionId").addEventListener("change", syncDelet
 document.getElementById("assessmentTemplateForm").addEventListener("submit", submitAssessmentTemplate);
 document.getElementById("assessmentTemplateSelect").addEventListener("change", onAssessmentTemplateSelectChange);
 document.getElementById("assessmentQuestionSearchInput").addEventListener("input", onAssessmentQuestionSearch);
+document.getElementById("autoGenerateAssessmentButton").addEventListener("click", autoGenerateAssessmentQuestions);
 document.getElementById("openCreateUserModalButton").addEventListener("click", () => openUserModal("create"));
 document.getElementById("openBatchCreateUsersModalButton").addEventListener("click", () => openUserModal("batchCreate"));
 document.getElementById("openAssignCampaignModalButton").addEventListener("click", () => openUserModal("assignCampaign"));
@@ -3393,6 +3394,183 @@ async function onAssessmentTemplateSelectChange(event) {
 function onAssessmentQuestionSearch(event) {
   state.assessmentDraft.questionSearch = String(event.currentTarget.value || "").trim().toLowerCase();
   renderAssessmentQuestionPool();
+}
+
+function autoGenerateAssessmentQuestions() {
+  if (state.assessmentQuestionPool.length === 0) {
+    showFeedback("当前没有可用于自动组卷的已发布题目。", true);
+    return;
+  }
+
+  const rules = readAssessmentAutoAssembleRules();
+  if (!rules.ok) {
+    showFeedback(rules.message, true);
+    return;
+  }
+
+  const buildResult = buildAssessmentQuestionSelection(rules.data);
+  if (!buildResult.ok) {
+    showFeedback(buildResult.message, true);
+    return;
+  }
+
+  state.assessmentDraft.selectedQuestions = buildResult.items.map((item, index) => ({
+    questionId: item.id,
+    stem: item.stem,
+    type: item.type,
+    difficulty: item.difficulty,
+    sectionName: defaultSectionNameByQuestionType(item.type),
+    sortOrder: index + 1,
+    score: Number(item.score || 0)
+  }));
+  renderAssessmentQuestionPool();
+  renderSelectedAssessmentQuestions();
+  showFeedback(`自动组卷完成，共生成 ${buildResult.items.length} 道题，总分 ${buildResult.totalScore} 分。`);
+}
+
+function readAssessmentAutoAssembleRules() {
+  const totalScore = Number(document.getElementById("autoAssessmentTotalScore").value || 0);
+  const difficultyMin = Number(document.getElementById("autoAssessmentDifficultyMin").value || 1);
+  const difficultyMax = Number(document.getElementById("autoAssessmentDifficultyMax").value || 5);
+  const typeTargets = {
+    single_choice: Number(document.getElementById("autoScoreSingleChoice").value || 0),
+    multiple_choice: Number(document.getElementById("autoScoreMultipleChoice").value || 0),
+    true_false: Number(document.getElementById("autoScoreTrueFalse").value || 0),
+    fill_blank: Number(document.getElementById("autoScoreFillBlank").value || 0),
+    short_answer: Number(document.getElementById("autoScoreShortAnswer").value || 0),
+    scenario_answer: Number(document.getElementById("autoScoreScenarioAnswer").value || 0)
+  };
+
+  if (!Number.isFinite(totalScore) || totalScore <= 0) {
+    return { ok: false, message: "请先填写大于 0 的目标总分。" };
+  }
+  if (difficultyMin > difficultyMax) {
+    return { ok: false, message: "难度范围不合法，最小难度不能大于最大难度。" };
+  }
+
+  const targetSum = Object.values(typeTargets).reduce((sum, value) => sum + Number(value || 0), 0);
+  if (targetSum <= 0) {
+    return { ok: false, message: "请至少为一个题型填写分值。" };
+  }
+  if (targetSum !== totalScore) {
+    return { ok: false, message: "各题型分值之和必须等于目标总分。" };
+  }
+
+  return {
+    ok: true,
+    data: {
+      totalScore,
+      difficultyMin,
+      difficultyMax,
+      typeTargets
+    }
+  };
+}
+
+function buildAssessmentQuestionSelection(rules) {
+  const selectedItems = [];
+
+  for (const [type, targetScore] of Object.entries(rules.typeTargets)) {
+    const normalizedTarget = Number(targetScore || 0);
+    if (normalizedTarget <= 0) {
+      continue;
+    }
+
+    const pool = shuffleArray(
+      state.assessmentQuestionPool.filter((item) =>
+        item.type === type
+        && Number(item.difficulty || 0) >= rules.difficultyMin
+        && Number(item.difficulty || 0) <= rules.difficultyMax
+      )
+    );
+
+    if (pool.length === 0) {
+      return { ok: false, message: `${formatQuestionType(type)}在当前难度范围内没有可用题目。` };
+    }
+
+    const combination = pickQuestionsForTargetScore(pool, normalizedTarget);
+    if (!combination.ok) {
+      return { ok: false, message: `${formatQuestionType(type)}无法凑出 ${normalizedTarget} 分，请调整题型分值或补充题库。` };
+    }
+    selectedItems.push(...combination.items);
+  }
+
+  const uniqueItems = [];
+  const seen = new Set();
+  for (const item of selectedItems) {
+    if (seen.has(item.id)) {
+      continue;
+    }
+    seen.add(item.id);
+    uniqueItems.push(item);
+  }
+
+  const totalScore = uniqueItems.reduce((sum, item) => sum + Number(item.score || 0), 0);
+  if (totalScore !== rules.totalScore) {
+    return { ok: false, message: "自动组卷结果总分与目标总分不一致，请调整规则后重试。" };
+  }
+
+  return {
+    ok: true,
+    items: uniqueItems.sort((a, b) => compareQuestionTypeOrder(a.type, b.type)),
+    totalScore
+  };
+}
+
+function pickQuestionsForTargetScore(pool, targetScore) {
+  const reachable = new Map([[0, []]]);
+  for (const item of pool) {
+    const score = Number(item.score || 0);
+    if (!Number.isFinite(score) || score <= 0) {
+      continue;
+    }
+    const currentEntries = [...reachable.entries()].sort((a, b) => b[0] - a[0]);
+    for (const [sum, indices] of currentEntries) {
+      const nextSum = sum + score;
+      if (nextSum > targetScore || reachable.has(nextSum)) {
+        continue;
+      }
+      reachable.set(nextSum, [...indices, item]);
+    }
+  }
+
+  if (reachable.has(targetScore)) {
+    return { ok: true, items: reachable.get(targetScore) || [] };
+  }
+
+  return { ok: false, items: [] };
+}
+
+function defaultSectionNameByQuestionType(type) {
+  return {
+    single_choice: "单选题",
+    multiple_choice: "多选题",
+    true_false: "判断题",
+    fill_blank: "填空题",
+    short_answer: "简答题",
+    scenario_answer: "场景分析题"
+  }[type] || "未分组";
+}
+
+function compareQuestionTypeOrder(left, right) {
+  const order = {
+    single_choice: 1,
+    multiple_choice: 2,
+    true_false: 3,
+    fill_blank: 4,
+    short_answer: 5,
+    scenario_answer: 6
+  };
+  return (order[left] || 99) - (order[right] || 99);
+}
+
+function shuffleArray(items) {
+  const next = [...items];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+  return next;
 }
 
 async function loadAssessmentTemplateDetail(assessmentId) {
