@@ -2546,9 +2546,9 @@ function renderEvaluationForm(answers, submission) {
   form.innerHTML = [
     `<input type="hidden" name="submissionId" value="${escapeHtml(submission.id)}" />`,
     `<div class="question-card">
-      <div class="button-row">
-        <button id="aiSuggestButton" type="button" class="ghost-button">AI 生成建议</button>
-        <button id="applyAllAiSuggestionsButton" type="button" class="ghost-button hidden">一键采纳 AI 建议</button>
+      <div class="button-row review-ai-actions">
+        <button id="aiSuggestButton" type="button" class="ghost-button ai-action-button ai-action-button-primary">AI 生成建议</button>
+        <button id="applyAllAiSuggestionsButton" type="button" class="ghost-button ai-action-button ai-action-button-secondary hidden">一键采纳 AI 建议</button>
       </div>
       <p class="hint">AI 会对整份答卷的全部题型生成建议分数与评语，不会直接写入最终成绩。请人工审核、修订后再提交。</p>
       <div id="aiSuggestionSummary" class="ai-suggestion-summary hidden"></div>

@@ -1672,6 +1672,66 @@ select {
   border: 1px solid #b9d5f7;
 }
 
+.review-ai-actions {
+  gap: 14px;
+  align-items: center;
+}
+
+.ai-action-button {
+  position: relative;
+  min-width: 168px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.ai-action-button:hover {
+  transform: translateY(-1px);
+}
+
+.ai-action-button-primary {
+  border-color: rgba(20, 83, 45, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(255, 242, 214, 0.9), transparent 55%),
+    linear-gradient(135deg, #fffaf0 0%, #f6ebd6 100%);
+  color: #20462e;
+  box-shadow:
+    0 10px 24px rgba(32, 70, 46, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.ai-action-button-primary:hover {
+  border-color: rgba(20, 83, 45, 0.28);
+  box-shadow:
+    0 14px 28px rgba(32, 70, 46, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.ai-action-button-secondary {
+  border-color: rgba(180, 83, 9, 0.24);
+  background:
+    radial-gradient(circle at top left, rgba(255, 233, 196, 0.92), transparent 58%),
+    linear-gradient(135deg, #fffdf8 0%, #f8eedf 100%);
+  color: #8c4c15;
+  box-shadow:
+    0 10px 24px rgba(180, 83, 9, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.ai-action-button-secondary:hover {
+  border-color: rgba(180, 83, 9, 0.38);
+  box-shadow:
+    0 14px 28px rgba(180, 83, 9, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
 .evaluation-card {
   display: grid;
   gap: 16px;
@@ -2156,6 +2216,16 @@ select {
   .modal-card {
     padding: 18px 16px;
     border-radius: 22px;
+  }
+
+  .review-ai-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-action-button {
+    width: 100%;
+    min-width: 0;
   }
 
   .modal-card .primary-button,
