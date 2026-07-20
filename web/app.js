@@ -591,20 +591,36 @@ async function loadAssessmentOptions(options = {}) {
 }
 
 async function loadAssessmentQuestionPool(options = {}) {
-  const search = new URLSearchParams({
-    status: "published",
-    page: "1",
-    pageSize: "100"
-  });
-  const result = await api(`/api/questions?${search.toString()}`);
-  if (!result.ok) {
-    if (!options.silent) {
-      showFeedback(result.message, true);
+  const pageSize = 200;
+  let page = 1;
+  let total = 0;
+  const collected = [];
+
+  while (true) {
+    const search = new URLSearchParams({
+      status: "published",
+      page: String(page),
+      pageSize: String(pageSize)
+    });
+    const result = await api(`/api/questions?${search.toString()}`);
+    if (!result.ok) {
+      if (!options.silent) {
+        showFeedback(result.message, true);
+      }
+      return false;
     }
-    return false;
+
+    const items = Array.isArray(result.data.items) ? result.data.items : [];
+    collected.push(...items);
+    total = Number(result.data.pagination?.total || collected.length);
+
+    if (items.length === 0 || collected.length >= total) {
+      break;
+    }
+    page += 1;
   }
 
-  state.assessmentQuestionPool = result.data.items;
+  state.assessmentQuestionPool = collected;
   renderAssessmentQuestionPool();
   return true;
 }
