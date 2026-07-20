@@ -333,7 +333,9 @@
         <section id="submissionView" class="view">
           <div class="panel">
             <form id="submissionSearchForm" class="stack-form panel-subsection">
-              <h3>检索提交记录</h3>
+              <div class="section-caption">
+                <p class="hint">按候选人、笔试任务、提交状态和审核状态筛选目标答卷。</p>
+              </div>
               <div class="form-columns">
                 <label>
                   <span>关键词</span>
@@ -365,8 +367,8 @@
                 </label>
                 <p class="hint">提交状态说明：进行中表示候选人正在作答；评阅中表示已交卷但主观题还未完成复核；已评分表示总成绩已生成。审核状态说明：未提交 / 待审核 / 已审核。</p>
                 <div class="button-row align-end">
-                  <button type="submit" class="ghost-button">检索提交</button>
-                  <button id="clearSubmissionSearchButton" type="button" class="ghost-button">清空条件</button>
+                  <button type="submit" class="ghost-button">查询</button>
+                  <button id="clearSubmissionSearchButton" type="button" class="ghost-button">重置</button>
                 </div>
               </div>
             </form>
