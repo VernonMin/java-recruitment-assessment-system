@@ -196,7 +196,9 @@
         <section id="campaignManagementView" class="view">
           <div class="panel">
             <form id="campaignSearchForm" class="stack-form panel-subsection">
-              <h3>检索笔试任务</h3>
+              <div class="section-caption">
+                <p class="hint">按任务名称、状态等条件快速定位目标笔试任务。</p>
+              </div>
               <div class="form-columns">
                 <label>
                   <span>关键词</span>
@@ -215,8 +217,8 @@
                 <p class="hint">草稿：仅内部准备；已发布：可分配候选人；进行中：已有候选人作答；已归档：历史任务。</p>
               </div>
               <div class="button-row">
-                <button type="submit" class="ghost-button">检索任务</button>
-                <button id="clearCampaignSearchButton" type="button" class="ghost-button">清空条件</button>
+                <button type="submit" class="ghost-button">查询</button>
+                <button id="clearCampaignSearchButton" type="button" class="ghost-button">重置</button>
               </div>
             </form>
 
@@ -233,7 +235,9 @@
         <section id="questionBankView" class="view">
           <div class="panel">
             <form id="questionSearchForm" class="stack-form panel-subsection">
-              <h3>检索题目</h3>
+              <div class="section-caption">
+                <p class="hint">按题干、题型、状态筛选题库内容。</p>
+              </div>
               <div class="form-columns">
                 <label>
                   <span>关键词</span>
@@ -263,8 +267,8 @@
                 </label>
                 <p class="hint">草稿：题目仍在编辑；已发布：可加入试卷模板。</p>
                 <div class="button-row align-end">
-                  <button type="submit" class="ghost-button">检索题目</button>
-                  <button id="clearQuestionSearchButton" type="button" class="ghost-button">清空条件</button>
+                  <button type="submit" class="ghost-button">查询</button>
+                  <button id="clearQuestionSearchButton" type="button" class="ghost-button">重置</button>
                 </div>
               </div>
             </form>
@@ -279,7 +283,9 @@
         <section id="assessmentManagementView" class="view">
           <div class="panel">
             <form id="assessmentSearchForm" class="stack-form panel-subsection">
-              <h3>检索试卷模板</h3>
+              <div class="section-caption">
+                <p class="hint">按模板名称、状态和适用级别筛选试卷模版。</p>
+              </div>
               <div class="form-columns">
                 <label>
                   <span>关键词</span>
@@ -297,13 +303,13 @@
                 <p class="hint">草稿：模板编辑中；已发布：可创建笔试任务；已归档：历史模板。</p>
               </div>
               <div class="button-row">
-                <button type="submit" class="ghost-button">检索模板</button>
-                <button id="clearAssessmentSearchButton" type="button" class="ghost-button">清空条件</button>
+                <button type="submit" class="ghost-button">查询</button>
+                <button id="clearAssessmentSearchButton" type="button" class="ghost-button">重置</button>
               </div>
             </form>
 
             <div class="action-toolbar">
-              <button id="openCreateAssessmentModalButton" class="primary-button">新增模板</button>
+              <button id="openCreateAssessmentModalButton" class="primary-button">新增试卷模版</button>
             </div>
 
             <div id="assessmentManagementSummary" class="meta-strip"></div>
@@ -1040,6 +1046,24 @@
             <p class="hint">删除后不可恢复；如果该候选人在该笔试任务下已没有其他已提交答卷，邀请状态会回退为“已邀请”。</p>
             <button type="submit" class="danger-button">确认删除答卷</button>
           </form>
+        </section>
+
+        <section id="confirmActionModal" class="modal-card hidden">
+          <div class="modal-header">
+            <div>
+              <h3 id="confirmActionModalTitle">确认操作</h3>
+              <p id="confirmActionModalDesc" class="hint">请确认是否继续当前操作。</p>
+            </div>
+            <button type="button" class="ghost-button" data-close-modal>关闭</button>
+          </div>
+          <div class="stack-form danger-panel confirm-action-panel">
+            <div id="confirmActionSummary" class="question-card compact-card"></div>
+            <p id="confirmActionHint" class="hint">该操作执行后不可恢复。</p>
+            <div class="button-row confirm-action-buttons">
+              <button id="confirmActionCancelButton" type="button" class="ghost-button" data-close-modal>取消</button>
+              <button id="confirmActionSubmitButton" type="button" class="danger-button">确认删除</button>
+            </div>
+          </div>
         </section>
       </div>
     </div>

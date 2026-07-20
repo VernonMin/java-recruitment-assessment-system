@@ -94,6 +94,7 @@ const authShell = document.getElementById("authShell");
 const appShell = document.getElementById("appShell");
 const modalOverlay = document.getElementById("modalOverlay");
 let feedbackTimer = null;
+let pendingConfirmAction = null;
 const PROCTORING_SNAPSHOT_INTERVAL = 60 * 1000;
 const ANSWER_DRAFT_STORAGE_PREFIX = "oas-answer-draft";
 const answerRuntime = {
@@ -976,7 +977,7 @@ function renderCampaignManagement() {
       <p>结束：${escapeHtml(formatDateTime(item.end_time))}</p>
       <div class="button-row">
         <button class="ghost-button" data-edit-campaign-id="${escapeHtml(item.id)}">编辑任务</button>
-        <button class="danger-button" data-delete-campaign-id="${escapeHtml(item.id)}">删除任务</button>
+        <button class="danger-button" data-delete-campaign-id="${escapeHtml(item.id)}">删除</button>
       </div>
     </article>
   `).join("");
@@ -1025,7 +1026,7 @@ function renderAssessmentManagement() {
       <p>说明：${escapeHtml(item.description || "-")}</p>
       <div class="button-row">
         <button class="ghost-button" data-edit-assessment-id="${escapeHtml(item.id)}">编辑试卷模板</button>
-        <button class="danger-button" data-delete-assessment-id="${escapeHtml(item.id)}">删除模板</button>
+        <button class="danger-button" data-delete-assessment-id="${escapeHtml(item.id)}">删除</button>
       </div>
     </article>
   `).join("");
@@ -1138,21 +1139,31 @@ async function deleteAssessmentById(assessmentId) {
 
   const assessment = state.assessments.find((item) => item.id === normalizedAssessmentId);
   const displayName = assessment?.title || normalizedAssessmentId;
-  if (!window.confirm(`确认删除试卷模板“${displayName}”？\n\n若该模板已被笔试任务或提交记录引用，系统会阻止删除。`)) {
-    return;
-  }
+  openConfirmActionModal({
+    title: "删除试卷模板",
+    description: "确认删除当前试卷模板。若该模板已被笔试任务或提交记录引用，系统会阻止删除。",
+    summary: `
+      <h4>${escapeHtml(displayName)}</h4>
+      <p>模板 ID：${escapeHtml(normalizedAssessmentId)}</p>
+    `,
+    hint: "删除成功后会同步清理模板题目关联关系。",
+    confirmText: "确认删除",
+    onConfirm: async () => {
+      const result = await api(`/api/admin/assessments/${normalizedAssessmentId}`, {
+        method: "DELETE"
+      });
+      if (!result.ok) {
+        showFeedback(result.message, true);
+        return false;
+      }
 
-  const result = await api(`/api/admin/assessments/${normalizedAssessmentId}`, {
-    method: "DELETE"
+      showFeedback("试卷模板删除成功。");
+      await loadAssessments({ silent: true });
+      await loadAssessmentOptions({ silent: true });
+      await loadAdminCampaigns({ silent: true });
+      return true;
+    }
   });
-  if (!result.ok) {
-    return showFeedback(result.message, true);
-  }
-
-  showFeedback("试卷模板删除成功。");
-  await loadAssessments({ silent: true });
-  await loadAssessmentOptions({ silent: true });
-  await loadAdminCampaigns({ silent: true });
 }
 
 async function searchCampaigns(event) {
@@ -1181,19 +1192,29 @@ async function deleteCampaignById(campaignId) {
 
   const campaign = state.adminCampaigns.find((item) => item.id === normalizedCampaignId);
   const displayName = campaign?.title || normalizedCampaignId;
-  if (!window.confirm(`确认删除笔试任务“${displayName}”？\n\n若该任务已有提交记录，系统会阻止删除。`)) {
-    return;
-  }
+  openConfirmActionModal({
+    title: "删除笔试任务",
+    description: "确认删除当前笔试任务。若该任务已有提交记录，系统会阻止删除。",
+    summary: `
+      <h4>${escapeHtml(displayName)}</h4>
+      <p>任务 ID：${escapeHtml(normalizedCampaignId)}</p>
+    `,
+    hint: "删除成功后会同步清理该任务下的候选人分配关系。",
+    confirmText: "确认删除",
+    onConfirm: async () => {
+      const result = await api(`/api/admin/campaigns/${normalizedCampaignId}`, {
+        method: "DELETE"
+      });
+      if (!result.ok) {
+        showFeedback(result.message, true);
+        return false;
+      }
 
-  const result = await api(`/api/admin/campaigns/${normalizedCampaignId}`, {
-    method: "DELETE"
+      showFeedback("笔试任务删除成功。");
+      await loadAdminCampaigns({ silent: true });
+      return true;
+    }
   });
-  if (!result.ok) {
-    return showFeedback(result.message, true);
-  }
-
-  showFeedback("笔试任务删除成功。");
-  await loadAdminCampaigns({ silent: true });
 }
 
 async function createUser(event) {
@@ -4062,6 +4083,7 @@ async function submitAssessmentTemplate(event) {
 
 function closeModal() {
   modalOverlay.classList.add("hidden");
+  pendingConfirmAction = null;
   closeModalSections();
 }
 
@@ -4074,6 +4096,32 @@ function closeModalSections() {
     item.classList.add("hidden");
   });
 }
+
+function openConfirmActionModal(options) {
+  closeModalSections();
+  pendingConfirmAction = typeof options?.onConfirm === "function" ? options.onConfirm : null;
+  document.getElementById("confirmActionModalTitle").textContent = options?.title || "确认操作";
+  document.getElementById("confirmActionModalDesc").textContent = options?.description || "请确认是否继续当前操作。";
+  document.getElementById("confirmActionSummary").innerHTML = options?.summary || "";
+  document.getElementById("confirmActionHint").textContent = options?.hint || "";
+  document.getElementById("confirmActionSubmitButton").textContent = options?.confirmText || "确认";
+  document.getElementById("confirmActionModal").classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+document.getElementById("confirmActionSubmitButton").addEventListener("click", async () => {
+  if (typeof pendingConfirmAction !== "function") {
+    closeModal();
+    return;
+  }
+  const submitButton = document.getElementById("confirmActionSubmitButton");
+  submitButton.disabled = true;
+  const result = await pendingConfirmAction();
+  submitButton.disabled = false;
+  if (result !== false) {
+    closeModal();
+  }
+});
 
 function syncSelectedCampaignToForm() {
   const form = document.getElementById("updateCampaignForm");
