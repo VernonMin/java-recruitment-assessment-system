@@ -1884,9 +1884,8 @@ function renderAssessmentRuntimePanel() {
       <div class="button-row runtime-actions">
         <button type="button" id="requestCameraButton" class="ghost-button">${state.currentCampaign.requireCamera ? "重新申请摄像头" : "开启摄像头预览"}</button>
         <button type="button" id="requestFullscreenButton" class="ghost-button">${state.currentCampaign.requireFullscreen ? "重新进入全屏" : "进入全屏"}</button>
-        <button type="button" id="manualSnapshotButton" class="ghost-button">立即抓拍</button>
       </div>
-      <p class="hint">系统会按 60 秒周期抓拍，并记录离屏、退出全屏、离线等事件。刷新页面后会尝试恢复本地草稿和当前答题会话。</p>
+      <p class="hint">系统会自动按 60 秒周期抓拍，并记录离屏、退出全屏、离线等事件。刷新页面后会尝试恢复本地草稿和当前答题会话。</p>
     </article>
   `;
 
@@ -1895,9 +1894,6 @@ function renderAssessmentRuntimePanel() {
   });
   document.getElementById("requestFullscreenButton")?.addEventListener("click", () => {
     void requestAssessmentFullscreen();
-  });
-  document.getElementById("manualSnapshotButton")?.addEventListener("click", () => {
-    void captureAssessmentSnapshot({ manual: true });
   });
 }
 
@@ -2148,16 +2144,27 @@ async function reportProctoringEvent(eventType, eventValue = null) {
 function collectCurrentAnswers() {
   return state.currentQuestions.map((question) => {
     const field = document.querySelector(`[data-answer-id="${question.questionId}"]`);
+    const choiceFields = [...document.querySelectorAll(`[data-answer-choice="${question.questionId}"]`)];
+    let answer = "";
+    if (choiceFields.length > 0) {
+      if (question.type === "multiple_choice") {
+        answer = choiceFields.filter((item) => item.checked).map((item) => item.value).join(",");
+      } else {
+        answer = choiceFields.find((item) => item.checked)?.value || "";
+      }
+    } else {
+      answer = field ? field.value : "";
+    }
     return {
       questionId: question.questionId,
-      answer: field ? field.value : ""
+      answer
     };
   });
 }
 
 function bindAnswerDraftInputs() {
-  document.querySelectorAll("[data-answer-id]").forEach((field) => {
-    field.addEventListener("input", () => {
+  document.querySelectorAll("[data-answer-id], [data-answer-choice]").forEach((field) => {
+    field.addEventListener(field.matches("[data-answer-choice]") ? "change" : "input", () => {
       saveAnswerDrafts();
     });
   });
@@ -2188,9 +2195,21 @@ function restoreAnswerDrafts() {
     const data = JSON.parse(raw);
     const answerMap = new Map((data.answers || []).map((item) => [item.questionId, item.answer]));
     state.currentQuestions.forEach((question) => {
+      const savedAnswer = answerMap.get(question.questionId);
+      if (!answerMap.has(question.questionId)) {
+        return;
+      }
+      const choiceFields = [...document.querySelectorAll(`[data-answer-choice="${question.questionId}"]`)];
+      if (choiceFields.length > 0) {
+        const selectedValues = new Set(String(savedAnswer || "").split(",").map((item) => item.trim()).filter(Boolean));
+        choiceFields.forEach((field) => {
+          field.checked = selectedValues.has(field.value);
+        });
+        return;
+      }
       const field = document.querySelector(`[data-answer-id="${question.questionId}"]`);
-      if (field && answerMap.has(question.questionId)) {
-        field.value = answerMap.get(question.questionId);
+      if (field) {
+        field.value = savedAnswer;
       }
     });
   } catch {
@@ -3859,6 +3878,39 @@ function hasAnyRole(expectedRoles) {
 
 function renderAnswerInput(question) {
   const id = escapeHtml(question.questionId);
+  const options = Array.isArray(question.options) ? question.options : [];
+  if (question.type === "single_choice" || question.type === "true_false") {
+    return `
+      <fieldset class="answer-choice-group">
+        <legend class="field-label">请选择一个答案</legend>
+        <div class="answer-choice-list">
+          ${options.map((option) => `
+            <label class="answer-choice-card">
+              <input type="radio" name="answer:${id}" value="${escapeHtml(option.optionKey)}" data-answer-choice="${id}" />
+              <span class="answer-choice-key">${escapeHtml(option.optionKey)}</span>
+              <span class="answer-choice-text">${escapeHtml(option.optionText)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </fieldset>
+    `;
+  }
+  if (question.type === "multiple_choice") {
+    return `
+      <fieldset class="answer-choice-group">
+        <legend class="field-label">请选择一个或多个答案</legend>
+        <div class="answer-choice-list">
+          ${options.map((option) => `
+            <label class="answer-choice-card">
+              <input type="checkbox" value="${escapeHtml(option.optionKey)}" data-answer-choice="${id}" />
+              <span class="answer-choice-key">${escapeHtml(option.optionKey)}</span>
+              <span class="answer-choice-text">${escapeHtml(option.optionText)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </fieldset>
+    `;
+  }
   if (question.type === "short_answer" || question.type === "scenario_answer") {
     return `
       <label>
@@ -3869,8 +3921,8 @@ function renderAnswerInput(question) {
   }
   return `
     <label>
-      <span class="field-label">请输入选项或文本答案</span>
-      <input data-answer-id="${id}" placeholder="例如：B" />
+      <span class="field-label">请输入答案</span>
+      <input data-answer-id="${id}" placeholder="输入你的答案" />
     </label>
   `;
 }

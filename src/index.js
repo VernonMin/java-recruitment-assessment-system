@@ -1974,6 +1974,22 @@ async function handleGetCampaignQuestions(env, sessionUser, campaignId, corsHead
     return json({ message: "未找到题目列表" }, 404, {}, corsHeaders);
   }
 
+  const questions = await Promise.all(items.map(async (item) => {
+    const options = await findQuestionOptions(env, item.question_id);
+    return {
+      questionId: item.question_id,
+      sectionName: item.section_name,
+      sortOrder: item.sort_order,
+      score: item.score,
+      type: item.type,
+      stem: item.stem,
+      options: (options.results ?? []).map((option) => ({
+        optionKey: option.option_key,
+        optionText: option.option_text
+      }))
+    };
+  }));
+
   return json({
     campaign: {
       id: items[0].campaign_id,
@@ -1984,14 +2000,7 @@ async function handleGetCampaignQuestions(env, sessionUser, campaignId, corsHead
       assessmentId: items[0].assessment_id,
       assessmentTitle: items[0].assessment_title
     },
-    questions: items.map((item) => ({
-      questionId: item.question_id,
-      sectionName: item.section_name,
-      sortOrder: item.sort_order,
-      score: item.score,
-      type: item.type,
-      stem: item.stem
-    }))
+    questions
   }, 200, {}, corsHeaders);
 }
 

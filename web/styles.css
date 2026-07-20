@@ -962,6 +962,60 @@ label span,
   font-size: 14px;
 }
 
+.answer-choice-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.answer-choice-list {
+  display: grid;
+  gap: 12px;
+}
+
+.answer-choice-card {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(214, 204, 185, 0.88);
+  background: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.answer-choice-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(20, 83, 45, 0.18);
+  box-shadow: 0 12px 24px rgba(39, 29, 18, 0.06);
+}
+
+.answer-choice-card input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.answer-choice-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(20, 83, 45, 0.08);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.answer-choice-text {
+  color: var(--text);
+  line-height: 1.6;
+}
+
 input,
 textarea,
 select {
