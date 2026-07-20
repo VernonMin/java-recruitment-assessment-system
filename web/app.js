@@ -112,7 +112,6 @@ document.querySelectorAll(".menu-item").forEach((button) => {
 document.getElementById("logoutButton").addEventListener("click", logout);
 document.getElementById("loginForm").addEventListener("submit", onLogin);
 document.getElementById("questionForm").addEventListener("submit", submitQuestion);
-document.getElementById("importPresetQuestionsButton").addEventListener("click", importPresetQuestions);
 document.getElementById("loadCampaignsButton").addEventListener("click", () => loadCampaigns());
 document.getElementById("loadQuestionsButton").addEventListener("click", loadCampaignQuestions);
 document.getElementById("assessmentForm").addEventListener("submit", submitAssessment);
@@ -1663,20 +1662,6 @@ async function deleteQuestionById(questionId, form = null) {
   if (form) {
     setFormLoading(form, false);
   }
-}
-
-async function importPresetQuestions() {
-  const result = await api("/api/questions/import-presets", {
-    method: "POST",
-    body: JSON.stringify({})
-  });
-
-  if (!result.ok) {
-    return showFeedback(result.message, true);
-  }
-
-  showFeedback(result.message);
-  await loadQuestions({ silent: true });
 }
 
 async function loadCampaignQuestions(options = {}) {
