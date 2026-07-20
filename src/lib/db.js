@@ -1291,6 +1291,7 @@ export function aggregateSubmissionScores(env, submissionId) {
  * @param {import("../types").AppContext["Bindings"]} env
  * @param {{
  *   submissionAnswerId: string;
+ *   objectiveScore: number;
  *   subjectiveScore: number;
  *   finalScore: number;
  *   reviewerComment: string | null;
@@ -1300,16 +1301,15 @@ export function updateSubmissionAnswerEvaluation(env, params) {
   return env.DB.prepare(
     `update submission_answers
     set
-      objective_result = case
-        when objective_result = 'pending' then 'reviewed'
-        else objective_result
-      end,
+      objective_result = 'reviewed',
+      objective_score = ?,
       subjective_score = ?,
       final_score = ?,
       reviewer_comment = ?,
       updated_at = ?
     where id = ?`
   ).bind(
+    params.objectiveScore,
     params.subjectiveScore,
     params.finalScore,
     params.reviewerComment,

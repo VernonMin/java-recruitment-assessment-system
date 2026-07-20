@@ -79,7 +79,7 @@ const viewMeta = {
   questionBank: ["题库管理", "企业端中的题库能力，供面试官和管理员维护 Java 招聘题库。"],
   assessment: ["答题页", "求职者加载题目、填写答案并提交本次测评。"],
   submission: ["答卷详情", "查看候选人答卷、评分结果、风险记录与抓拍留痕。"],
-  review: ["人工/AI 评分复核", "企业端结合 AI 建议与人工判断复核主观题并确认最终成绩。"]
+  review: ["人工/AI 评分复核", "企业端结合 AI 建议与人工判断复核整份答卷并确认最终成绩。"]
 };
 
 const ROLE_NAME_MAP = {
@@ -753,7 +753,7 @@ function renderEnterpriseWorkspace() {
     cards.push(`
       <article class="card">
         <h3>人工/AI 评分复核</h3>
-        <p>对主观题结合 AI 建议和人工判断完成最终定分。</p>
+        <p>对整份答卷结合 AI 建议和人工判断完成最终定分。</p>
         <div class="button-row">
           <button class="ghost-button" data-nav-view="review">进入人工/AI 评分复核</button>
         </div>
@@ -2515,9 +2515,9 @@ function renderSubmissionAnswers(answers, targetId = "submissionModalAnswers") {
 
 function renderEvaluationForm(answers, submission) {
   const form = document.getElementById("evaluationForm");
-  const subjectiveAnswers = answers.filter((item) => item.type === "short_answer" || item.type === "scenario_answer");
-  if (subjectiveAnswers.length === 0) {
-    form.innerHTML = `<div class="question-card"><p>该答卷没有需要人工/AI 评分复核的主观题。</p></div>`;
+  const reviewableAnswers = Array.isArray(answers) ? answers : [];
+  if (reviewableAnswers.length === 0) {
+    form.innerHTML = `<div class="question-card"><p>该答卷当前没有可复核的作答记录。</p></div>`;
     return;
   }
 
@@ -2528,14 +2528,17 @@ function renderEvaluationForm(answers, submission) {
         <button id="aiSuggestButton" type="button" class="ghost-button">AI 生成建议</button>
         <button id="applyAllAiSuggestionsButton" type="button" class="ghost-button hidden">一键采纳 AI 建议</button>
       </div>
-      <p class="hint">AI 只生成主观题建议分数与评语，不会直接写入最终成绩。请人工审核、修订后再提交。</p>
+      <p class="hint">AI 会对整份答卷的全部题型生成建议分数与评语，不会直接写入最终成绩。请人工审核、修订后再提交。</p>
       <div id="aiSuggestionSummary" class="ai-suggestion-summary hidden"></div>
     </div>`,
-    ...subjectiveAnswers.map((item) => `
+    ...reviewableAnswers.map((item) => `
       <article class="question-card evaluation-card">
         <h3>${escapeHtml(item.stem)}</h3>
+        <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
         <p>候选人答案：${escapeHtml(item.answer_content)}</p>
         <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
+        <p>当前判定：${escapeHtml(formatObjectiveResult(item.objective_result))}</p>
+        <p>当前得分：${escapeHtml(String(item.final_score ?? (Number(item.objective_score ?? 0) + Number(item.subjective_score ?? 0))))} 分</p>
         <div class="evaluation-columns">
           <section class="evaluation-panel ai-panel">
             <div class="evaluation-panel-header">
@@ -2550,7 +2553,7 @@ function renderEvaluationForm(answers, submission) {
             <h4>人工最终结果</h4>
             <label>
               <span>最终分数</span>
-              <input name="score:${escapeHtml(item.id)}" type="number" min="0" max="${escapeHtml(String(item.configured_score ?? 100))}" value="${escapeHtml(String(item.subjective_score || 0))}" />
+              <input name="score:${escapeHtml(item.id)}" type="number" min="0" max="${escapeHtml(String(item.configured_score ?? 100))}" value="${escapeHtml(String(item.final_score ?? (Number(item.objective_score ?? 0) + Number(item.subjective_score ?? 0))))}" />
             </label>
             <label>
               <span>最终评语</span>
@@ -2601,7 +2604,7 @@ async function submitEvaluation(event) {
     const submissionAnswerId = key.slice("score:".length);
     answers.push({
       submissionAnswerId,
-      subjectiveScore: Number(value),
+      finalScore: Number(value),
       comment: String(formData.get(`comment:${submissionAnswerId}`) || "")
     });
   }

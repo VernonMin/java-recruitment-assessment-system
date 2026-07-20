@@ -2137,9 +2137,9 @@ async function handleAiEvaluationSuggestions(request, env, sessionUser, corsHead
   }
 
   const answersResult = await findSubmissionAnswersBySubmissionId(env, body.submissionId);
-  const answers = (answersResult.results ?? []).filter((item) => item.type === "short_answer" || item.type === "scenario_answer");
+  const answers = answersResult.results ?? [];
   if (answers.length === 0) {
-    return json({ message: "该提交没有需要 AI 辅助判分的主观题" }, 400, {}, corsHeaders);
+    return json({ message: "该提交没有可供 AI 复核的作答记录" }, 400, {}, corsHeaders);
   }
 
   let aiSuggestion;
@@ -2195,15 +2195,22 @@ async function handleEvaluation(request, env, sessionUser, corsHeaders) {
       return json({ message: `未找到作答记录: ${item.submissionAnswerId}` }, 404, {}, corsHeaders);
     }
 
-    const subjectiveScore = Number(item.subjectiveScore);
-    if (!Number.isFinite(subjectiveScore) || subjectiveScore < 0) {
-      return json({ message: "主观题分数不合法" }, 400, {}, corsHeaders);
+    const finalScore = Number(item.finalScore);
+    const maxScore = Number(current.configured_score ?? 0);
+    if (!Number.isFinite(finalScore) || finalScore < 0 || finalScore > maxScore) {
+      return json({ message: `最终分数必须在 0 到 ${maxScore} 分之间` }, 400, {}, corsHeaders);
     }
+
+    const isSubjectiveQuestion = current.type === "short_answer" || current.type === "scenario_answer";
+    const nextObjectiveScore = isSubjectiveQuestion ? Number(current.objective_score ?? 0) : finalScore;
+    const nextSubjectiveScore = isSubjectiveQuestion ? finalScore : 0;
+    const previousFinalScore = Number(current.final_score ?? (Number(current.objective_score ?? 0) + Number(current.subjective_score ?? 0)));
 
     await updateSubmissionAnswerEvaluation(env, {
       submissionAnswerId: item.submissionAnswerId,
-      subjectiveScore,
-      finalScore: Number(current.objective_score ?? 0) + subjectiveScore,
+      objectiveScore: nextObjectiveScore,
+      subjectiveScore: nextSubjectiveScore,
+      finalScore,
       reviewerComment: typeof item.comment === "string" ? item.comment.trim() : null
     });
 
@@ -2212,8 +2219,8 @@ async function handleEvaluation(request, env, sessionUser, corsHeaders) {
       submissionId: body.submissionId,
       submissionAnswerId: item.submissionAnswerId,
       evaluationType: "manual",
-      scoreBefore: Number(current.subjective_score ?? 0),
-      scoreAfter: subjectiveScore,
+      scoreBefore: previousFinalScore,
+      scoreAfter: finalScore,
       comment: typeof item.comment === "string" ? item.comment.trim() : null,
       evaluatedBy: sessionUser.sub,
       evaluatedAt: Date.now()
@@ -2238,7 +2245,7 @@ async function handleEvaluation(request, env, sessionUser, corsHeaders) {
   });
 
   return json({
-    message: "人工评估已完成",
+    message: "人工/AI 评分复核已完成",
     submission: {
       id: body.submissionId,
       status: nextStatus,
@@ -2773,7 +2780,7 @@ async function requestAiReviewSuggestions(env, params) {
  */
 function buildAiReviewPrompt(submission, answers) {
   return JSON.stringify({
-    task: "请为 Java 招聘测评中的主观题生成阅卷建议。分数必须在 0 到题目满分之间。结论只作为建议，不是最终录入结果。",
+    task: "请为 Java 招聘测评中的全部题型生成复核建议。分数必须在 0 到题目满分之间。结论只作为建议，不是最终录入结果。",
     scoringPrinciples: [
       "优先考察技术正确性",
       "其次考察分析完整性与工程实践",
@@ -2807,6 +2814,8 @@ function buildAiReviewPrompt(submission, answers) {
       questionStem: item.stem,
       maxScore: item.configured_score,
       answer: item.answer_content,
+      currentObjectiveScore: item.objective_score,
+      currentFinalScore: item.final_score,
       currentSubjectiveScore: item.subjective_score,
       currentComment: item.reviewer_comment
     }))
