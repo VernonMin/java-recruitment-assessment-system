@@ -2527,12 +2527,28 @@ function renderSubmissionAnswers(answers, targetId = "submissionModalAnswers") {
       <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
       <p>作答：${escapeHtml(item.answer_content)}</p>
       <p><span class="answer-status">${escapeHtml(formatObjectiveResult(item.objective_result))}</span></p>
-      <p>客观题得分：${escapeHtml(String(item.objective_score))} 分</p>
-      <p>主观题得分：${escapeHtml(String(item.subjective_score))} 分</p>
+      <p>${escapeHtml(formatSubmissionAnswerScoreLabel(item))}：${escapeHtml(formatSubmissionAnswerScoreValue(item))}</p>
       <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
       <p>评语：${escapeHtml(item.reviewer_comment || "-")}</p>
     </article>
   `).join("");
+}
+
+function formatSubmissionAnswerScoreLabel(answer) {
+  const type = String(answer?.type || "").trim();
+  return type === "short_answer" || type === "scenario_answer"
+    ? "当前得分"
+    : "本题得分";
+}
+
+function formatSubmissionAnswerScoreValue(answer) {
+  const type = String(answer?.type || "").trim();
+  const finalScore = Number(answer?.final_score ?? (Number(answer?.objective_score ?? 0) + Number(answer?.subjective_score ?? 0)));
+  const result = String(answer?.objective_result || "").trim();
+  if ((type === "short_answer" || type === "scenario_answer") && result === "pending") {
+    return "待人工评估";
+  }
+  return `${Number.isFinite(finalScore) ? finalScore : 0} 分`;
 }
 
 function renderEvaluationForm(answers, submission) {
