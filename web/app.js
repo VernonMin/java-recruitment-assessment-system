@@ -2499,9 +2499,9 @@ function renderSubmissionMeta(submission, targetId = "submissionModalMeta") {
 
 function renderSubmissionAnswers(answers, targetId = "submissionModalAnswers") {
   const container = document.getElementById(targetId);
-  container.innerHTML = answers.map((item) => `
+  container.innerHTML = answers.map((item, index) => `
     <article class="question-card">
-      <h3>${escapeHtml(item.stem)}</h3>
+      <h3>第 ${escapeHtml(String(index + 1))} 题 · ${escapeHtml(item.stem)}</h3>
       <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
       <p>作答：${escapeHtml(item.answer_content)}</p>
       <p><span class="answer-status">${escapeHtml(formatObjectiveResult(item.objective_result))}</span></p>
@@ -2531,9 +2531,9 @@ function renderEvaluationForm(answers, submission) {
       <p class="hint">AI 会对整份答卷的全部题型生成建议分数与评语，不会直接写入最终成绩。请人工审核、修订后再提交。</p>
       <div id="aiSuggestionSummary" class="ai-suggestion-summary hidden"></div>
     </div>`,
-    ...reviewableAnswers.map((item) => `
+    ...reviewableAnswers.map((item, index) => `
       <article class="question-card evaluation-card">
-        <h3>${escapeHtml(item.stem)}</h3>
+        <h3>第 ${escapeHtml(String(index + 1))} 题 · ${escapeHtml(item.stem)}</h3>
         <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
         <p>候选人答案：${escapeHtml(item.answer_content)}</p>
         <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
@@ -3029,8 +3029,9 @@ function renderSubmissionReviewStatusBadge(status) {
 
 function formatObjectiveResult(status) {
   return {
-    correct: "判定正确",
-    incorrect: "判定错误",
+    correct: "正确",
+    wrong: "错误",
+    incorrect: "错误",
     partial: "部分正确",
     pending: "待人工评阅",
     reviewed: "已人工评阅"
