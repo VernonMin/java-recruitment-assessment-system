@@ -1417,6 +1417,43 @@ select {
   font-size: 12px;
 }
 
+.review-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+}
+
+.review-status-badge-pending {
+  background: rgba(151, 138, 118, 0.14);
+  border-color: rgba(151, 138, 118, 0.24);
+  color: #6d5f4e;
+}
+
+.review-status-badge-warning {
+  background: rgba(220, 145, 33, 0.16);
+  border-color: rgba(220, 145, 33, 0.26);
+  color: #9a5b00;
+}
+
+.review-status-badge-success {
+  background: rgba(27, 142, 84, 0.14);
+  border-color: rgba(27, 142, 84, 0.24);
+  color: #176943;
+}
+
+.review-status-badge-neutral {
+  background: rgba(82, 92, 105, 0.12);
+  border-color: rgba(82, 92, 105, 0.2);
+  color: #44505c;
+}
+
 .ai-suggestion-summary {
   margin-top: 14px;
   padding: 14px 16px;

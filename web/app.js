@@ -2419,7 +2419,7 @@ function renderSubmissionList() {
       <p>提交 ID：${escapeHtml(item.id)}</p>
       <p>候选人账号：${escapeHtml(item.candidate_account || "-")}</p>
       <p>状态：${escapeHtml(formatSubmissionStatus(item.status || "-"))}</p>
-      <p>审核状态：${escapeHtml(formatSubmissionReviewStatus(item.review_status || item.status || "-"))}</p>
+      <p>审核状态：${renderSubmissionReviewStatusBadge(item.review_status || item.status || "-")}</p>
       <p>提交时间：${escapeHtml(formatDateTime(item.submitted_at || item.created_at))}</p>
       <p>总分：${escapeHtml(String(item.total_score ?? 0))} 分</p>
       <div class="button-row">
@@ -2444,7 +2444,7 @@ function renderSubmissionMeta(submission, targetId = "submissionModalMeta") {
     ["提交 ID", submission.id],
     ["笔试任务", submission.campaign_title || submission.campaignId],
     ["状态", formatSubmissionStatus(submission.status)],
-    ["审核状态", formatSubmissionReviewStatus(submission.review_status || submission.status)],
+    ["审核状态", { html: renderSubmissionReviewStatusBadge(submission.review_status || submission.status) }],
     ["客观题", `${submission.objective_score ?? submission.objectiveScore ?? 0} 分`],
     ["主观题", `${submission.subjective_score ?? submission.subjectiveScore ?? 0} 分`],
     ["总分", `${submission.total_score ?? submission.totalScore ?? 0} 分`],
@@ -2862,6 +2862,20 @@ function formatSubmissionReviewStatus(status) {
     grading: "待审核",
     graded: "已审核"
   }[status] || status;
+}
+
+function renderSubmissionReviewStatusBadge(status) {
+  const normalized = String(status || "").trim();
+  const label = formatSubmissionReviewStatus(normalized || "-");
+  const modifier = {
+    unsubmitted: "pending",
+    in_progress: "pending",
+    pending_review: "warning",
+    grading: "warning",
+    reviewed: "success",
+    graded: "success"
+  }[normalized] || "neutral";
+  return `<span class="review-status-badge review-status-badge-${modifier}">${escapeHtml(label)}</span>`;
 }
 
 function formatObjectiveResult(status) {
@@ -3674,7 +3688,9 @@ function renderMetaItems(items) {
   return items.map(([label, value]) => `
     <div class="meta-item">
       <span class="meta-label">${escapeHtml(label)}</span>
-      <strong>${escapeHtml(String(value ?? "-"))}</strong>
+      <strong>${value && typeof value === "object" && "html" in value
+        ? value.html
+        : escapeHtml(String(value ?? "-"))}</strong>
     </div>
   `).join("");
 }
