@@ -59,6 +59,7 @@ import {
 } from "./lib/db.js";
 import { hashPassword, verifyPassword } from "./lib/password.js";
 import { signSession, verifySession } from "./lib/session.js";
+import { BULK_QUESTION_BANK } from "./preset-questions.js";
 
 /**
  * @typedef {import("./types").AppBindings} AppBindings
@@ -1547,7 +1548,7 @@ async function handleImportPresetQuestions(env, sessionUser, corsHeaders) {
   }
 
   const imported = [];
-  for (const preset of JAVA_RECRUITMENT_PRESET_QUESTIONS) {
+  for (const preset of BULK_QUESTION_BANK) {
     const createdQuestion = await createQuestionRecord(env, sessionUser.sub, preset);
     imported.push({
       id: createdQuestion.id,
@@ -1560,7 +1561,7 @@ async function handleImportPresetQuestions(env, sessionUser, corsHeaders) {
   }
 
   return json({
-    message: `已导入 ${imported.length} 道 Java 招聘示例题`,
+    message: `已导入 ${imported.length} 道题目`,
     importedCount: imported.length,
     items: imported
   }, 201, {}, corsHeaders);
