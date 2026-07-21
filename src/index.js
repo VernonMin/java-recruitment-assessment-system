@@ -3052,9 +3052,6 @@ async function parseAssessmentPayload(env, body) {
     if (!Number.isFinite(item.sortOrder) || item.sortOrder <= 0) {
       return { ok: false, message: "题目排序必须为正整数" };
     }
-    if (!Number.isFinite(item.score) || item.score <= 0) {
-      return { ok: false, message: "题目分值必须大于 0" };
-    }
     if (duplicateIds.has(item.questionId)) {
       return { ok: false, message: "同一模板中不能重复选择题目" };
     }
@@ -3071,6 +3068,15 @@ async function parseAssessmentPayload(env, body) {
     }
     if (question.status !== "published") {
       return { ok: false, message: "模板只能选择已发布题目" };
+    }
+    if (!Number.isFinite(item.score) || item.score < 0) {
+      return { ok: false, message: "题目分值不能小于 0" };
+    }
+    if (question.type !== "work_style" && item.score <= 0) {
+      return { ok: false, message: "普通题目的分值必须大于 0" };
+    }
+    if (question.type === "work_style" && item.score !== 0) {
+      return { ok: false, message: "职业行为倾向题固定为 0 分" };
     }
   }
 
