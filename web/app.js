@@ -22,7 +22,8 @@ const state = {
     mode: "create",
     assessmentId: "",
     questionSearch: "",
-    selectedQuestions: []
+    selectedQuestions: [],
+    workStyleEnabled: false
   },
   userFilters: {
     q: "",
@@ -97,6 +98,83 @@ let feedbackTimer = null;
 let pendingConfirmAction = null;
 const PROCTORING_SNAPSHOT_INTERVAL = 60 * 1000;
 const ANSWER_DRAFT_STORAGE_PREFIX = "oas-answer-draft";
+const WORK_STYLE_QUESTION_TYPE = "work_style";
+const WORK_STYLE_MODULE_COUNT = 10;
+const WORK_STYLE_DIMENSIONS = {
+  execution: "执行推进",
+  collaboration: "团队协作",
+  learning: "主动学习",
+  stability: "抗压稳定",
+  ownership: "责任担当"
+};
+const WORK_STYLE_LEVEL_LABELS = [
+  { min: 3.4, label: "较强" },
+  { min: 2.8, label: "良好" },
+  { min: 2.2, label: "中等" },
+  { min: 0, label: "待关注" }
+];
+const WORK_STYLE_PROFILE_CONFIG = {
+  question_work_style_01: {
+    A: { execution: 4, collaboration: 2, learning: 2, stability: 3, ownership: 3 },
+    B: { execution: 1, collaboration: 2, learning: 1, stability: 1, ownership: 2 },
+    C: { execution: 3, collaboration: 4, learning: 2, stability: 4, ownership: 3 },
+    D: { execution: 2, collaboration: 1, learning: 1, stability: 2, ownership: 1 }
+  },
+  question_work_style_02: {
+    A: { execution: 3, collaboration: 2, learning: 1, stability: 2, ownership: 3 },
+    B: { execution: 3, collaboration: 1, learning: 1, stability: 3, ownership: 4 },
+    C: { execution: 3, collaboration: 4, learning: 2, stability: 4, ownership: 3 },
+    D: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 }
+  },
+  question_work_style_03: {
+    A: { execution: 3, collaboration: 1, learning: 3, stability: 2, ownership: 2 },
+    B: { execution: 2, collaboration: 1, learning: 4, stability: 3, ownership: 2 },
+    C: { execution: 2, collaboration: 3, learning: 3, stability: 3, ownership: 2 },
+    D: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 }
+  },
+  question_work_style_04: {
+    A: { execution: 2, collaboration: 1, learning: 1, stability: 2, ownership: 2 },
+    B: { execution: 4, collaboration: 3, learning: 2, stability: 4, ownership: 3 },
+    C: { execution: 2, collaboration: 1, learning: 1, stability: 2, ownership: 1 },
+    D: { execution: 3, collaboration: 2, learning: 1, stability: 2, ownership: 2 }
+  },
+  question_work_style_05: {
+    A: { execution: 3, collaboration: 1, learning: 1, stability: 2, ownership: 2 },
+    B: { execution: 3, collaboration: 4, learning: 3, stability: 4, ownership: 3 },
+    C: { execution: 1, collaboration: 2, learning: 1, stability: 2, ownership: 1 },
+    D: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 }
+  },
+  question_work_style_06: {
+    A: { execution: 4, collaboration: 2, learning: 2, stability: 2, ownership: 3 },
+    B: { execution: 2, collaboration: 4, learning: 2, stability: 3, ownership: 2 },
+    C: { execution: 2, collaboration: 2, learning: 4, stability: 3, ownership: 2 },
+    D: { execution: 2, collaboration: 3, learning: 1, stability: 4, ownership: 4 }
+  },
+  question_work_style_07: {
+    A: { execution: 4, collaboration: 2, learning: 2, stability: 4, ownership: 3 },
+    B: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 },
+    C: { execution: 2, collaboration: 2, learning: 4, stability: 2, ownership: 2 },
+    D: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 }
+  },
+  question_work_style_08: {
+    A: { execution: 4, collaboration: 1, learning: 2, stability: 2, ownership: 3 },
+    B: { execution: 3, collaboration: 4, learning: 2, stability: 3, ownership: 3 },
+    C: { execution: 1, collaboration: 1, learning: 1, stability: 2, ownership: 1 },
+    D: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 }
+  },
+  question_work_style_09: {
+    A: { execution: 3, collaboration: 3, learning: 3, stability: 4, ownership: 4 },
+    B: { execution: 2, collaboration: 1, learning: 2, stability: 2, ownership: 2 },
+    C: { execution: 2, collaboration: 1, learning: 1, stability: 2, ownership: 1 },
+    D: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 }
+  },
+  question_work_style_10: {
+    A: { execution: 3, collaboration: 2, learning: 1, stability: 4, ownership: 4 },
+    B: { execution: 4, collaboration: 2, learning: 4, stability: 3, ownership: 3 },
+    C: { execution: 1, collaboration: 1, learning: 1, stability: 1, ownership: 1 },
+    D: { execution: 1, collaboration: 1, learning: 1, stability: 2, ownership: 1 }
+  }
+};
 const answerRuntime = {
   countdownTimer: null,
   snapshotTimer: null,
@@ -154,6 +232,7 @@ document.getElementById("assessmentTemplateForm").addEventListener("submit", sub
 document.getElementById("assessmentTemplateSelect").addEventListener("change", onAssessmentTemplateSelectChange);
 document.getElementById("assessmentQuestionSearchInput").addEventListener("input", onAssessmentQuestionSearch);
 document.getElementById("autoGenerateAssessmentButton").addEventListener("click", autoGenerateAssessmentQuestions);
+document.getElementById("includeWorkStyleModule")?.addEventListener("change", onWorkStyleModuleToggle);
 document.getElementById("openCreateUserModalButton").addEventListener("click", () => openUserModal("create"));
 document.getElementById("openBatchCreateUsersModalButton").addEventListener("click", () => openUserModal("batchCreate"));
 document.getElementById("openAssignCampaignModalButton").addEventListener("click", () => openUserModal("assignCampaign"));
@@ -2601,25 +2680,39 @@ function renderSubmissionMeta(submission, targetId = "submissionModalMeta") {
   ])}`;
 }
 
+function formatSubmissionAnswerContent(answer) {
+  if (String(answer?.type || "").trim() === WORK_STYLE_QUESTION_TYPE) {
+    return formatWorkStyleAnswer(String(answer?.question_id || answer?.questionId || "").trim(), answer?.answer_content || answer?.answerContent || "");
+  }
+  return String(answer?.answer_content ?? answer?.answerContent ?? "-");
+}
+
 function renderSubmissionAnswers(answers, targetId = "submissionModalAnswers") {
   const container = document.getElementById(targetId);
-  container.innerHTML = answers.map((item, index) => `
+  const profile = calculateWorkStyleProfile(answers);
+  container.innerHTML = `
+    ${renderWorkStyleProfile(profile)}
+    ${answers.map((item, index) => `
     <article class="question-card">
       <h3>第 ${escapeHtml(String(index + 1))} 题 · ${escapeHtml(item.stem)}</h3>
       <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
-      <p>作答：${escapeHtml(item.answer_content)}</p>
+      <p>作答：${escapeHtml(formatSubmissionAnswerContent(item))}</p>
       <p><span class="answer-status">${escapeHtml(formatObjectiveResult(item.objective_result))}</span></p>
       ${renderSubmissionAnswerScoreLine(item)}
       <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
       <p>评语：${escapeHtml(item.reviewer_comment || "-")}</p>
     </article>
-  `).join("");
+  `).join("")}
+  `;
 }
 
 function renderSubmissionAnswerScoreLine(answer) {
   const type = String(answer?.type || "").trim();
   const finalScore = Number(answer?.final_score ?? (Number(answer?.objective_score ?? 0) + Number(answer?.subjective_score ?? 0)));
   const result = String(answer?.objective_result || "").trim();
+  if (type === WORK_STYLE_QUESTION_TYPE) {
+    return `<p>画像结果：已生成职业行为倾向画像，不计入总分</p>`;
+  }
   if ((type === "short_answer" || type === "scenario_answer") && result === "pending") {
     return `<p>评分状态：待人工评估</p>`;
   }
@@ -2629,7 +2722,10 @@ function renderSubmissionAnswerScoreLine(answer) {
 function renderEvaluationForm(answers, submission) {
   const form = document.getElementById("evaluationForm");
   const reviewableAnswers = Array.isArray(answers) ? answers : [];
-  const initialTotalScore = reviewableAnswers.reduce((sum, item) => {
+  const profileAnswers = reviewableAnswers.filter((item) => item.type === WORK_STYLE_QUESTION_TYPE);
+  const scoredAnswers = reviewableAnswers.filter((item) => item.type !== WORK_STYLE_QUESTION_TYPE);
+  const profile = calculateWorkStyleProfile(profileAnswers);
+  const initialTotalScore = scoredAnswers.reduce((sum, item) => {
     const score = Number(item.final_score ?? (Number(item.objective_score ?? 0) + Number(item.subjective_score ?? 0)));
     return sum + (Number.isFinite(score) ? score : 0);
   }, 0);
@@ -2652,11 +2748,12 @@ function renderEvaluationForm(answers, submission) {
       </div>
       <div id="aiSuggestionSummary" class="ai-suggestion-summary hidden"></div>
     </div>`,
-    ...reviewableAnswers.map((item, index) => `
+    renderWorkStyleProfile(profile, "职业行为倾向画像"),
+    ...scoredAnswers.map((item, index) => `
       <article class="question-card evaluation-card">
         <h3>第 ${escapeHtml(String(index + 1))} 题 · ${escapeHtml(item.stem)}</h3>
         <p>题型：${escapeHtml(formatQuestionType(item.type))}</p>
-        <p>候选人答案：${escapeHtml(item.answer_content)}</p>
+        <p>候选人答案：${escapeHtml(formatSubmissionAnswerContent(item))}</p>
         <p>题目满分：${escapeHtml(String(item.configured_score ?? "-"))} 分</p>
         <p>当前判定：${escapeHtml(formatObjectiveResult(item.objective_result))}</p>
         <p>当前得分：${escapeHtml(String(item.final_score ?? (Number(item.objective_score ?? 0) + Number(item.subjective_score ?? 0))))} 分</p>
@@ -3079,8 +3176,196 @@ function formatQuestionType(type) {
     true_false: "判断题",
     fill_blank: "填空题",
     short_answer: "简答题",
-    scenario_answer: "场景分析题"
+    scenario_answer: "场景分析题",
+    work_style: "职业行为倾向题"
   }[type] || type;
+}
+
+function getWorkStyleOptionText(questionId, optionKey) {
+  const optionMap = WORK_STYLE_PROFILE_CONFIG[questionId];
+  if (!optionMap || !optionKey) {
+    return "";
+  }
+  const optionLetter = String(optionKey || "").trim().toUpperCase();
+  const optionTexts = {
+    question_work_style_01: {
+      A: "先尽快交付一个可运行版本，后续再逐步完善",
+      B: "等需求完全稳定后再开始，避免返工",
+      C: "先与相关方确认优先级，再推进关键部分",
+      D: "先处理自己最熟悉的部分，其他问题后面再说"
+    },
+    question_work_style_02: {
+      A: "直接指出问题并要求对方尽快修正",
+      B: "先自己兜底处理，尽量不影响整体进度",
+      C: "先说明影响，再和对方一起找解决办法",
+      D: "先不说，等影响变大了再反馈"
+    },
+    question_work_style_03: {
+      A: "先自己快速摸索，边做边学",
+      B: "先查资料建立理解，再开始推进",
+      C: "先向有经验的人确认关键点",
+      D: "等别人把任务拆得更细再行动"
+    },
+    question_work_style_04: {
+      A: "哪个催得最急就先做哪个",
+      B: "先排优先级，再逐项推进",
+      C: "先完成最容易做完的任务，快速清空一部分",
+      D: "多项任务同时推进，保持并行"
+    },
+    question_work_style_05: {
+      A: "坚持自己的方案，优先说服对方",
+      B: "先听完理由，再决定是否调整",
+      C: "为了避免争论，直接改成对方方案",
+      D: "先搁置争议，晚点再处理"
+    },
+    question_work_style_06: {
+      A: "推动执行、拿结果的人",
+      B: "协调信息、拉通协作的人",
+      C: "深入分析、关注细节的人",
+      D: "稳定支持、保证落地的人"
+    },
+    question_work_style_07: {
+      A: "先止血恢复服务，再定位根因",
+      B: "先找出是谁引起的问题",
+      C: "先把原因分析透，再决定如何处理",
+      D: "等负责人明确指令后再行动"
+    },
+    question_work_style_08: {
+      A: "自己先定一个做法，先把事情推进起来",
+      B: "先拉相关人对齐规则，再开始执行",
+      C: "先看看别人怎么做，再跟进",
+      D: "尽量回避边界不清的问题"
+    },
+    question_work_style_09: {
+      A: "及时承认并修正，同时同步相关方",
+      B: "先观察是否真的会产生影响，再决定",
+      C: "先私下修正，不主动说明",
+      D: "等别人发现问题后再解释"
+    },
+    question_work_style_10: {
+      A: "严格按规则稳定执行，尽量不出错",
+      B: "边做边想办法优化流程，减少重复劳动",
+      C: "如果能交给别人做，会尽量转出去",
+      D: "看当前压力情况，再决定投入多少精力"
+    }
+  };
+  return optionTexts[questionId]?.[optionLetter] || "";
+}
+
+function formatWorkStyleAnswer(questionId, answerContent) {
+  const optionKey = String(answerContent || "").trim().toUpperCase();
+  if (!optionKey) {
+    return "-";
+  }
+  const optionText = getWorkStyleOptionText(questionId, optionKey);
+  return optionText ? `${optionKey} · ${optionText}` : optionKey;
+}
+
+function getWorkStyleLevel(score) {
+  const normalized = Number(score || 0);
+  return WORK_STYLE_LEVEL_LABELS.find((item) => normalized >= item.min)?.label || "待关注";
+}
+
+function buildWorkStyleSummary(dimensions) {
+  if (!dimensions.length) {
+    return "";
+  }
+  const ranked = [...dimensions].sort((left, right) => right.score - left.score);
+  const topA = ranked[0];
+  const topB = ranked[1];
+  const low = ranked[ranked.length - 1];
+  return `整体呈现出较明显的${topA.label}与${topB.label}倾向，${low.label}维度建议结合面试继续确认。`;
+}
+
+function calculateWorkStyleProfile(answers) {
+  const workStyleAnswers = (answers || []).filter((item) => item.type === WORK_STYLE_QUESTION_TYPE);
+  if (workStyleAnswers.length === 0) {
+    return null;
+  }
+
+  const dimensionScores = Object.fromEntries(Object.keys(WORK_STYLE_DIMENSIONS).map((key) => [key, 0]));
+  const dimensionCounts = Object.fromEntries(Object.keys(WORK_STYLE_DIMENSIONS).map((key) => [key, 0]));
+  const items = [];
+
+  workStyleAnswers.forEach((item) => {
+    const questionId = String(item.question_id || item.questionId || "").trim();
+    const optionKey = String(item.answer_content || item.answerContent || "").trim().toUpperCase();
+    const optionProfile = WORK_STYLE_PROFILE_CONFIG[questionId]?.[optionKey];
+    if (!optionProfile) {
+      return;
+    }
+
+    Object.entries(optionProfile).forEach(([dimension, value]) => {
+      dimensionScores[dimension] += Number(value || 0);
+      dimensionCounts[dimension] += 1;
+    });
+
+    items.push({
+      questionId,
+      stem: item.stem || "",
+      answerLabel: formatWorkStyleAnswer(questionId, optionKey)
+    });
+  });
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  const dimensions = Object.entries(WORK_STYLE_DIMENSIONS).map(([key, label]) => {
+    const score = dimensionCounts[key] > 0 ? Number((dimensionScores[key] / dimensionCounts[key]).toFixed(2)) : 0;
+    return {
+      key,
+      label,
+      score,
+      level: getWorkStyleLevel(score)
+    };
+  });
+
+  return {
+    questionCount: workStyleAnswers.length,
+    dimensions,
+    items,
+    summary: buildWorkStyleSummary(dimensions)
+  };
+}
+
+function renderWorkStyleProfile(profile, title = "职业行为倾向画像") {
+  if (!profile) {
+    return "";
+  }
+  return `
+    <article class="question-card behavior-profile-card">
+      <div class="behavior-profile-head">
+        <div>
+          <h3>${escapeHtml(title)}</h3>
+          <p class="hint">基于职业行为倾向题自动汇总生成，仅作为辅助参考，不单独作为淘汰依据。</p>
+        </div>
+        <span class="behavior-profile-count">已分析 ${escapeHtml(String(profile.questionCount))} 题</span>
+      </div>
+      <div class="behavior-profile-grid">
+        ${profile.dimensions.map((item) => `
+          <div class="behavior-profile-metric">
+            <span class="behavior-profile-label">${escapeHtml(item.label)}</span>
+            <strong>${escapeHtml(item.level)}</strong>
+            <span class="behavior-profile-score">倾向值 ${escapeHtml(item.score.toFixed(1))}</span>
+          </div>
+        `).join("")}
+      </div>
+      <div class="behavior-profile-summary">
+        <span class="behavior-profile-summary-label">综合解读</span>
+        <p>${escapeHtml(profile.summary)}</p>
+      </div>
+      <div class="behavior-profile-answer-list">
+        ${profile.items.map((item, index) => `
+          <div class="behavior-profile-answer-item">
+            <strong>第 ${escapeHtml(String(index + 1))} 题</strong>
+            <p>${escapeHtml(item.stem)}</p>
+            <span>${escapeHtml(item.answerLabel)}</span>
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `;
 }
 
 function formatQuestionStatus(status) {
@@ -3177,7 +3462,8 @@ function formatObjectiveResult(status) {
     incorrect: "错误",
     partial: "部分正确",
     pending: "待人工评阅",
-    reviewed: "已人工评阅"
+    reviewed: "已人工评阅",
+    profiled: "已生成画像"
   }[status] || status;
 }
 
@@ -3574,6 +3860,7 @@ async function openAssessmentTemplateModal(mode, assessmentId = "") {
   state.assessmentDraft.assessmentId = assessmentId || "";
   state.assessmentDraft.questionSearch = "";
   state.assessmentDraft.selectedQuestions = [];
+  state.assessmentDraft.workStyleEnabled = false;
   form.reset();
   form.elements.mode.value = mode;
   form.elements.assessmentId.value = assessmentId || "";
@@ -3585,6 +3872,7 @@ async function openAssessmentTemplateModal(mode, assessmentId = "") {
     submitButton.textContent = "创建试卷模板";
     selectWrap.classList.add("hidden");
     form.elements.status.value = "draft";
+    syncWorkStyleModuleCheckbox();
     updateAssessmentTotalScore();
     renderAssessmentQuestionPool();
     renderSelectedAssessmentQuestions();
@@ -3666,6 +3954,81 @@ function onAssessmentQuestionSearch(event) {
   renderAssessmentQuestionPool();
 }
 
+function syncWorkStyleModuleCheckbox() {
+  const checkbox = document.getElementById("includeWorkStyleModule");
+  if (!checkbox) {
+    return;
+  }
+  const workStyleCount = state.assessmentDraft.selectedQuestions.filter((item) => item.type === WORK_STYLE_QUESTION_TYPE).length;
+  state.assessmentDraft.workStyleEnabled = workStyleCount === WORK_STYLE_MODULE_COUNT;
+  checkbox.checked = state.assessmentDraft.workStyleEnabled;
+  checkbox.indeterminate = workStyleCount > 0 && workStyleCount < WORK_STYLE_MODULE_COUNT;
+}
+
+function normalizeSelectedAssessmentQuestions() {
+  state.assessmentDraft.selectedQuestions = state.assessmentDraft.selectedQuestions
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((item, index) => ({
+      ...item,
+      sortOrder: index + 1
+    }));
+}
+
+function addQuestionToAssessmentDraft(question, sectionName = "", scoreOverride = null) {
+  state.assessmentDraft.selectedQuestions.push({
+    questionId: question.id,
+    stem: question.stem,
+    type: question.type,
+    difficulty: question.difficulty,
+    sectionName,
+    sortOrder: state.assessmentDraft.selectedQuestions.length + 1,
+    score: scoreOverride == null ? Number(question.score || 10) : Number(scoreOverride)
+  });
+}
+
+function applyWorkStyleModule(enabled) {
+  if (!enabled) {
+    state.assessmentDraft.selectedQuestions = state.assessmentDraft.selectedQuestions
+      .filter((item) => item.type !== WORK_STYLE_QUESTION_TYPE);
+    normalizeSelectedAssessmentQuestions();
+    syncWorkStyleModuleCheckbox();
+    renderAssessmentQuestionPool();
+    renderSelectedAssessmentQuestions();
+    return;
+  }
+
+  const selectedIds = new Set(state.assessmentDraft.selectedQuestions.map((item) => item.questionId));
+  const currentCount = state.assessmentDraft.selectedQuestions.filter((item) => item.type === WORK_STYLE_QUESTION_TYPE).length;
+  const remainingCount = WORK_STYLE_MODULE_COUNT - currentCount;
+  if (remainingCount <= 0) {
+    syncWorkStyleModuleCheckbox();
+    renderAssessmentQuestionPool();
+    renderSelectedAssessmentQuestions();
+    return;
+  }
+
+  const availableItems = shuffleArray(
+    state.assessmentQuestionPool.filter((item) => item.type === WORK_STYLE_QUESTION_TYPE && !selectedIds.has(item.id))
+  );
+  if (currentCount + availableItems.length < WORK_STYLE_MODULE_COUNT) {
+    showFeedback(`题库中至少需要 ${WORK_STYLE_MODULE_COUNT} 道已发布职业行为倾向题，当前数量不足。`, true);
+    syncWorkStyleModuleCheckbox();
+    return;
+  }
+
+  availableItems.slice(0, remainingCount).forEach((question) => {
+    addQuestionToAssessmentDraft(question, defaultSectionNameByQuestionType(question.type), 0);
+  });
+  normalizeSelectedAssessmentQuestions();
+  syncWorkStyleModuleCheckbox();
+  renderAssessmentQuestionPool();
+  renderSelectedAssessmentQuestions();
+}
+
+function onWorkStyleModuleToggle(event) {
+  applyWorkStyleModule(Boolean(event.currentTarget.checked));
+}
+
 function autoGenerateAssessmentQuestions() {
   if (state.assessmentQuestionPool.length === 0) {
     showFeedback("当前没有可用于自动组卷的已发布题目。", true);
@@ -3693,6 +4056,12 @@ function autoGenerateAssessmentQuestions() {
     sortOrder: index + 1,
     score: Number(item.score || 0)
   }));
+  if (document.getElementById("includeWorkStyleModule")?.checked) {
+    applyWorkStyleModule(true);
+    const totalScore = state.assessmentDraft.selectedQuestions.reduce((sum, item) => sum + Number(item.score || 0), 0);
+    showFeedback(`自动组卷完成，共生成 ${state.assessmentDraft.selectedQuestions.length} 道题，总分 ${totalScore} 分。`);
+    return;
+  }
   renderAssessmentQuestionPool();
   renderSelectedAssessmentQuestions();
   showFeedback(`自动组卷完成，共生成 ${buildResult.items.length} 道题，总分 ${buildResult.totalScore} 分。`);
@@ -3708,7 +4077,8 @@ function readAssessmentAutoAssembleRules() {
     true_false: Number(document.getElementById("autoScoreTrueFalse").value || 0),
     fill_blank: Number(document.getElementById("autoScoreFillBlank").value || 0),
     short_answer: Number(document.getElementById("autoScoreShortAnswer").value || 0),
-    scenario_answer: Number(document.getElementById("autoScoreScenarioAnswer").value || 0)
+    scenario_answer: Number(document.getElementById("autoScoreScenarioAnswer").value || 0),
+    work_style: 0
   };
 
   if (!Number.isFinite(totalScore) || totalScore <= 0) {
@@ -3818,7 +4188,8 @@ function defaultSectionNameByQuestionType(type) {
     true_false: "判断题",
     fill_blank: "填空题",
     short_answer: "简答题",
-    scenario_answer: "场景分析题"
+    scenario_answer: "场景分析题",
+    work_style: "职业行为倾向"
   }[type] || "未分组";
 }
 
@@ -3829,7 +4200,8 @@ function compareQuestionTypeOrder(left, right) {
     true_false: 3,
     fill_blank: 4,
     short_answer: 5,
-    scenario_answer: 6
+    scenario_answer: 6,
+    work_style: 7
   };
   return (order[left] || 99) - (order[right] || 99);
 }
@@ -3869,8 +4241,9 @@ function fillAssessmentTemplateForm(assessment, questions) {
     difficulty: item.difficulty,
     sectionName: item.section_name || "",
     sortOrder: Number(item.sort_order || 0),
-    score: Number(item.score || 0)
+    score: item.type === WORK_STYLE_QUESTION_TYPE ? 0 : Number(item.score || 0)
   }));
+  syncWorkStyleModuleCheckbox();
   updateAssessmentTotalScore();
   renderAssessmentQuestionPool();
   renderSelectedAssessmentQuestions();
@@ -3881,6 +4254,9 @@ function renderAssessmentQuestionPool() {
   const selectedIds = new Set(state.assessmentDraft.selectedQuestions.map((item) => item.questionId));
   const keyword = state.assessmentDraft.questionSearch;
   const items = state.assessmentQuestionPool.filter((item) => {
+    if (item.type === WORK_STYLE_QUESTION_TYPE) {
+      return false;
+    }
     if (!keyword) {
       return true;
     }
@@ -3925,6 +4301,7 @@ function renderSelectedAssessmentQuestions() {
   const items = [...state.assessmentDraft.selectedQuestions].sort((a, b) => a.sortOrder - b.sortOrder);
   if (items.length === 0) {
     container.innerHTML = `<div class="template-empty">当前还没有选择题目。</div>`;
+    syncWorkStyleModuleCheckbox();
     updateAssessmentTotalScore();
     return;
   }
@@ -3944,11 +4321,13 @@ function renderSelectedAssessmentQuestions() {
         </label>
         <label>
           <span>分值</span>
-          <input data-selected-field="score" data-question-id="${escapeHtml(item.questionId)}" type="number" min="1" value="${escapeHtml(String(item.score))}" />
+          <input data-selected-field="score" data-question-id="${escapeHtml(item.questionId)}" type="number" min="0" value="${escapeHtml(String(item.score))}" ${item.type === WORK_STYLE_QUESTION_TYPE ? "readonly" : ""} />
         </label>
       </div>
       <div class="button-row">
-        <button type="button" class="danger-button" data-remove-selected-question-id="${escapeHtml(item.questionId)}">移除题目</button>
+        ${item.type === WORK_STYLE_QUESTION_TYPE
+          ? `<span class="hint">职业行为倾向题由上方开关统一控制。</span>`
+          : `<button type="button" class="danger-button" data-remove-selected-question-id="${escapeHtml(item.questionId)}">移除题目</button>`}
       </div>
     </article>
   `).join("");
@@ -3965,6 +4344,7 @@ function renderSelectedAssessmentQuestions() {
   });
 
   updateAssessmentTotalScore();
+  syncWorkStyleModuleCheckbox();
 }
 
 function addAssessmentQuestion(questionId) {
@@ -3976,27 +4356,27 @@ function addAssessmentQuestion(questionId) {
   if (!question) {
     return;
   }
-
-  state.assessmentDraft.selectedQuestions.push({
-    questionId: question.id,
-    stem: question.stem,
-    type: question.type,
-    difficulty: question.difficulty,
-    sectionName: "",
-    sortOrder: state.assessmentDraft.selectedQuestions.length + 1,
-    score: Number(question.score || 10)
-  });
+  if (question.type === WORK_STYLE_QUESTION_TYPE) {
+    const count = state.assessmentDraft.selectedQuestions.filter((item) => item.type === WORK_STYLE_QUESTION_TYPE).length;
+    if (count >= WORK_STYLE_MODULE_COUNT) {
+      showFeedback(`职业行为倾向题固定为 ${WORK_STYLE_MODULE_COUNT} 道。`, true);
+      return;
+    }
+  }
+  addQuestionToAssessmentDraft(
+    question,
+    question.type === WORK_STYLE_QUESTION_TYPE ? defaultSectionNameByQuestionType(question.type) : "",
+    question.type === WORK_STYLE_QUESTION_TYPE ? 0 : null
+  );
+  normalizeSelectedAssessmentQuestions();
   renderAssessmentQuestionPool();
   renderSelectedAssessmentQuestions();
 }
 
 function removeAssessmentQuestion(questionId) {
   state.assessmentDraft.selectedQuestions = state.assessmentDraft.selectedQuestions
-    .filter((item) => item.questionId !== questionId)
-    .map((item, index) => ({
-      ...item,
-      sortOrder: index + 1
-    }));
+    .filter((item) => item.questionId !== questionId);
+  normalizeSelectedAssessmentQuestions();
   renderAssessmentQuestionPool();
   renderSelectedAssessmentQuestions();
 }
@@ -4010,6 +4390,9 @@ function updateAssessmentQuestionField(questionId, field, rawValue) {
       return { ...item, sortOrder: Math.max(1, Number(rawValue || 1)) };
     }
     if (field === "score") {
+      if (item.type === WORK_STYLE_QUESTION_TYPE) {
+        return { ...item, score: 0 };
+      }
       return { ...item, score: Math.max(1, Number(rawValue || 1)) };
     }
     if (field === "sectionName") {
@@ -4019,10 +4402,7 @@ function updateAssessmentQuestionField(questionId, field, rawValue) {
   });
 
   state.assessmentDraft.selectedQuestions.sort((a, b) => a.sortOrder - b.sortOrder);
-  state.assessmentDraft.selectedQuestions = state.assessmentDraft.selectedQuestions.map((item, index) => ({
-    ...item,
-    sortOrder: index + 1
-  }));
+  normalizeSelectedAssessmentQuestions();
   renderSelectedAssessmentQuestions();
 }
 
@@ -4151,10 +4531,10 @@ function hasAnyRole(expectedRoles) {
 function renderAnswerInput(question) {
   const id = escapeHtml(question.questionId);
   const options = Array.isArray(question.options) ? question.options : [];
-  if (question.type === "single_choice" || question.type === "true_false") {
+  if (question.type === "single_choice" || question.type === "true_false" || question.type === WORK_STYLE_QUESTION_TYPE) {
     return `
       <fieldset class="answer-choice-group">
-        <legend class="field-label">请选择一个答案</legend>
+        <legend class="field-label">${question.type === WORK_STYLE_QUESTION_TYPE ? "请选择最符合你的选项" : "请选择一个答案"}</legend>
         <div class="answer-choice-list">
           ${options.map((option) => `
             <label class="answer-choice-card">
@@ -4317,7 +4697,7 @@ function normalizeQuestionAnswerForForm(question) {
       return "";
     }
   }
-  if (question.type === "short_answer" || question.type === "scenario_answer") {
+  if (question.type === "short_answer" || question.type === "scenario_answer" || question.type === WORK_STYLE_QUESTION_TYPE) {
     return "";
   }
   return question.answer || "";

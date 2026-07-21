@@ -2299,7 +2299,9 @@ async function handleEvaluation(request, env, sessionUser, corsHeaders) {
       return json({ message: `最终分数必须在 0 到 ${maxScore} 分之间` }, 400, {}, corsHeaders);
     }
 
-    const isSubjectiveQuestion = current.type === "short_answer" || current.type === "scenario_answer";
+    const isSubjectiveQuestion = current.type === "short_answer"
+      || current.type === "scenario_answer"
+      || current.type === "work_style";
     const nextObjectiveScore = isSubjectiveQuestion ? Number(current.objective_score ?? 0) : finalScore;
     const nextSubjectiveScore = isSubjectiveQuestion ? finalScore : 0;
     const previousFinalScore = Number(current.final_score ?? (Number(current.objective_score ?? 0) + Number(current.subjective_score ?? 0)));
@@ -2606,7 +2608,20 @@ function evaluateAnswer(question, answerContent) {
   const normalizedAnswer = answerContent.trim();
   const answerType = question.answer_type ?? "manual";
 
-  if (answerType === "manual" || question.type === "short_answer" || question.type === "scenario_answer") {
+  if (question.type === "work_style") {
+    return {
+      objectiveResult: "profiled",
+      objectiveScore: 0,
+      subjectiveScore: 0,
+      comment: "职业行为倾向题已生成画像，不计入总分"
+    };
+  }
+
+  if (
+    answerType === "manual"
+    || question.type === "short_answer"
+    || question.type === "scenario_answer"
+  ) {
     return {
       objectiveResult: "pending",
       objectiveScore: 0,
@@ -2988,7 +3003,8 @@ const QUESTION_TYPES = new Set([
   "true_false",
   "fill_blank",
   "short_answer",
-  "scenario_answer"
+  "scenario_answer",
+  "work_style"
 ]);
 
 const ASSESSMENT_STATUSES = new Set(["draft", "published", "archived"]);
@@ -3130,7 +3146,7 @@ async function createUserRecord(env, params) {
  * @param {string} type
  */
 function requiresOptions(type) {
-  return type === "single_choice" || type === "multiple_choice" || type === "true_false";
+  return type === "single_choice" || type === "multiple_choice" || type === "true_false" || type === "work_style";
 }
 
 /**
@@ -3220,7 +3236,7 @@ function inferAnswerType(type) {
   if (type === "multiple_choice") {
     return "set_match";
   }
-  if (type === "short_answer" || type === "scenario_answer") {
+  if (type === "short_answer" || type === "scenario_answer" || type === "work_style") {
     return "manual";
   }
   return "exact";
@@ -3259,7 +3275,7 @@ function normalizeQuestionAnswer(type, answer) {
     return "";
   }
 
-  if (type === "short_answer" || type === "scenario_answer") {
+  if (type === "short_answer" || type === "scenario_answer" || type === "work_style") {
     return "";
   }
 

@@ -253,6 +253,7 @@
                     <option value="fill_blank">填空题</option>
                     <option value="short_answer">简答题</option>
                     <option value="scenario_answer">场景分析题</option>
+                    <option value="work_style">职业行为倾向题</option>
                   </select>
                 </label>
               </div>
@@ -619,6 +620,7 @@
                     <option value="fill_blank">填空题</option>
                     <option value="short_answer">简答题</option>
                     <option value="scenario_answer">场景分析题</option>
+                    <option value="work_style">职业行为倾向题</option>
                   </select>
                 </label>
                 <label>
@@ -675,6 +677,7 @@
                     <option value="fill_blank">填空题</option>
                     <option value="short_answer">简答题</option>
                     <option value="scenario_answer">场景分析题</option>
+                    <option value="work_style">职业行为倾向题</option>
                   </select>
                 </label>
                 <label>
@@ -993,6 +996,13 @@
                 </label>
               </div>
               <p class="hint">各题型分值之和应等于目标总分。若某题型填 0，生成时会忽略该题型。</p>
+              <label class="checkbox-card">
+                <input id="includeWorkStyleModule" type="checkbox" />
+                <div>
+                  <span>加入职业行为倾向</span>
+                  <p class="hint">选中后会自动加入固定 10 道职业行为倾向题；不选则不进入试卷。</p>
+                </div>
+              </label>
             </section>
 
             <div class="split-layout template-builder-layout">
